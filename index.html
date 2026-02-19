@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1a2e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    
+    <!-- Prevent browser caching of HTML for PWA updates -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
+    <!-- Google Analytics 4 - loads after consent -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      
+      // Check cookie consent before initializing GA
+      function initGA4() {
+        try {
+          // Guard against double initialization
+          if (document.querySelector('script[src*="googletagmanager.com/gtag/js"]')) return;
+          
+          const consent = localStorage.getItem('cookie-consent');
+          if (consent) {
+            const prefs = JSON.parse(consent);
+            if (prefs.analytics === true) {
+              // Load GA4 script dynamically
+              var script = document.createElement('script');
+              script.async = true;
+              script.src = 'https://www.googletagmanager.com/gtag/js?id=G-REGV1LE08E';
+              document.head.appendChild(script);
+              
+              gtag('js', new Date());
+              gtag('config', 'G-REGV1LE08E', {
+                send_page_view: true
+              });
+            }
+          }
+        } catch (e) {
+          console.warn('GA4 init error:', e);
+        }
+      }
+      
+      // Initialize on load and listen for consent changes
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initGA4);
+      } else {
+        initGA4();
+      }
+      
+      // Re-check when localStorage changes (for consent updates)
+      window.addEventListener('storage', function(e) {
+        if (e.key === 'cookie-consent') {
+          initGA4();
+        }
+      });
+    </script>
+    
+    <!-- PWA meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FieldTek" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="FieldTek" />
+    <meta name="msapplication-TileColor" content="#1a1a2e" />
+
+    <!-- Apple Splash Screens (eliminates white flash on iOS launch) -->
+    <!-- iPhone 14 Pro Max: 1290x2796 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1290' height='2796'%3E%3Crect width='1290' height='2796' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPhone 14 Pro: 1179x2556 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1179' height='2556'%3E%3Crect width='1179' height='2556' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPhone 14 / 13 / 12: 1170x2532 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1170' height='2532'%3E%3Crect width='1170' height='2532' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPhone 11 / XR: 828x1792 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='828' height='1792'%3E%3Crect width='828' height='1792' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPhone X / XS: 1125x2436 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1125' height='2436'%3E%3Crect width='1125' height='2436' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPhone 8 / SE 2nd gen: 750x1334 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='750' height='1334'%3E%3Crect width='750' height='1334' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPad Pro 12.9": 2048x2732 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2048' height='2732'%3E%3Crect width='2048' height='2732' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPad Pro 11": 1668x2388 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1668' height='2388'%3E%3Crect width='1668' height='2388' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    <!-- iPad Air / iPad 10th gen: 1640x2360 -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1640' height='2360'%3E%3Crect width='1640' height='2360' fill='%231a1a2e'/%3E%3C/svg%3E" />
+    
+    <!-- Preconnect to critical origins -->
+    <link rel="preconnect" href="https://dlrhobkrjfegtbdsqdsa.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://dlrhobkrjfegtbdsqdsa.supabase.co" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Non-blocking font loading with display=swap -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&display=swap" />
+    </noscript>
+    
+    <!-- Critical CSS - inline for instant first paint -->
+    <style>
+      :root { --background: 30 20% 98%; --foreground: 20 14% 12%; --primary: 24 95% 53%; }
+      body { margin: 0; font-family: Inter, system-ui, -apple-system, sans-serif; background: hsl(30 20% 98%); color: hsl(20 14% 12%); }
+      #root { min-height: 100vh; }
+      .dark body { background: hsl(20 14% 6%); color: hsl(30 20% 96%); }
+    </style>
+    
+    <!-- Favicon declarations for Google Search and browsers -->
+    <link rel="icon" href="/favicon.png" sizes="48x48" type="image/png" />
+    <link rel="icon" href="/pwa-icon-192.png" sizes="192x192" type="image/png" />
+    <link rel="shortcut icon" href="/favicon.png" type="image/png" />
+    
+    <!-- Apple Touch Icons for iOS - multiple sizes for best compatibility -->
+    <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/pwa-icon-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/pwa-icon-192.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/pwa-icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pwa-icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/pwa-icon-512.png" />
+    <title>FieldTek | Guide Every Install. Protect Every Warranty.</title>
+    <meta name="description" content="Join FieldTek's Founding Member beta program — the AI-powered platform that guides your techs through every install, logs every step, and keeps you warranty-safe. Limited spots available for HVAC, electrical, plumbing, and mechanical contractors." />
+    <meta name="author" content="FieldTek" />
+    <meta name="robots" content="index, follow" />
+
+    <meta property="og:title" content="FieldTek | Guide Every Install. Protect Every Warranty." />
+    <meta property="og:description" content="Join FieldTek's Founding Member beta — the AI-powered platform that guides your techs through every install, logs every step, and keeps you warranty-safe. Limited spots available." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://fieldtek.ai/og-image.png" />
+    <meta property="og:url" content="https://fieldtek.ai/" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@FieldTek" />
+    <meta name="twitter:title" content="FieldTek | Guide Every Install. Protect Every Warranty." />
+    <meta name="twitter:description" content="Join FieldTek's Founding Member beta — the AI-powered platform that guides your techs through every install, logs every step, and keeps you warranty-safe. Limited spots available." />
+    <meta name="twitter:image" content="https://fieldtek.ai/og-image.png" />
+
+    <link rel="canonical" href="https://fieldtek.ai/" />
+
+    <!-- Structured Data - JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "FieldTek",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web Browser",
+      "description": "Guide every install. Protect every warranty. The AI-powered platform that guides your techs through every install, logs every step, and keeps you warranty-safe. Built for HVAC, electrical, plumbing, and mechanical contractors.",
+      "url": "https://fieldtek.ai",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Apply for Founding Member beta — 50% off first year",
+        "availability": "https://schema.org/LimitedAvailability"
+      },
+      "featureList": [
+        "AI-guided installs and troubleshooting",
+        "Warranty-safe documentation",
+        "Manufacturer-verified AI intelligence",
+        "Job scheduling and dispatch",
+        "Technician mobile app",
+        "Invoice and payment management",
+        "Equipment tracking",
+        "Customer portal",
+        "Real-time job tracking"
+      ],
+      "screenshot": "https://fieldtek.ai/og-image.png",
+      "author": {
+        "@type": "Organization",
+        "name": "FieldTek",
+        "url": "https://fieldtek.ai"
+      }
+    }
+    </script>
+
+    <!-- Organization Schema -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "FieldTek",
+      "url": "https://fieldtek.ai",
+      "logo": "https://fieldtek.ai/fieldtek-logo-stripe.png",
+      "description": "Guide every install. Protect every warranty. Built for skilled trade contractors.",
+      "sameAs": [],
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "contactType": "sales",
+          "email": "sales@fieldtek.ai",
+          "availableLanguage": "English"
+        },
+        {
+          "@type": "ContactPoint",
+          "contactType": "customer support",
+          "email": "info@fieldtek.ai",
+          "availableLanguage": "English"
+        }
+      ]
+    }
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

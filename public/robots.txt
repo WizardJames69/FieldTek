@@ -1,0 +1,28 @@
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /portal
+Disallow: /settings
+Disallow: /my-jobs
+Disallow: /my-calendar
+Disallow: /assistant
+Disallow: /onboarding
+Disallow: /post-checkout
+Disallow: /accept-invite
+Disallow: /verify-email
+Disallow: /reset-password
+
+Sitemap: https://fieldtek.ai/sitemap.xml

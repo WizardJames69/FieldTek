@@ -1,0 +1,91 @@
+project_id = "dlrhobkrjfegtbdsqdsa"
+
+[functions.generate-invoice-pdf]
+verify_jwt = false
+
+[functions.field-assistant]
+verify_jwt = false
+
+[functions.analyze-service-request]
+verify_jwt = false
+
+[functions.send-invoice-email]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.verify-turnstile]
+verify_jwt = false
+
+[functions.verify-turnstile-portal]
+verify_jwt = false
+
+[functions.extract-receipt]
+verify_jwt = false
+
+[functions.elevenlabs-conversation-token]
+verify_jwt = false
+
+[functions.demo-token]
+verify_jwt = false
+
+[functions.generate-demo-audio]
+verify_jwt = false
+
+[functions.health-check]
+verify_jwt = false
+
+[functions.elevenlabs-scribe-token]
+verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false
+
+[functions.stripe-connect-onboard]
+verify_jwt = false
+
+[functions.stripe-connect-status]
+verify_jwt = false
+
+[functions.create-invoice-payment]
+verify_jwt = false
+
+[functions.send-payment-receipt]
+verify_jwt = false
+
+[functions.notify-service-request]
+verify_jwt = false
+
+[functions.send-contact-inquiry]
+verify_jwt = false
+
+[functions.send-team-invitation]
+verify_jwt = false
+
+[functions.send-waitlist-email]
+verify_jwt = false
+
+[functions.validate-access-code]
+verify_jwt = false
+
+[functions.send-portal-invitation]
+verify_jwt = false
+
+[functions.accept-portal-invitation]
+verify_jwt = false
+
+[functions.extract-document-text]
+verify_jwt = false
+
+[functions.generate-embeddings]
+verify_jwt = false
+
+[functions.send-beta-approval]
+verify_jwt = false
+
+[functions.monitor-health]
+verify_jwt = false
+
+[functions.send-auth-email]
+verify_jwt = false

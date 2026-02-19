@@ -1,0 +1,1 @@
+ALTER TYPE industry_type ADD VALUE IF NOT EXISTS 'home_automation';
