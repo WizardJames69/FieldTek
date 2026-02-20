@@ -1,5 +1,3 @@
-FieldTek.ai
-e2e.yml
 name: E2E Tests
 
 on:
