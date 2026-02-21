@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { checkRateLimit, getClientIp } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,104 +30,52 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Get client IP for rate limiting
-    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("x-real-ip") || 
-                     "unknown";
-
     // Rate limiting: max 10 payment attempts per IP per hour
-    const identifierType = "invoice_payment_ip";
-    const maxRequests = 10;
-    const windowMinutes = 60;
-    const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
-    
-    const { data: existingRate } = await supabaseClient
-      .from("rate_limits")
-      .select("id, request_count")
-      .eq("identifier", clientIP)
-      .eq("identifier_type", identifierType)
-      .gte("window_start", windowStart)
-      .maybeSingle();
-
-    if (existingRate && (existingRate as { request_count: number }).request_count >= maxRequests) {
+    const clientIP = getClientIp(req);
+    const ipRateLimit = await checkRateLimit(supabaseClient, {
+      identifierType: "invoice_payment_ip",
+      identifier: clientIP,
+      windowMs: 60 * 60 * 1000,
+      maxRequests: 10,
+    });
+    if (!ipRateLimit.allowed) {
       logStep("Rate limited", { ip: clientIP });
-      return new Response(JSON.stringify({ 
-        error: "Too many payment requests. Please try again later." 
+      return new Response(JSON.stringify({
+        error: "Too many payment requests. Please try again later."
       }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Increment or create rate limit record
-    if (existingRate) {
-      const rate = existingRate as { id: string; request_count: number };
-      await supabaseClient
-        .from("rate_limits")
-        .update({ request_count: rate.request_count + 1 })
-        .eq("id", rate.id);
-    } else {
-      await supabaseClient
-        .from("rate_limits")
-        .insert({
-          identifier: clientIP,
-          identifier_type: identifierType,
-          request_count: 1,
-          window_start: new Date().toISOString(),
-        });
-    }
-
     // Parse request body
-    const { invoiceId } = await req.json();
+    const { invoiceId, clientId: callerClientId } = await req.json();
     if (!invoiceId) throw new Error("Invoice ID is required");
-    
+
     // Validate UUID format to prevent injection
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(invoiceId)) {
       throw new Error("Invalid invoice ID format");
     }
-    
+
     logStep("Invoice ID received", { invoiceId });
 
     // Additional rate limiting: max 5 attempts per invoice per hour
     // This prevents enumeration attacks on specific invoices
-    const invoiceRateType = "invoice_payment_invoice";
-    const invoiceMaxRequests = 5;
-    
-    const { data: invoiceRate } = await supabaseClient
-      .from("rate_limits")
-      .select("id, request_count")
-      .eq("identifier", invoiceId)
-      .eq("identifier_type", invoiceRateType)
-      .gte("window_start", windowStart)
-      .maybeSingle();
-
-    if (invoiceRate && (invoiceRate as { request_count: number }).request_count >= invoiceMaxRequests) {
+    const invoiceRateLimit = await checkRateLimit(supabaseClient, {
+      identifierType: "invoice_payment_invoice",
+      identifier: invoiceId,
+      windowMs: 60 * 60 * 1000,
+      maxRequests: 5,
+    });
+    if (!invoiceRateLimit.allowed) {
       logStep("Invoice rate limited", { invoiceId });
-      return new Response(JSON.stringify({ 
-        error: "Too many payment attempts for this invoice. Please try again later." 
+      return new Response(JSON.stringify({
+        error: "Too many payment attempts for this invoice. Please try again later."
       }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    // Increment or create invoice rate limit record
-    if (invoiceRate) {
-      const rate = invoiceRate as { id: string; request_count: number };
-      await supabaseClient
-        .from("rate_limits")
-        .update({ request_count: rate.request_count + 1 })
-        .eq("id", rate.id);
-    } else {
-      await supabaseClient
-        .from("rate_limits")
-        .insert({
-          identifier: invoiceId,
-          identifier_type: invoiceRateType,
-          request_count: 1,
-          window_start: new Date().toISOString(),
-        });
     }
 
     // Get the invoice with client and tenant details
@@ -147,12 +96,43 @@ serve(async (req) => {
       throw new Error("Invoice not found");
     }
 
-    logStep("Invoice found", { 
-      invoiceNumber: invoice.invoice_number, 
+    logStep("Invoice found", {
+      invoiceNumber: invoice.invoice_number,
       total: invoice.total,
       status: invoice.status,
       clientId: invoice.client_id,
     });
+
+    // If caller provides authentication, verify they own this invoice
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user } } = await supabaseAuth.auth.getUser();
+      if (user) {
+        // Verify the authenticated user's client record matches the invoice's client
+        const { data: clientRecord } = await supabaseClient
+          .from("clients")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("id", invoice.client_id)
+          .maybeSingle();
+
+        if (!clientRecord) {
+          logStep("Auth mismatch - user does not own this invoice", { userId: user.id });
+          throw new Error("You do not have permission to pay this invoice");
+        }
+      }
+    }
+
+    // If callerClientId is provided, verify it matches the invoice's client_id
+    if (callerClientId && callerClientId !== invoice.client_id) {
+      logStep("Client ID mismatch", { callerClientId, invoiceClientId: invoice.client_id });
+      throw new Error("Invoice not found");
+    }
 
     // Verify invoice is payable
     if (invoice.status === "paid") {

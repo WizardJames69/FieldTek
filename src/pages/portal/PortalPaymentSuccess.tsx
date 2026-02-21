@@ -5,11 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, FileText, ArrowLeft, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { usePortalAuth } from "@/contexts/PortalAuthContext";
 import confetti from "canvas-confetti";
 
 export default function PortalPaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { client } = usePortalAuth();
   const invoiceId = searchParams.get("invoice");
   const [invoice, setInvoice] = useState<{
     invoice_number: string;
@@ -33,11 +35,17 @@ export default function PortalPaymentSuccess() {
         return;
       }
 
-      const { data } = await supabase
+      let query = supabase
         .from("invoices")
         .select("invoice_number, total")
-        .eq("id", invoiceId)
-        .maybeSingle();
+        .eq("id", invoiceId);
+
+      // Add tenant_id filter when portal auth is available (defense-in-depth)
+      if (client?.tenant_id) {
+        query = query.eq("tenant_id", client.tenant_id);
+      }
+
+      const { data } = await query.maybeSingle();
 
       if (data) {
         setInvoice(data);

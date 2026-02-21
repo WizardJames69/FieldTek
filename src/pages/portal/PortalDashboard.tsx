@@ -27,27 +27,31 @@ export default function PortalDashboard() {
   const { client, loading: authLoading, clientLoading, isWrongUserType, user } = usePortalAuth();
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['portal-stats', client?.id],
+    queryKey: ['portal-stats', client?.id, client?.tenant_id],
     queryFn: async () => {
-      if (!client?.id) return null;
+      if (!client?.id || !client?.tenant_id) return null;
 
       const [jobsRes, invoicesRes, equipmentRes, requestsRes] = await Promise.all([
         supabase
           .from('scheduled_jobs')
           .select('id, status')
-          .eq('client_id', client.id),
+          .eq('client_id', client.id)
+          .eq('tenant_id', client.tenant_id),
         supabase
           .from('invoices')
           .select('id, status, total')
-          .eq('client_id', client.id),
+          .eq('client_id', client.id)
+          .eq('tenant_id', client.tenant_id),
         supabase
           .from('equipment_registry')
           .select('id')
-          .eq('client_id', client.id),
+          .eq('client_id', client.id)
+          .eq('tenant_id', client.tenant_id),
         supabase
           .from('service_requests')
           .select('id, status')
-          .eq('client_id', client.id),
+          .eq('client_id', client.id)
+          .eq('tenant_id', client.tenant_id),
       ]);
 
       const jobs = jobsRes.data || [];
@@ -68,20 +72,21 @@ export default function PortalDashboard() {
   });
 
   const { data: recentJobs, isLoading: jobsLoading } = useQuery({
-    queryKey: ['portal-recent-jobs', client?.id],
+    queryKey: ['portal-recent-jobs', client?.id, client?.tenant_id],
     queryFn: async () => {
-      if (!client?.id) return [];
+      if (!client?.id || !client?.tenant_id) return [];
 
       const { data } = await supabase
         .from('scheduled_jobs')
         .select('id, title, status, scheduled_date, job_type, priority')
         .eq('client_id', client.id)
+        .eq('tenant_id', client.tenant_id)
         .order('scheduled_date', { ascending: false })
         .limit(5);
 
       return data || [];
     },
-    enabled: !!client?.id,
+    enabled: !!client?.id && !!client?.tenant_id,
   });
 
   const getStatusBadge = (status: string) => {

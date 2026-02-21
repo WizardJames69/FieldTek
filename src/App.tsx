@@ -15,6 +15,7 @@ import { PwaUpdatePrompt } from "@/components/pwa/PwaUpdatePrompt";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionExpiryWarning } from "@/components/auth/SessionExpiryWarning";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { FeatureGate } from "@/components/FeatureGate";
 
 // Import version and error tracking
 import "@/lib/version";
@@ -274,21 +275,21 @@ function App() {
                         {/* Tenant app routes - with TenantProvider */}
                         <Route element={<TenantLayout />}>
                           <Route path="/onboarding" element={<Onboarding />} />
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/jobs" element={<Jobs />} />
+                          <Route path="/dashboard" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Dashboard /></RoleGuard>} />
+                          <Route path="/jobs" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Jobs /></RoleGuard>} />
                           <Route path="/clients" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><Clients /></RoleGuard>} />
-                          <Route path="/schedule" element={<Schedule />} />
-                          <Route path="/assistant" element={<Assistant />} />
-                          <Route path="/equipment" element={<Equipment />} />
-                          <Route path="/invoices" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><Invoices /></RoleGuard>} />
+                          <Route path="/schedule" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Schedule /></RoleGuard>} />
+                          <Route path="/assistant" element={<FeatureGate feature="ai_assistant"><Assistant /></FeatureGate>} />
+                          <Route path="/equipment" element={<FeatureGate feature="equipment_tracking"><Equipment /></FeatureGate>} />
+                          <Route path="/invoices" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><FeatureGate feature="invoicing_full"><Invoices /></FeatureGate></RoleGuard>} />
                           <Route path="/team" element={<RoleGuard allowedRoles={['owner', 'admin']}><Team /></RoleGuard>} />
                           <Route path="/documents" element={<Documents />} />
                           <Route path="/settings" element={<RoleGuard allowedRoles={['owner', 'admin']}><Settings /></RoleGuard>} />
-                          <Route path="/requests" element={<ServiceRequests />} />
+                          <Route path="/requests" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><ServiceRequests /></RoleGuard>} />
                           <Route path="/request-service" element={<RequestService />} />
-                          <Route path="/reports" element={<RoleGuard allowedRoles={['owner', 'admin']}><Reports /></RoleGuard>} />
-                          <Route path="/my-jobs" element={<MyJobs />} />
-                          <Route path="/my-calendar" element={<MyCalendar />} />
+                          <Route path="/reports" element={<RoleGuard allowedRoles={['owner', 'admin']}><FeatureGate feature="advanced_analytics"><Reports /></FeatureGate></RoleGuard>} />
+                          <Route path="/my-jobs" element={<RoleGuard allowedRoles={['technician']}><MyJobs /></RoleGuard>} />
+                          <Route path="/my-calendar" element={<RoleGuard allowedRoles={['technician']}><MyCalendar /></RoleGuard>} />
                           <Route path="/billing/success" element={<BillingSuccess />} />
                           <Route path="/billing/cancel" element={<BillingCancel />} />
                           <Route path="/post-checkout" element={<PostCheckout />} />

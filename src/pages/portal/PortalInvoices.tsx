@@ -25,9 +25,9 @@ export default function PortalInvoices() {
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
 
   const { data: invoices, isLoading } = useQuery({
-    queryKey: ['portal-invoices', client?.id],
+    queryKey: ['portal-invoices', client?.id, client?.tenant_id],
     queryFn: async () => {
-      if (!client?.id) return [];
+      if (!client?.id || !client?.tenant_id) return [];
 
       const { data } = await supabase
         .from('invoices')
@@ -45,11 +45,12 @@ export default function PortalInvoices() {
           notes
         `)
         .eq('client_id', client.id)
+        .eq('tenant_id', client.tenant_id)
         .order('created_at', { ascending: false });
 
       return data || [];
     },
-    enabled: !!client?.id,
+    enabled: !!client?.id && !!client?.tenant_id,
   });
 
   const getStatusBadge = (status: string, dueDate: string | null) => {

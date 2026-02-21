@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit } from "../_shared/rateLimit.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const MAX_REQUESTS_PER_DAY = 3;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,60 +21,6 @@ interface DemoRequestData {
   message?: string;
 }
 
-async function checkRateLimit(supabase: any, email: string): Promise<{ allowed: boolean; remaining: number }> {
-  const normalizedEmail = email.toLowerCase().trim();
-  const now = new Date();
-  const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
-  
-  // Check existing rate limit record
-  const { data: existing, error: fetchError } = await supabase
-    .from("rate_limits")
-    .select("*")
-    .eq("identifier", normalizedEmail)
-    .eq("identifier_type", "demo_request_email")
-    .gte("window_start", windowStart.toISOString())
-    .single();
-
-  if (fetchError && fetchError.code !== "PGRST116") {
-    console.error("[notify-demo-request] Rate limit fetch error:", fetchError);
-  }
-
-  if (existing) {
-    if (existing.request_count >= MAX_REQUESTS_PER_DAY) {
-      console.log("[notify-demo-request] Rate limit exceeded for:", normalizedEmail);
-      return { allowed: false, remaining: 0 };
-    }
-    
-    // Increment count
-    const { error: updateError } = await supabase
-      .from("rate_limits")
-      .update({ request_count: existing.request_count + 1 })
-      .eq("id", existing.id);
-      
-    if (updateError) {
-      console.error("[notify-demo-request] Rate limit update error:", updateError);
-    }
-    
-    return { allowed: true, remaining: MAX_REQUESTS_PER_DAY - existing.request_count - 1 };
-  }
-
-  // Create new rate limit record
-  const { error: insertError } = await supabase
-    .from("rate_limits")
-    .insert({
-      identifier: normalizedEmail,
-      identifier_type: "demo_request_email",
-      request_count: 1,
-      window_start: windowStart.toISOString(),
-    });
-
-  if (insertError) {
-    console.error("[notify-demo-request] Rate limit insert error:", insertError);
-  }
-
-  return { allowed: true, remaining: MAX_REQUESTS_PER_DAY - 1 };
-}
-
 const handler = async (req: Request): Promise<Response> => {
   console.log("[notify-demo-request] Function called");
   
@@ -90,8 +36,16 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check rate limit
-    const { allowed, remaining } = await checkRateLimit(supabase, data.email);
+    // Check rate limit (calendar-day window)
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const { allowed, remaining } = await checkRateLimit(supabase, {
+      identifierType: "demo_request_email",
+      identifier: data.email.toLowerCase().trim(),
+      windowMs: 24 * 60 * 60 * 1000,
+      maxRequests: 3,
+      windowStart: todayStart,
+    });
     
     if (!allowed) {
       console.log("[notify-demo-request] Rate limit blocked request for:", data.email);

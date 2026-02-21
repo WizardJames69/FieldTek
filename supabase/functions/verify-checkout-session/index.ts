@@ -47,8 +47,8 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     const sessionUserId = (session.metadata?.user_id as string | undefined) ?? undefined;
-    if (sessionUserId && sessionUserId !== user.id) {
-      logStep("Session user mismatch", { sessionUserId, requesterUserId: user.id });
+    if (!sessionUserId || sessionUserId !== user.id) {
+      logStep("Session user mismatch or missing", { sessionUserId, requesterUserId: user.id });
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 403,

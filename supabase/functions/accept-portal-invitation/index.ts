@@ -16,8 +16,21 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { token, userId } = await req.json();
-    if (!token || !userId) throw new Error("token and userId are required");
+    // Authenticate the caller
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      throw new Error("Authentication required");
+    }
+    const anonClient = createClient(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authError } = await anonClient.auth.getUser();
+    if (authError || !user) throw new Error("Authentication required");
+
+    const { token } = await req.json();
+    if (!token) throw new Error("token is required");
 
     // Look up the invitation
     const { data: invitation, error: invError } = await supabaseAdmin
@@ -34,10 +47,16 @@ serve(async (req) => {
       throw new Error("This invitation has expired");
     }
 
-    // Link the user_id to the clients record
+    // Verify the authenticated user's email matches the invitation email
+    if (user.email?.toLowerCase() !== invitation.email?.toLowerCase()) {
+      console.error("Email mismatch:", user.email, "vs invitation:", invitation.email);
+      throw new Error("This invitation was sent to a different email address");
+    }
+
+    // Link the authenticated user to the clients record (use verified user.id, not request body)
     const { error: updateClientError } = await supabaseAdmin
       .from("clients")
-      .update({ user_id: userId })
+      .update({ user_id: user.id })
       .eq("id", invitation.client_id)
       .eq("tenant_id", invitation.tenant_id);
 

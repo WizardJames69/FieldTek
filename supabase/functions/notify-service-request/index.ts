@@ -13,6 +13,18 @@ serve(async (req) => {
   }
 
   try {
+    // This function is internal-only — verify the caller is using the service_role key
+    const authHeader = req.headers.get("Authorization");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    if (!authHeader || authHeader !== `Bearer ${supabaseServiceKey}`) {
+      console.error("Unauthorized call to notify-service-request — missing or invalid service_role key");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { requestId, tenantId } = await req.json();
 
     if (!requestId || !tenantId) {
@@ -23,7 +35,6 @@ serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch the service request details
@@ -38,6 +49,15 @@ serve(async (req) => {
 
     if (requestError || !request) {
       console.error("Error fetching request:", requestError);
+      return new Response(
+        JSON.stringify({ error: "Service request not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify the service request belongs to the specified tenant
+    if (request.tenant_id !== tenantId) {
+      console.error("Tenant mismatch: request belongs to", request.tenant_id, "but tenantId was", tenantId);
       return new Response(
         JSON.stringify({ error: "Service request not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }

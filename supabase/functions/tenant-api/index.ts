@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit as sharedCheckRateLimit } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +43,7 @@ function errorResponse(
 }
 
 // Rate limiting: 60 requests per minute per key
-async function checkRateLimit(
+async function checkApiRateLimit(
   serviceClient: ReturnType<typeof createClient>,
   keyPrefix: string
 ): Promise<{
@@ -51,53 +52,17 @@ async function checkRateLimit(
   reset: number;
   limit: number;
 }> {
-  const LIMIT = 60;
   const WINDOW_MS = 60 * 1000;
-  const identifier = `api_key:${keyPrefix}`;
-  const windowStart = new Date(
-    Math.floor(Date.now() / WINDOW_MS) * WINDOW_MS
-  ).toISOString();
   const resetTs = Math.floor(Date.now() / WINDOW_MS) * 60 + 60;
 
-  // Check current window
-  const { data: existing } = await serviceClient
-    .from("rate_limits")
-    .select("id, request_count")
-    .eq("identifier", identifier)
-    .eq("identifier_type", "tenant_api")
-    .gte("window_start", windowStart)
-    .maybeSingle();
+  const rl = await sharedCheckRateLimit(serviceClient, {
+    identifierType: "tenant_api",
+    identifier: `api_key:${keyPrefix}`,
+    windowMs: WINDOW_MS,
+    maxRequests: 60,
+  });
 
-  if (existing) {
-    if (existing.request_count >= LIMIT) {
-      return {
-        allowed: false,
-        remaining: 0,
-        reset: resetTs,
-        limit: LIMIT,
-      };
-    }
-    // Increment
-    await serviceClient
-      .from("rate_limits")
-      .update({ request_count: existing.request_count + 1 })
-      .eq("id", existing.id);
-    return {
-      allowed: true,
-      remaining: LIMIT - existing.request_count - 1,
-      reset: resetTs,
-      limit: LIMIT,
-    };
-  } else {
-    // New window
-    await serviceClient.from("rate_limits").insert({
-      identifier,
-      identifier_type: "tenant_api",
-      request_count: 1,
-      window_start: windowStart,
-    });
-    return { allowed: true, remaining: LIMIT - 1, reset: resetTs, limit: LIMIT };
-  }
+  return { ...rl, reset: resetTs };
 }
 
 function rateLimitHeaders(rl: {
@@ -419,7 +384,7 @@ Deno.serve(async (req: Request) => {
   const { tenantId, scopes, keyPrefix } = authResult;
 
   // Rate limit
-  const rl = await checkRateLimit(serviceClient, keyPrefix);
+  const rl = await checkApiRateLimit(serviceClient, keyPrefix);
   const rlHeaders = rateLimitHeaders(rl);
   if (!rl.allowed) {
     return errorResponse("Rate limit exceeded. Try again in 60 seconds.", "RATE_LIMIT_EXCEEDED", 429, rlHeaders);

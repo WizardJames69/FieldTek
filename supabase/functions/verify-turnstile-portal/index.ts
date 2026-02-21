@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getClientIp, maybeCleanupRateLimits } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,61 +14,6 @@ interface TurnstileResponse {
   "error-codes"?: string[];
   action?: string;
   cdata?: string;
-}
-
-interface RateLimitRecord {
-  id: string;
-  request_count: number;
-}
-
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW_MINUTES = 15;
-const MAX_REQUESTS_PER_WINDOW = 5;
-
-async function checkRateLimit(
-  supabase: any,
-  identifier: string,
-  identifierType: 'ip' | 'email' | 'client'
-): Promise<{ allowed: boolean; remaining: number }> {
-  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-
-  // Get current request count in the window
-  const { data: existing, error: fetchError } = await supabase
-    .from('rate_limits')
-    .select('id, request_count')
-    .eq('identifier', identifier)
-    .eq('identifier_type', identifierType)
-    .gte('window_start', windowStart)
-    .single();
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    console.error('Rate limit check error:', fetchError);
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW };
-  }
-
-  const record = existing as RateLimitRecord | null;
-
-  if (record) {
-    if (record.request_count >= MAX_REQUESTS_PER_WINDOW) {
-      return { allowed: false, remaining: 0 };
-    }
-
-    await supabase
-      .from('rate_limits')
-      .update({ request_count: record.request_count + 1 })
-      .eq('id', record.id);
-
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.request_count - 1 };
-  } else {
-    await supabase.from('rate_limits').insert({
-      identifier,
-      identifier_type: identifierType,
-      request_count: 1,
-      window_start: new Date().toISOString(),
-    });
-
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1 };
-  }
 }
 
 serve(async (req) => {
@@ -98,47 +44,78 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get client IP for rate limiting
-    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("cf-connecting-ip") || 
-                     "unknown";
+    const clientIP = getClientIp(req);
 
     // Check rate limit by IP
-    const ipRateLimit = await checkRateLimit(supabase, clientIP, 'ip');
+    const ipRateLimit = await checkRateLimit(supabase, {
+      identifierType: "ip",
+      identifier: clientIP,
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    });
     if (!ipRateLimit.allowed) {
       console.warn(`Rate limit exceeded for IP: ${clientIP}`);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Too many requests. Please try again later.",
-          retryAfter: RATE_LIMIT_WINDOW_MINUTES * 60
+          retryAfter: 900
         }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
             "Content-Type": "application/json",
-            "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60)
-          } 
+            "Retry-After": "900"
+          }
         }
       );
     }
 
     // Also check rate limit by client ID
-    const clientRateLimit = await checkRateLimit(supabase, clientId, 'client');
+    const clientRateLimit = await checkRateLimit(supabase, {
+      identifierType: "client",
+      identifier: clientId,
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    });
     if (!clientRateLimit.allowed) {
       console.warn(`Rate limit exceeded for client: ${clientId}`);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Too many requests from this account. Please try again later.",
-          retryAfter: RATE_LIMIT_WINDOW_MINUTES * 60
+          retryAfter: 900
         }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
             "Content-Type": "application/json",
-            "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60)
-          } 
+            "Retry-After": "900"
+          }
         }
+      );
+    }
+
+    // Validate that the client belongs to the specified tenant (prevent cross-tenant injection)
+    const { data: clientRecord, error: clientError } = await supabase
+      .from("clients")
+      .select("id, tenant_id")
+      .eq("id", clientId)
+      .single();
+
+    if (clientError || !clientRecord) {
+      console.error("Client not found:", clientId);
+      return new Response(
+        JSON.stringify({ error: "Invalid client" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (clientRecord.tenant_id !== tenantId) {
+      console.error("Tenant mismatch: client belongs to", clientRecord.tenant_id, "but request specified", tenantId);
+      return new Response(
+        JSON.stringify({ error: "Invalid request" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -209,15 +186,8 @@ serve(async (req) => {
       console.error("Failed to trigger notification:", err);
     }
 
-    // Periodically cleanup old rate limit records
-    if (Math.random() < 0.01) {
-      try {
-        await supabase.rpc('cleanup_old_rate_limits');
-        console.log('Cleaned up old rate limit records');
-      } catch (err) {
-        console.error('Cleanup error:', err);
-      }
-    }
+    // Periodically cleanup old rate limit records (1% chance per request)
+    await maybeCleanupRateLimits(supabase);
 
     return new Response(
       JSON.stringify({ success: true, data }),

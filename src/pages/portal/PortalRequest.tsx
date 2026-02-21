@@ -106,20 +106,21 @@ export default function PortalRequest() {
 
   // Fetch existing requests
   const { data: requests, isLoading: requestsLoading } = useQuery({
-    queryKey: ['portal-requests', client?.id],
+    queryKey: ['portal-requests', client?.id, client?.tenant_id],
     queryFn: async () => {
-      if (!client?.id) return [];
+      if (!client?.id || !client?.tenant_id) return [];
 
       const { data } = await supabase
         .from('service_requests')
         .select('id, title, description, request_type, status, priority, created_at')
         .eq('client_id', client.id)
+        .eq('tenant_id', client.tenant_id)
         .order('created_at', { ascending: false })
         .limit(10);
 
       return data || [];
     },
-    enabled: !!client?.id,
+    enabled: !!client?.id && !!client?.tenant_id,
   });
 
   const submitMutation = useMutation({

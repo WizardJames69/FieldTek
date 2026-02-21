@@ -56,6 +56,42 @@ serve(async (req) => {
       );
     }
 
+    // Validate that the authenticated user belongs to the tenant that owns this service request
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    const { data: serviceRequest, error: srError } = await supabaseAdmin
+      .from("service_requests")
+      .select("tenant_id")
+      .eq("id", requestId)
+      .single();
+
+    if (srError || !serviceRequest) {
+      return new Response(
+        JSON.stringify({ error: "Service request not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user belongs to this tenant
+    const { data: membership } = await supabaseAdmin
+      .from("tenant_users")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("tenant_id", serviceRequest.tenant_id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!membership) {
+      console.error("User", user.id, "attempted to analyze service request from tenant", serviceRequest.tenant_id);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");

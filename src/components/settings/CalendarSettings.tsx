@@ -362,40 +362,36 @@ export function CalendarSettings() {
     onError: () => toast.error("Failed to regenerate URL"),
   });
 
-  const handleGoogleConnect = () => {
+  const handleGoogleConnect = async () => {
     if (!user?.id || !tenant?.id) return;
-    const clientId = ""; // Will be injected from env — the edge function handles this
-    const state = btoa(JSON.stringify({ user_id: user.id, tenant_id: tenant.id }));
-    const redirectUri = encodeURIComponent(`${FUNCTIONS_BASE}/calendar-oauth`);
-    const scope = encodeURIComponent(
-      "https://www.googleapis.com/auth/calendar.readonly"
-    );
-    // We embed the client ID config lookup in the edge function —
-    // for now navigate to the oauth init endpoint via a simple redirect approach
-    const oauthUrl = `${FUNCTIONS_BASE}/calendar-oauth?provider=google&initiate=true&state=${state}`;
-    
-    // Use Google's OAuth directly from the frontend with the known flow
-    // The backend will handle the token exchange in the callback
-    const googleOAuthBase = "https://accounts.google.com/o/oauth2/v2/auth";
-    const params = new URLSearchParams({
-      client_id: clientId || "__GOOGLE_CLIENT_ID__", // placeholder — edge fn returns error if not configured
-      redirect_uri: `${FUNCTIONS_BASE}/calendar-oauth`,
-      response_type: "code",
-      scope: "https://www.googleapis.com/auth/calendar.readonly",
-      access_type: "offline",
-      prompt: "consent",
-      state: btoa(JSON.stringify({ user_id: user.id, tenant_id: tenant.id, provider: "google" })),
-    });
-    
-    // Since we don't expose the client ID to the frontend, we'll use the edge function to initiate
-    // by redirecting through it  
-    window.location.href = `${FUNCTIONS_BASE}/calendar-oauth?initiate=true&provider=google&state=${state}`;
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-oauth', {
+        body: { action: 'initiate', provider: 'google' },
+      });
+      if (error || !data?.url) {
+        toast.error('Failed to initiate Google calendar connection');
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      toast.error('Failed to initiate calendar connection');
+    }
   };
 
-  const handleOutlookConnect = () => {
+  const handleOutlookConnect = async () => {
     if (!user?.id || !tenant?.id) return;
-    const state = btoa(JSON.stringify({ user_id: user.id, tenant_id: tenant.id }));
-    window.location.href = `${FUNCTIONS_BASE}/calendar-oauth?initiate=true&provider=outlook&state=${state}`;
+    try {
+      const { data, error } = await supabase.functions.invoke('calendar-oauth', {
+        body: { action: 'initiate', provider: 'outlook' },
+      });
+      if (error || !data?.url) {
+        toast.error('Failed to initiate Outlook calendar connection');
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      toast.error('Failed to initiate calendar connection');
+    }
   };
 
   const handleDisconnect = async (provider: "google" | "outlook") => {

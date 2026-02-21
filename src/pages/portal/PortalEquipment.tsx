@@ -19,9 +19,9 @@ export default function PortalEquipment() {
   const [expandedEquipment, setExpandedEquipment] = useState<string | null>(null);
 
   const { data: equipment, isLoading } = useQuery({
-    queryKey: ['portal-equipment', client?.id],
+    queryKey: ['portal-equipment', client?.id, client?.tenant_id],
     queryFn: async () => {
-      if (!client?.id) return [];
+      if (!client?.id || !client?.tenant_id) return [];
 
       const { data } = await supabase
         .from('equipment_registry')
@@ -39,18 +39,19 @@ export default function PortalEquipment() {
           specifications
         `)
         .eq('client_id', client.id)
+        .eq('tenant_id', client.tenant_id)
         .order('equipment_type', { ascending: true });
 
       return data || [];
     },
-    enabled: !!client?.id,
+    enabled: !!client?.id && !!client?.tenant_id,
   });
 
   // Fetch service history for expanded equipment
   const { data: serviceHistory, isLoading: historyLoading } = useQuery({
-    queryKey: ['portal-equipment-history', expandedEquipment],
+    queryKey: ['portal-equipment-history', expandedEquipment, client?.tenant_id],
     queryFn: async () => {
-      if (!expandedEquipment) return [];
+      if (!expandedEquipment || !client?.id || !client?.tenant_id) return [];
 
       const { data } = await supabase
         .from('scheduled_jobs')
@@ -64,12 +65,14 @@ export default function PortalEquipment() {
           notes
         `)
         .eq('equipment_id', expandedEquipment)
+        .eq('client_id', client.id)
+        .eq('tenant_id', client.tenant_id)
         .order('scheduled_date', { ascending: false })
         .limit(10);
 
       return data || [];
     },
-    enabled: !!expandedEquipment,
+    enabled: !!expandedEquipment && !!client?.id && !!client?.tenant_id,
   });
 
   const getWarrantyStatus = (expiryDate: string | null) => {

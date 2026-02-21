@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getClientIp, maybeCleanupRateLimits } from "../_shared/rateLimit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,66 +14,6 @@ interface TurnstileResponse {
   "error-codes"?: string[];
   action?: string;
   cdata?: string;
-}
-
-interface RateLimitRecord {
-  id: string;
-  request_count: number;
-}
-
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW_MINUTES = 15;
-const MAX_REQUESTS_PER_WINDOW = 5;
-
-async function checkRateLimit(
-  supabase: any,
-  identifier: string,
-  identifierType: 'ip' | 'email'
-): Promise<{ allowed: boolean; remaining: number }> {
-  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-
-  // Get current request count in the window
-  const { data: existing, error: fetchError } = await supabase
-    .from('rate_limits')
-    .select('id, request_count')
-    .eq('identifier', identifier)
-    .eq('identifier_type', identifierType)
-    .gte('window_start', windowStart)
-    .single();
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    // PGRST116 = no rows found, which is fine
-    console.error('Rate limit check error:', fetchError);
-    // On error, allow the request but log it
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW };
-  }
-
-  const record = existing as RateLimitRecord | null;
-
-  if (record) {
-    // Record exists in current window
-    if (record.request_count >= MAX_REQUESTS_PER_WINDOW) {
-      return { allowed: false, remaining: 0 };
-    }
-
-    // Increment the counter
-    await supabase
-      .from('rate_limits')
-      .update({ request_count: record.request_count + 1 })
-      .eq('id', record.id);
-
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - record.request_count - 1 };
-  } else {
-    // No record exists, create one
-    await supabase.from('rate_limits').insert({
-      identifier,
-      identifier_type: identifierType,
-      request_count: 1,
-      window_start: new Date().toISOString(),
-    });
-
-    return { allowed: true, remaining: MAX_REQUESTS_PER_WINDOW - 1 };
-  }
 }
 
 serve(async (req) => {
@@ -103,47 +44,55 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get client IP for rate limiting
-    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
-                     req.headers.get("cf-connecting-ip") || 
-                     "unknown";
+    const clientIP = getClientIp(req);
 
     // Check rate limit by IP
-    const ipRateLimit = await checkRateLimit(supabase, clientIP, 'ip');
+    const ipRateLimit = await checkRateLimit(supabase, {
+      identifierType: "ip",
+      identifier: clientIP,
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    });
     if (!ipRateLimit.allowed) {
       console.warn(`Rate limit exceeded for IP: ${clientIP}`);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "Too many requests. Please try again later.",
-          retryAfter: RATE_LIMIT_WINDOW_MINUTES * 60
+          retryAfter: 900
         }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
             "Content-Type": "application/json",
-            "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60)
-          } 
+            "Retry-After": "900"
+          }
         }
       );
     }
 
     // Also check rate limit by email if provided
     if (formData.contact_email) {
-      const emailRateLimit = await checkRateLimit(supabase, formData.contact_email.toLowerCase(), 'email');
+      const emailRateLimit = await checkRateLimit(supabase, {
+        identifierType: "email",
+        identifier: formData.contact_email.toLowerCase(),
+        windowMs: 15 * 60 * 1000,
+        maxRequests: 5,
+      });
       if (!emailRateLimit.allowed) {
         console.warn(`Rate limit exceeded for email: ${formData.contact_email}`);
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             error: "Too many requests from this email. Please try again later.",
-            retryAfter: RATE_LIMIT_WINDOW_MINUTES * 60
+            retryAfter: 900
           }),
-          { 
-            status: 429, 
-            headers: { 
-              ...corsHeaders, 
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
               "Content-Type": "application/json",
-              "Retry-After": String(RATE_LIMIT_WINDOW_MINUTES * 60)
-            } 
+              "Retry-After": "900"
+            }
           }
         );
       }
@@ -216,14 +165,7 @@ serve(async (req) => {
     }
 
     // Periodically cleanup old rate limit records (1% chance per request)
-    if (Math.random() < 0.01) {
-      try {
-        await supabase.rpc('cleanup_old_rate_limits');
-        console.log('Cleaned up old rate limit records');
-      } catch (err) {
-        console.error('Cleanup error:', err);
-      }
-    }
+    await maybeCleanupRateLimits(supabase);
 
     return new Response(
       JSON.stringify({ success: true, data }),

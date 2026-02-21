@@ -130,7 +130,7 @@ export default function PortalSignup() {
 
       const { error: acceptError } = await supabase.functions.invoke(
         'accept-portal-invitation',
-        { body: { token: invitation.token, userId: signUpData.user.id } }
+        { body: { token: invitation.token } }
       );
 
       if (acceptError) {

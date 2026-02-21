@@ -35,7 +35,7 @@ import { useTerminology } from '@/hooks/useTerminology';
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
 import { Card3D } from '@/components/landing/Card3D';
 import { FloatingOrbs } from '@/components/landing/FloatingOrbs';
-import { TechnicianDashboard } from '@/components/dashboard/TechnicianDashboard';
+import { TechnicianTutorialGate } from '@/components/onboarding/TechnicianTutorialGate';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -400,7 +400,7 @@ export default function Dashboard() {
   if (isTechnician) {
     return (
       <MainLayout title="Dashboard" subtitle="Your day at a glance">
-        <TechnicianDashboard />
+        <TechnicianTutorialGate />
       </MainLayout>
     );
   }

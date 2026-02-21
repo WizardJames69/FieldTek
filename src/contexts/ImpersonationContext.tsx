@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { checkIsPlatformAdmin } from '@/lib/authRouting';
 import type { Tenant, TenantSettings, TenantBranding } from '@/types/database';
 
 interface ImpersonatedTenantData {
@@ -48,12 +49,19 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     }
   }, []);
 
-  // Restore impersonation from localStorage on mount
+  // Restore impersonation from localStorage on mount (only if user is platform admin)
   useEffect(() => {
     const storedTenantId = localStorage.getItem(STORAGE_KEY);
     if (storedTenantId) {
       setLoading(true);
-      fetchTenantData(storedTenantId).then((data) => {
+      checkIsPlatformAdmin().then(async ({ isAdmin }) => {
+        if (!isAdmin) {
+          console.error('Impersonation blocked: user is not a platform admin');
+          localStorage.removeItem(STORAGE_KEY);
+          setLoading(false);
+          return;
+        }
+        const data = await fetchTenantData(storedTenantId);
         if (data) {
           setImpersonatedTenant(data);
         } else {
@@ -66,6 +74,15 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
 
   const startImpersonation = async (tenantId: string) => {
     setLoading(true);
+
+    // Verify the user is a platform admin before allowing impersonation
+    const { isAdmin } = await checkIsPlatformAdmin();
+    if (!isAdmin) {
+      console.error('Impersonation blocked: user is not a platform admin');
+      setLoading(false);
+      return;
+    }
+
     const data = await fetchTenantData(tenantId);
     if (data) {
       setImpersonatedTenant(data);

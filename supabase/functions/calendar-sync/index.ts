@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encryptToken, decryptToken } from "../_shared/tokenEncryption.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +96,20 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Decrypt stored tokens (backward-compatible with plaintext values)
+  if (tokenRow.google_access_token) {
+    tokenRow.google_access_token = await decryptToken(tokenRow.google_access_token);
+  }
+  if (tokenRow.google_refresh_token) {
+    tokenRow.google_refresh_token = await decryptToken(tokenRow.google_refresh_token);
+  }
+  if (tokenRow.outlook_access_token) {
+    tokenRow.outlook_access_token = await decryptToken(tokenRow.outlook_access_token);
+  }
+  if (tokenRow.outlook_refresh_token) {
+    tokenRow.outlook_refresh_token = await decryptToken(tokenRow.outlook_refresh_token);
+  }
+
   const now = new Date();
   const startOfRange = now.toISOString();
   const endOfRange = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -122,7 +137,7 @@ Deno.serve(async (req) => {
       );
       if (refreshed?.access_token) {
         accessToken = refreshed.access_token;
-        tokenUpdates.google_access_token = accessToken;
+        tokenUpdates.google_access_token = await encryptToken(accessToken);
         tokenUpdates.google_token_expiry = new Date(
           Date.now() + refreshed.expires_in * 1000
         ).toISOString();
@@ -216,7 +231,7 @@ Deno.serve(async (req) => {
       );
       if (refreshed?.access_token) {
         accessToken = refreshed.access_token;
-        tokenUpdates.outlook_access_token = accessToken;
+        tokenUpdates.outlook_access_token = await encryptToken(accessToken);
         tokenUpdates.outlook_token_expiry = new Date(
           Date.now() + refreshed.expires_in * 1000
         ).toISOString();

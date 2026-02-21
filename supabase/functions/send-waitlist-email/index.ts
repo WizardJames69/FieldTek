@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getClientIp } from "../_shared/rateLimit.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -8,9 +9,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-
-const RATE_LIMIT_WINDOW_MINUTES = 60;
-const MAX_REQUESTS_PER_WINDOW = 3;
 
 interface WaitlistEmailRequest {
   email: string;
@@ -32,32 +30,18 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Rate limit by IP
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-    const { data: rlData } = await supabase
-      .from("rate_limits")
-      .select("*")
-      .eq("identifier", clientIp)
-      .eq("identifier_type", "waitlist_email")
-      .gte("window_start", windowStart)
-      .single();
-
-    if (rlData && rlData.request_count >= MAX_REQUESTS_PER_WINDOW) {
+    const clientIp = getClientIp(req);
+    const rateLimit = await checkRateLimit(supabase, {
+      identifierType: "waitlist_email",
+      identifier: clientIp,
+      windowMs: 60 * 60 * 1000,
+      maxRequests: 3,
+    });
+    if (!rateLimit.allowed) {
       return new Response(
         JSON.stringify({ error: "Too many requests. Please try again later." }),
         { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
-    }
-
-    if (!rlData) {
-      await supabase.from("rate_limits").insert({
-        identifier: clientIp, identifier_type: "waitlist_email",
-        request_count: 1, window_start: new Date().toISOString(),
-      });
-    } else {
-      await supabase.from("rate_limits")
-        .update({ request_count: rlData.request_count + 1 })
-        .eq("id", rlData.id);
     }
 
     const body = await req.json();

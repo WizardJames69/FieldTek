@@ -41,9 +41,9 @@ export default function PortalJobs() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   const { data: jobs, isLoading } = useQuery({
-    queryKey: ['portal-jobs', client?.id],
+    queryKey: ['portal-jobs', client?.id, client?.tenant_id],
     queryFn: async () => {
-      if (!client?.id) return [];
+      if (!client?.id || !client?.tenant_id) return [];
 
       const { data } = await supabase
         .from('scheduled_jobs')
@@ -64,11 +64,12 @@ export default function PortalJobs() {
           profiles (full_name)
         `)
         .eq('client_id', client.id)
+        .eq('tenant_id', client.tenant_id)
         .order('scheduled_date', { ascending: false });
 
       return (data || []) as unknown as Job[];
     },
-    enabled: !!client?.id,
+    enabled: !!client?.id && !!client?.tenant_id,
   });
 
   const getStatusBadge = (status: string) => {

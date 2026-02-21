@@ -1,40 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { checkRateLimit, getClientIp } from '../_shared/rateLimit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
-
-const RATE_LIMIT_WINDOW_MINUTES = 15;
-const MAX_REQUESTS_PER_WINDOW = 10;
-
-async function checkRateLimit(supabase: any, identifier: string): Promise<boolean> {
-  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
-  const { data, error } = await supabase
-    .from("rate_limits")
-    .select("*")
-    .eq("identifier", identifier)
-    .eq("identifier_type", "validate_access_code")
-    .gte("window_start", windowStart)
-    .single();
-
-  if (error && error.code !== "PGRST116") return true; // allow on error
-
-  if (!data) {
-    await supabase.from("rate_limits").insert({
-      identifier, identifier_type: "validate_access_code",
-      request_count: 1, window_start: new Date().toISOString(),
-    });
-    return true;
-  }
-
-  if (data.request_count >= MAX_REQUESTS_PER_WINDOW) return false;
-
-  await supabase.from("rate_limits")
-    .update({ request_count: data.request_count + 1 })
-    .eq("id", data.id);
-  return true;
-}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -48,8 +18,13 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Rate limit by IP
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const allowed = await checkRateLimit(supabase, clientIp);
+    const clientIp = getClientIp(req);
+    const { allowed } = await checkRateLimit(supabase, {
+      identifierType: 'validate_access_code',
+      identifier: clientIp,
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 10,
+    });
     if (!allowed) {
       console.log('[validate-access-code] Rate limit exceeded for IP:', clientIp);
       return new Response(
