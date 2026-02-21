@@ -70,13 +70,17 @@ export function BillingSettings() {
       });
 
       if (error) throw error;
-      return data as { 
-        subscribed: boolean; 
-        tier: string; 
+      return data as {
+        subscribed: boolean;
+        tier: string;
         subscription_end: string | null;
         stripe_customer_id: string | null;
         is_trialing: boolean;
         trial_end: string | null;
+        is_past_due: boolean;
+        subscription_status: string;
+        cancel_at_period_end: boolean;
+        cancel_at: string | null;
       };
     },
     staleTime: 30000,
@@ -308,7 +312,17 @@ export function BillingSettings() {
                 </Badge>
                 {stripeStatus?.is_trialing && (
                   <Badge variant="outline" className="border-emerald-500 text-emerald-600 bg-emerald-50">
-                    14-Day Free Trial
+                    30-Day Free Trial
+                  </Badge>
+                )}
+                {stripeStatus?.is_past_due && (
+                  <Badge variant="outline" className="border-red-500 text-red-600 bg-red-50">
+                    Payment Past Due
+                  </Badge>
+                )}
+                {stripeStatus?.cancel_at_period_end && (
+                  <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">
+                    Canceling
                   </Badge>
                 )}
                 {isLoadingStripe && (
@@ -316,9 +330,17 @@ export function BillingSettings() {
                 )}
               </CardTitle>
               <CardDescription className="mt-1">
-                {stripeStatus?.is_trialing && stripeStatus?.trial_end ? (
+                {stripeStatus?.cancel_at_period_end && stripeStatus?.cancel_at ? (
+                  <span className="text-amber-600 font-medium">
+                    Subscription cancels on {format(new Date(stripeStatus.cancel_at), "MMM d, yyyy")} ({differenceInDays(new Date(stripeStatus.cancel_at), new Date())} days remaining). Reactivate from the billing portal to keep your plan.
+                  </span>
+                ) : stripeStatus?.is_past_due ? (
+                  <span className="text-red-600 font-medium">
+                    Your payment has failed. Please update your payment method to avoid service interruption.
+                  </span>
+                ) : stripeStatus?.is_trialing && stripeStatus?.trial_end ? (
                   <span className="text-emerald-600 font-medium">
-                    🎉 Free trial ends {format(new Date(stripeStatus.trial_end), "MMM d, yyyy")} ({differenceInDays(new Date(stripeStatus.trial_end), new Date())} days remaining)
+                    Free trial ends {format(new Date(stripeStatus.trial_end), "MMM d, yyyy")} ({differenceInDays(new Date(stripeStatus.trial_end), new Date())} days remaining)
                   </span>
                 ) : isTrialing ? (
                   <span className="text-amber-600">

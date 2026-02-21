@@ -16,6 +16,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionExpiryWarning } from "@/components/auth/SessionExpiryWarning";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { FeatureGate } from "@/components/FeatureGate";
+import { SubscriptionGuard } from "@/components/SubscriptionGuard";
+import { SubscriptionStatusBanner } from "@/components/billing/SubscriptionStatusBanner";
 
 // Import version and error tracking
 import "@/lib/version";
@@ -152,6 +154,7 @@ function PortalLayout() {
 function TenantLayout() {
   return (
     <TenantProvider>
+      <SubscriptionStatusBanner />
       <Outlet />
     </TenantProvider>
   );
@@ -275,21 +278,21 @@ function App() {
                         {/* Tenant app routes - with TenantProvider */}
                         <Route element={<TenantLayout />}>
                           <Route path="/onboarding" element={<Onboarding />} />
-                          <Route path="/dashboard" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Dashboard /></RoleGuard>} />
-                          <Route path="/jobs" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Jobs /></RoleGuard>} />
-                          <Route path="/clients" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><Clients /></RoleGuard>} />
-                          <Route path="/schedule" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Schedule /></RoleGuard>} />
-                          <Route path="/assistant" element={<FeatureGate feature="ai_assistant"><Assistant /></FeatureGate>} />
-                          <Route path="/equipment" element={<FeatureGate feature="equipment_tracking"><Equipment /></FeatureGate>} />
-                          <Route path="/invoices" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><FeatureGate feature="invoicing_full"><Invoices /></FeatureGate></RoleGuard>} />
-                          <Route path="/team" element={<RoleGuard allowedRoles={['owner', 'admin']}><Team /></RoleGuard>} />
-                          <Route path="/documents" element={<Documents />} />
+                          <Route path="/dashboard" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Dashboard /></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/jobs" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Jobs /></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/clients" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><Clients /></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/schedule" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Schedule /></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/assistant" element={<SubscriptionGuard><FeatureGate feature="ai_assistant"><Assistant /></FeatureGate></SubscriptionGuard>} />
+                          <Route path="/equipment" element={<SubscriptionGuard><FeatureGate feature="equipment_tracking"><Equipment /></FeatureGate></SubscriptionGuard>} />
+                          <Route path="/invoices" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><FeatureGate feature="invoicing_full"><Invoices /></FeatureGate></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/team" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin']}><Team /></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/documents" element={<SubscriptionGuard><Documents /></SubscriptionGuard>} />
                           <Route path="/settings" element={<RoleGuard allowedRoles={['owner', 'admin']}><Settings /></RoleGuard>} />
-                          <Route path="/requests" element={<RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><ServiceRequests /></RoleGuard>} />
-                          <Route path="/request-service" element={<RequestService />} />
-                          <Route path="/reports" element={<RoleGuard allowedRoles={['owner', 'admin']}><FeatureGate feature="advanced_analytics"><Reports /></FeatureGate></RoleGuard>} />
-                          <Route path="/my-jobs" element={<RoleGuard allowedRoles={['technician']}><MyJobs /></RoleGuard>} />
-                          <Route path="/my-calendar" element={<RoleGuard allowedRoles={['technician']}><MyCalendar /></RoleGuard>} />
+                          <Route path="/requests" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><ServiceRequests /></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/request-service" element={<SubscriptionGuard><RequestService /></SubscriptionGuard>} />
+                          <Route path="/reports" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin']}><FeatureGate feature="advanced_analytics"><Reports /></FeatureGate></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/my-jobs" element={<SubscriptionGuard><RoleGuard allowedRoles={['technician']}><MyJobs /></RoleGuard></SubscriptionGuard>} />
+                          <Route path="/my-calendar" element={<SubscriptionGuard><RoleGuard allowedRoles={['technician']}><MyCalendar /></RoleGuard></SubscriptionGuard>} />
                           <Route path="/billing/success" element={<BillingSuccess />} />
                           <Route path="/billing/cancel" element={<BillingCancel />} />
                           <Route path="/post-checkout" element={<PostCheckout />} />

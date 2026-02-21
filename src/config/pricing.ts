@@ -28,7 +28,7 @@ const GB = 1024 * 1024 * 1024;
 export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
   trial: {
     name: "Trial",
-    description: "14-day free trial to explore all features",
+    description: "30-day free trial to explore all features",
     monthlyPrice: 0,
     yearlyPrice: 0,
     includedTechs: 2,

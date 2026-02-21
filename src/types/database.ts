@@ -2,7 +2,7 @@
 
 export type AppRole = 'owner' | 'admin' | 'dispatcher' | 'technician' | 'client';
 export type SubscriptionTier = 'trial' | 'starter' | 'growth' | 'professional' | 'enterprise';
-export type SubscriptionStatus = 'trial' | 'active' | 'cancelled' | 'past_due';
+export type SubscriptionStatus = 'trial' | 'active' | 'trialing' | 'canceled' | 'cancelled' | 'past_due';
 export type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 export type JobPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type IndustryType = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'general';
@@ -18,6 +18,9 @@ export interface Tenant {
   subscription_tier: SubscriptionTier;
   subscription_status: SubscriptionStatus;
   trial_ends_at: string | null;
+  cancel_at_period_end: boolean;
+  cancel_at: string | null;
+  stripe_customer_id: string | null;
   address: string | null;
   phone: string | null;
   email: string | null;

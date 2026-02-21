@@ -105,6 +105,7 @@ serve(async (req) => {
     );
     
     let isBetaFounder = false;
+    let userTenantId: string | null = null;
     try {
       const { data: tenantMember } = await supabaseAdmin
         .from('tenant_users')
@@ -112,7 +113,8 @@ serve(async (req) => {
         .eq('user_id', user.id)
         .limit(1)
         .single();
-      
+
+      userTenantId = tenantMember?.tenant_id || null;
       if (tenantMember?.tenant_id) {
         const { data: tenantData } = await supabaseAdmin
           .from('tenants')
@@ -135,14 +137,31 @@ serve(async (req) => {
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Found existing Stripe customer", { customerId });
+
+      // H1: Persist stripe_customer_id on tenant for reliable webhook matching
+      if (userTenantId) {
+        await supabaseAdmin
+          .from("tenants")
+          .update({ stripe_customer_id: customerId })
+          .eq("id", userTenantId)
+          .is("stripe_customer_id", null);
+      }
     } else {
       logStep("No existing Stripe customer found");
     }
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
     
-    // Apply founding member coupon for beta founders
-    const discounts = isBetaFounder ? [{ coupon: 'WQMyNyRo' }] : [];
+    // M5: Apply founding member coupon for beta founders (with fallback)
+    let discounts: { coupon: string }[] = [];
+    if (isBetaFounder) {
+      try {
+        await stripe.coupons.retrieve('WQMyNyRo');
+        discounts = [{ coupon: 'WQMyNyRo' }];
+      } catch {
+        logStep("Beta founder coupon not found in Stripe, proceeding without discount");
+      }
+    }
     logStep("Discount config", { isBetaFounder, discounts });
 
     const session = await stripe.checkout.sessions.create({

@@ -17,7 +17,7 @@ export type FeatureKey =
   | "calendar_sync";
 
 // Define which tiers have access to each feature
-// Trial users get full Professional-tier access during their 14-day trial
+// Trial users get full Professional-tier access during their 30-day trial
 const FEATURE_ACCESS: Record<FeatureKey, SubscriptionTier[]> = {
   // Available to all tiers
   document_management: ["trial", "starter", "growth", "professional", "enterprise"],
@@ -59,31 +59,56 @@ export function getMinimumTierForFeature(feature: FeatureKey): SubscriptionTier 
   return "enterprise";
 }
 
+// Features that remain accessible even when subscription is blocked
+const UNIVERSAL_FEATURES: FeatureKey[] = ["document_management", "service_requests"];
+
 export function useFeatureAccess() {
   const { tenant } = useTenant();
-  
+
   const currentTier: SubscriptionTier = (tenant?.subscription_tier as SubscriptionTier) || "trial";
-  
+  const subscriptionStatus = (tenant?.subscription_status as string) || "trial";
+  const trialEndsAt = tenant?.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
+  const cancelAtPeriodEnd = tenant?.cancel_at_period_end || false;
+
+  // Determine if subscription status blocks access
+  const isStatusBlocked =
+    subscriptionStatus === "canceled" ||
+    subscriptionStatus === "cancelled" ||
+    (subscriptionStatus === "trial" && trialEndsAt !== null && trialEndsAt < new Date());
+
+  const isPastDue = subscriptionStatus === "past_due";
+
   const hasAccess = (feature: FeatureKey): boolean => {
+    // Canceled/expired trials: only universal features remain accessible
+    if (isStatusBlocked) {
+      return UNIVERSAL_FEATURES.includes(feature);
+    }
+
+    // past_due: allow UI access (DB triggers block creation server-side)
+    // active/trialing/trial: normal tier-based access
     const allowedTiers = FEATURE_ACCESS[feature];
     return allowedTiers.includes(currentTier);
   };
-  
+
   const getUpgradeTier = (feature: FeatureKey): SubscriptionTier | null => {
     if (hasAccess(feature)) return null;
     return getMinimumTierForFeature(feature);
   };
-  
+
   const getTierIndex = (tier: SubscriptionTier): number => {
     return TIER_HIERARCHY.indexOf(tier);
   };
-  
+
   const isAtLeastTier = (tier: SubscriptionTier): boolean => {
     return getTierIndex(currentTier) >= getTierIndex(tier);
   };
-  
+
   return {
     currentTier,
+    subscriptionStatus,
+    isPastDue,
+    isStatusBlocked,
+    cancelAtPeriodEnd,
     hasAccess,
     getUpgradeTier,
     isAtLeastTier,
