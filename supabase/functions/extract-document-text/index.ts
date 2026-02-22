@@ -14,6 +14,45 @@ const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/we
 const SUPPORTED_PDF_TYPES = ['application/pdf'];
 const SUPPORTED_TEXT_TYPES = ['text/plain', 'text/csv', 'text/markdown'];
 
+// Prompt injection patterns that could appear in uploaded documents
+const DOCUMENT_INJECTION_PATTERNS = [
+  /ignore\s+(previous|all|any|above|prior)\s+(instructions?|prompts?|rules?|guidelines?)/gi,
+  /disregard\s+(previous|all|any|above|prior)\s+(instructions?|prompts?|rules?|guidelines?)/gi,
+  /forget\s+(everything|all|what)\s+(you\s+)?(know|learned|were\s+told)/gi,
+  /you\s+are\s+now\s+(a|an)\s+(different|new|unrestricted)/gi,
+  /pretend\s+(you\s+)?(are|to\s+be)\s+(a|an|unrestricted|jailbroken)/gi,
+  /act\s+as\s+(if|though)\s+you\s+(don't|do\s+not)\s+have\s+(any\s+)?restrictions/gi,
+  /system\s*prompt\s*(is|:|shows?|says?|reveals?)/gi,
+  /reveal\s+(your|the|system)\s+(prompt|instructions?|rules?)/gi,
+  /\[INST\]|\[\/INST\]|<\|im_start\|>|<\|system\|>/gi,
+  /IMPORTANT:\s*override|NEW\s+INSTRUCTIONS?:/gi,
+  /jailbreak|DAN\s+mode|evil\s+mode|bypass\s+(safety|restrictions?|filters?)/gi,
+  /override\s+all|you\s+must\s+comply|you\s+have\s+no\s+choice/gi,
+];
+
+function sanitizeExtractedText(text: string): { sanitized: string; injectionDetected: boolean } {
+  let sanitized = text;
+  let injectionDetected = false;
+
+  // Strip control characters (except newlines, tabs, carriage returns)
+  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+  // Strip Unicode bidirectional override characters (text confusion attacks)
+  sanitized = sanitized.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+
+  // Detect and redact prompt injection patterns
+  for (const pattern of DOCUMENT_INJECTION_PATTERNS) {
+    pattern.lastIndex = 0;
+    if (pattern.test(sanitized)) {
+      injectionDetected = true;
+      pattern.lastIndex = 0;
+      sanitized = sanitized.replace(pattern, '[REDACTED-SUSPICIOUS-CONTENT]');
+    }
+  }
+
+  return { sanitized, injectionDetected };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -125,6 +164,13 @@ serve(async (req) => {
       // Truncate if too long
       if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
         extractedText = extractedText.substring(0, MAX_EXTRACTED_TEXT_LENGTH) + "\n\n[Content truncated due to length]";
+      }
+
+      // Sanitize extracted text for prompt injection patterns
+      const { sanitized, injectionDetected } = sanitizeExtractedText(extractedText);
+      extractedText = sanitized;
+      if (injectionDetected) {
+        console.warn("[extract-document-text] Prompt injection patterns detected in document:", doc.id, doc.name);
       }
 
       // Update document with extracted text

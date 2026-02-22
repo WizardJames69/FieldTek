@@ -18,19 +18,35 @@ export type Database = {
         Row: {
           ai_response: string | null
           block_reason: string | null
+          chunk_ids: string[] | null
           context_id: string | null
           context_type: string | null
+          correlation_id: string | null
           created_at: string
           document_names: string[] | null
           documents_available: number | null
           documents_with_content: number | null
+          enforcement_rules_triggered: string[] | null
           equipment_type: string | null
           had_citations: boolean | null
+          human_review_reasons: string[] | null
+          human_review_required: boolean | null
+          human_review_status: string | null
           id: string
+          injection_detected: boolean | null
+          model_output_hash: string | null
           model_used: string | null
+          refusal_flag: boolean | null
           response_blocked: boolean | null
+          response_modified: boolean | null
           response_time_ms: number | null
+          retrieval_quality_score: number | null
+          semantic_search_count: number | null
+          similarity_scores: number[] | null
+          system_prompt_hash: string | null
           tenant_id: string
+          token_count_prompt: number | null
+          token_count_response: number | null
           user_id: string
           user_message: string
           validation_patterns_matched: string[] | null
@@ -38,19 +54,35 @@ export type Database = {
         Insert: {
           ai_response?: string | null
           block_reason?: string | null
+          chunk_ids?: string[] | null
           context_id?: string | null
           context_type?: string | null
+          correlation_id?: string | null
           created_at?: string
           document_names?: string[] | null
           documents_available?: number | null
           documents_with_content?: number | null
+          enforcement_rules_triggered?: string[] | null
           equipment_type?: string | null
           had_citations?: boolean | null
+          human_review_reasons?: string[] | null
+          human_review_required?: boolean | null
+          human_review_status?: string | null
           id?: string
+          injection_detected?: boolean | null
+          model_output_hash?: string | null
           model_used?: string | null
+          refusal_flag?: boolean | null
           response_blocked?: boolean | null
+          response_modified?: boolean | null
           response_time_ms?: number | null
+          retrieval_quality_score?: number | null
+          semantic_search_count?: number | null
+          similarity_scores?: number[] | null
+          system_prompt_hash?: string | null
           tenant_id: string
+          token_count_prompt?: number | null
+          token_count_response?: number | null
           user_id: string
           user_message: string
           validation_patterns_matched?: string[] | null
@@ -58,19 +90,35 @@ export type Database = {
         Update: {
           ai_response?: string | null
           block_reason?: string | null
+          chunk_ids?: string[] | null
           context_id?: string | null
           context_type?: string | null
+          correlation_id?: string | null
           created_at?: string
           document_names?: string[] | null
           documents_available?: number | null
           documents_with_content?: number | null
+          enforcement_rules_triggered?: string[] | null
           equipment_type?: string | null
           had_citations?: boolean | null
+          human_review_reasons?: string[] | null
+          human_review_required?: boolean | null
+          human_review_status?: string | null
           id?: string
+          injection_detected?: boolean | null
+          model_output_hash?: string | null
           model_used?: string | null
+          refusal_flag?: boolean | null
           response_blocked?: boolean | null
+          response_modified?: boolean | null
           response_time_ms?: number | null
+          retrieval_quality_score?: number | null
+          semantic_search_count?: number | null
+          similarity_scores?: number[] | null
+          system_prompt_hash?: string | null
           tenant_id?: string
+          token_count_prompt?: number | null
+          token_count_response?: number | null
           user_id?: string
           user_message?: string
           validation_patterns_matched?: string[] | null
@@ -88,6 +136,54 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_response_feedback: {
+        Row: {
+          id: string
+          audit_log_id: string | null
+          tenant_id: string
+          user_id: string
+          rating: string
+          feedback_text: string | null
+          feedback_category: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          audit_log_id?: string | null
+          tenant_id: string
+          user_id: string
+          rating: string
+          feedback_text?: string | null
+          feedback_category?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          audit_log_id?: string | null
+          tenant_id?: string
+          user_id?: string
+          rating?: string
+          feedback_text?: string | null
+          feedback_category?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_response_feedback_audit_log_id_fkey"
+            columns: ["audit_log_id"]
+            isOneToOne: false
+            referencedRelation: "ai_audit_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_response_feedback_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
