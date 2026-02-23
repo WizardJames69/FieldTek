@@ -78,15 +78,42 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
     },
   });
 
+  // Read a File as base64 (without the data URI prefix)
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const base64 = dataUrl.split(',')[1];
+        if (!base64) {
+          reject(new Error('Failed to encode file as base64'));
+          return;
+        }
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Trigger text extraction after upload
-  const triggerExtraction = async (documentId: string) => {
+  const triggerExtraction = async (documentId: string, file: File) => {
     try {
       setExtractionStatus('extracting');
-      
+
+      const fileBase64 = await readFileAsBase64(file);
+      console.log('[DocumentUploadDialog] Extraction starting:', file.name, 'base64Len:', fileBase64.length);
+
       const { data, error } = await supabase.functions.invoke('extract-document-text', {
-        body: { documentId }
+        body: {
+          fileBase64,
+          fileName: file.name,
+          mimeType: file.type,
+          mode: 'document',
+          documentId,
+        },
       });
-      
+
       if (error) {
         console.error('Extraction error:', error);
         setExtractionStatus('error');
@@ -97,12 +124,14 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
         });
       } else if (data?.success) {
         setExtractionStatus('done');
+        const textLength = data.extractedText?.length || 0;
         toast({
           title: 'Document ready for AI',
-          description: `Extracted ${Math.round(data.extractedLength / 1000)}KB of text for AI assistance.`,
+          description: `Extracted ${Math.round(textLength / 1000)}KB of text for AI assistance.`,
         });
       } else {
         setExtractionStatus('error');
+        console.error('Extraction returned failure:', data?.error);
       }
     } catch (err) {
       console.error('Extraction trigger error:', err);
@@ -157,16 +186,32 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
     },
     onSuccess: async (documentId) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+
+      // Grab file reference BEFORE resetting the form
+      const file = form.getValues('file') as File | undefined;
       form.reset();
-      
-      // Trigger extraction in background
-      triggerExtraction(documentId);
-      
-      toast({ 
-        title: 'Document uploaded', 
-        description: 'Processing document for AI assistance...' 
+
+      const MAX_EXTRACTION_SIZE = 15 * 1024 * 1024; // 15MB
+
+      if (!file || file.size > MAX_EXTRACTION_SIZE) {
+        toast({
+          title: 'Document uploaded',
+          description: file && file.size > MAX_EXTRACTION_SIZE
+            ? 'File is too large for AI text extraction. Document saved without AI processing.'
+            : 'Document saved successfully.',
+        });
+        onOpenChange(false);
+        return;
+      }
+
+      // Trigger extraction in background (fire-and-forget)
+      triggerExtraction(documentId, file);
+
+      toast({
+        title: 'Document uploaded',
+        description: 'Processing document for AI assistance...',
       });
-      
+
       // Close dialog after a short delay to show the processing state
       setTimeout(() => {
         onOpenChange(false);

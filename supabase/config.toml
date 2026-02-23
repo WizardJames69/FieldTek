@@ -21,9 +21,6 @@ verify_jwt = false
 [functions.verify-turnstile-portal]
 verify_jwt = false
 
-[functions.extract-receipt]
-verify_jwt = false
-
 [functions.elevenlabs-conversation-token]
 verify_jwt = false
 

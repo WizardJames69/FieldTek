@@ -1,7 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://deno.land/x/openai@v4.52.0/mod.ts";
 
+// ── Constants ───────────────────────────────────────────────
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -9,6 +11,7 @@ const corsHeaders = {
 };
 
 const MAX_EXTRACTED_TEXT_LENGTH = 100000;
+const MAX_BASE64_LENGTH = 20 * 1024 * 1024; // ~15MB file after base64 inflation
 
 const SUPPORTED_IMAGE_TYPES = [
   "image/jpeg",
@@ -20,7 +23,49 @@ const SUPPORTED_IMAGE_TYPES = [
 
 const SUPPORTED_PDF_TYPES = ["application/pdf"];
 
-// Prompt injection patterns that could appear in uploaded documents
+// ── Prompts ─────────────────────────────────────────────────
+const RECEIPT_PROMPT = `You are a receipt OCR specialist. Extract part/product details from this receipt.
+
+Return ONLY a JSON object with these fields (use null for missing values):
+- parts: array of items found, each with:
+  - name: product/part name
+  - quantity: number (default 1)
+  - unit_cost: number (price per unit)
+  - part_number: SKU/item number if visible
+- supplier: store name
+- total: total amount on receipt
+
+Example response:
+{
+  "parts": [
+    {"name": "3/4 Copper Elbow", "quantity": 2, "unit_cost": 3.49, "part_number": "SKU123456"},
+    {"name": "1/2 PVC Pipe 10ft", "quantity": 1, "unit_cost": 8.99, "part_number": null}
+  ],
+  "supplier": "Home Depot",
+  "total": 15.97
+}
+
+If you cannot read the receipt clearly, return: {"error": "Could not read receipt", "parts": []}`;
+
+const DOCUMENT_PROMPT = `You are a technical document extraction specialist. Extract ALL text content from the provided document.
+
+CRITICAL REQUIREMENTS:
+1. Extract EVERY piece of text visible in the document
+2. Preserve document structure: headings, sections, lists, tables
+3. Include ALL technical specifications: temperatures, pressures, voltages, part numbers, model numbers
+4. Include ALL procedures with step numbers preserved
+5. Include ALL warnings, cautions, and safety information
+6. Include ALL diagram labels and callouts
+7. Format tables in a clear, readable way
+8. Include page numbers or section references when visible
+
+OUTPUT FORMAT:
+- Return ONLY the extracted text
+- Use clear formatting with headers and sections
+- Do not add commentary or descriptions
+- Do not summarize - extract everything`;
+
+// ── Prompt injection detection ──────────────────────────────
 const DOCUMENT_INJECTION_PATTERNS = [
   /ignore\s+(previous|all|any|above|prior)\s+(instructions?|prompts?|rules?|guidelines?)/gi,
   /disregard\s+(previous|all|any|above|prior)\s+(instructions?|prompts?|rules?|guidelines?)/gi,
@@ -36,9 +81,18 @@ const DOCUMENT_INJECTION_PATTERNS = [
   /override\s+all|you\s+must\s+comply|you\s+have\s+no\s+choice/gi,
 ];
 
+// ── Clients ─────────────────────────────────────────────────
 const openai = new OpenAI({
   apiKey: Deno.env.get("OPENAI_API_KEY")!,
 });
+
+// ── Helpers ─────────────────────────────────────────────────
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 function sanitizeExtractedText(text: string): {
   sanitized: string;
@@ -66,29 +120,37 @@ function sanitizeExtractedText(text: string): {
   return { sanitized, injectionDetected };
 }
 
-// ── Image extraction ────────────────────────────────────────
-// Downloads image → converts to base64 → sends via Responses API input_image
-async function extractTextFromImage(
-  fileUrl: string,
-  mimeType: string
-): Promise<string> {
-  const imageResponse = await fetch(fileUrl);
-  if (!imageResponse.ok) {
-    throw new Error(`Failed to download image: HTTP ${imageResponse.status}`);
+function parseReceiptJson(rawText: string): Record<string, unknown> {
+  try {
+    const jsonMatch =
+      rawText.match(/```json\s*([\s\S]*?)\s*```/) ||
+      rawText.match(/```\s*([\s\S]*?)\s*```/) ||
+      [null, rawText];
+    const jsonStr = (jsonMatch[1] || rawText).trim();
+    return JSON.parse(jsonStr);
+  } catch {
+    console.error("[extract-document-text] Failed to parse receipt JSON:", rawText.substring(0, 200));
+    return { error: "Could not parse receipt data", parts: [] };
   }
+}
 
-  const buffer = await imageResponse.arrayBuffer();
-  const b64 = base64Encode(buffer);
-  const dataUri = `data:${mimeType};base64,${b64}`;
+// ── Image extraction ────────────────────────────────────────
+// Accepts base64 string → constructs data URI → sends via Responses API input_image
+async function extractTextFromImage(
+  base64Data: string,
+  mimeType: string,
+  prompt: string
+): Promise<string> {
+  const dataUri = `data:${mimeType};base64,${base64Data}`;
 
   const response = await openai.responses.create({
     model: "gpt-4.1",
-    instructions: "Extract all visible text from this image. Return plain text only.",
+    instructions: prompt,
     input: [
       {
         role: "user",
         content: [
-          { type: "input_text", text: "Extract all text from this image." },
+          { type: "input_text", text: prompt },
           { type: "input_image", image_url: dataUri },
         ],
       },
@@ -96,50 +158,30 @@ async function extractTextFromImage(
   });
 
   const text = response.output_text;
-  if (!text || text.length < 5) {
+  if (!text || text.length < 3) {
     throw new Error("Insufficient text extracted from image");
   }
   return text.trim();
 }
 
 // ── PDF extraction ──────────────────────────────────────────
-// Downloads PDF → uploads to OpenAI via files.create → sends via Responses API input_file
+// Accepts base64 string → decodes to bytes → uploads via files.create → sends via Responses API input_file
 async function extractTextFromPDF(
-  fileUrl: string,
-  docName: string
+  base64Data: string,
+  fileName: string,
+  prompt: string
 ): Promise<string> {
-  const pdfResponse = await fetch(fileUrl);
-  if (!pdfResponse.ok) {
-    throw new Error(`Failed to download PDF: HTTP ${pdfResponse.status}`);
-  }
-
-  const pdfBytes = await pdfResponse.arrayBuffer();
+  const pdfBytes = base64Decode(base64Data);
 
   const uploadedFile = await openai.files.create({
-    file: new File([pdfBytes], docName, { type: "application/pdf" }),
+    file: new File([pdfBytes], fileName, { type: "application/pdf" }),
     purpose: "assistants",
   });
 
   try {
     const response = await openai.responses.create({
       model: "gpt-4.1",
-      instructions: `You are a technical document extraction specialist. Extract ALL text content from the provided document.
-
-CRITICAL REQUIREMENTS:
-1. Extract EVERY piece of text visible in the document
-2. Preserve document structure: headings, sections, lists, tables
-3. Include ALL technical specifications: temperatures, pressures, voltages, part numbers, model numbers
-4. Include ALL procedures with step numbers preserved
-5. Include ALL warnings, cautions, and safety information
-6. Include ALL diagram labels and callouts
-7. Format tables in a clear, readable way
-8. Include page numbers or section references when visible
-
-OUTPUT FORMAT:
-- Return ONLY the extracted text
-- Use clear formatting with headers and sections
-- Do not add commentary or descriptions
-- Do not summarize - extract everything`,
+      instructions: prompt,
       input: [
         {
           role: "user",
@@ -147,7 +189,7 @@ OUTPUT FORMAT:
             { type: "input_file", file_id: uploadedFile.id },
             {
               type: "input_text",
-              text: `Extract all text content from this technical document called "${docName}". Include all specifications, procedures, warnings, and technical details.`,
+              text: `Extract content from "${fileName}".`,
             },
           ],
         },
@@ -155,7 +197,7 @@ OUTPUT FORMAT:
     });
 
     const text = response.output_text;
-    if (!text || text.length < 10) {
+    if (!text || text.length < 5) {
       throw new Error("Insufficient text extracted from PDF");
     }
     return text.trim();
@@ -172,58 +214,130 @@ serve(async (req) => {
   }
 
   try {
-    const { fileUrl, fileType, docName } = await req.json();
+    // ── Parse & validate request ────────────────────────────
+    const body = await req.json();
+    const {
+      fileBase64,
+      fileName,
+      mimeType,
+      mode = "document",
+      documentId,
+    } = body as {
+      fileBase64?: string;
+      fileName?: string;
+      mimeType?: string;
+      mode?: "receipt" | "document";
+      documentId?: string;
+    };
 
-    if (!fileUrl || !fileType) {
-      return new Response(
-        JSON.stringify({ success: false, error: "fileUrl and fileType are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    if (!fileBase64 || typeof fileBase64 !== "string") {
+      return jsonResponse(
+        { success: false, extractedText: "", structuredData: null, error: "fileBase64 is required and must be a string" },
+        400
       );
     }
 
-    const normalizedType = fileType.toLowerCase();
+    if (!mimeType || typeof mimeType !== "string") {
+      return jsonResponse(
+        { success: false, extractedText: "", structuredData: null, error: "mimeType is required and must be a string" },
+        400
+      );
+    }
+
+    if (fileBase64.length > MAX_BASE64_LENGTH) {
+      return jsonResponse(
+        { success: false, extractedText: "", structuredData: null, error: "File too large. Maximum ~15MB for extraction." },
+        400
+      );
+    }
+
+    // ── Route by file type ──────────────────────────────────
+    const normalizedType = mimeType.toLowerCase();
+    const prompt = mode === "receipt" ? RECEIPT_PROMPT : DOCUMENT_PROMPT;
+    const docName = fileName || "document";
     let extractedText: string;
 
+    console.log("[extract-document-text] mode:", mode, "type:", normalizedType, "name:", docName, "base64Len:", fileBase64.length);
+
     if (SUPPORTED_IMAGE_TYPES.some((t) => normalizedType.includes(t))) {
-      console.log("[extract-document-text] Extracting text from image:", docName);
-      extractedText = await extractTextFromImage(fileUrl, normalizedType);
+      extractedText = await extractTextFromImage(fileBase64, normalizedType, prompt);
     } else if (SUPPORTED_PDF_TYPES.some((t) => normalizedType.includes(t))) {
-      console.log("[extract-document-text] Extracting text from PDF:", docName);
-      extractedText = await extractTextFromPDF(fileUrl, docName || "document.pdf");
+      extractedText = await extractTextFromPDF(fileBase64, docName, prompt);
     } else {
-      return new Response(
-        JSON.stringify({ success: false, error: `Unsupported file type: ${fileType}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      return jsonResponse(
+        { success: false, extractedText: "", structuredData: null, error: `Unsupported file type: ${mimeType}` },
+        400
       );
     }
 
-    // Truncate if exceeding limit
+    // ── Truncate ────────────────────────────────────────────
     if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
       extractedText =
         extractedText.substring(0, MAX_EXTRACTED_TEXT_LENGTH) +
         "\n\n[Content truncated due to length]";
     }
 
-    // Sanitize for prompt injection patterns
+    // ── Sanitize ────────────────────────────────────────────
     const { sanitized, injectionDetected } = sanitizeExtractedText(extractedText);
     extractedText = sanitized;
     if (injectionDetected) {
       console.warn("[extract-document-text] Injection patterns detected in:", docName);
     }
 
-    console.log("[extract-document-text] Success:", docName, "length:", extractedText.length);
+    // ── Build structuredData for receipt mode ────────────────
+    let structuredData: Record<string, unknown> | null = null;
+    if (mode === "receipt") {
+      structuredData = parseReceiptJson(extractedText);
+    }
 
-    return new Response(
-      JSON.stringify({ success: true, extractedText }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    // ── DB write-back for document mode ─────────────────────
+    if (mode === "document" && documentId) {
+      try {
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+
+        await supabaseAdmin
+          .from("documents")
+          .update({
+            extracted_text: sanitized,
+            extraction_status: "completed",
+          })
+          .eq("id", documentId);
+
+        console.log("[extract-document-text] Saved to DB for document:", documentId);
+
+        // Fire-and-forget: trigger embedding generation
+        supabaseAdmin.functions
+          .invoke("generate-embeddings", { body: { documentId } })
+          .then(({ error: invokeErr }) => {
+            if (invokeErr) console.error("[extract-document-text] Embeddings trigger failed:", invokeErr);
+            else console.log("[extract-document-text] Embeddings triggered for:", documentId);
+          })
+          .catch((err: unknown) => {
+            console.error("[extract-document-text] Embeddings trigger error:", err);
+          });
+      } catch (dbErr) {
+        // Don't fail the response — text was extracted successfully
+        console.error("[extract-document-text] DB write-back failed:", dbErr);
+      }
+    }
+
+    console.log("[extract-document-text] Success:", docName, "length:", sanitized.length, "mode:", mode);
+
+    return jsonResponse({
+      success: true,
+      extractedText: sanitized,
+      structuredData,
+    });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[extract-document-text] Error:", message);
 
-    return new Response(
-      JSON.stringify({ success: false, error: message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    return jsonResponse(
+      { success: false, extractedText: "", structuredData: null, error: message },
+      500
     );
   }
 });

@@ -136,15 +136,21 @@ export function AddPartDialog({
           fileBase64,
           fileName,
           mimeType,
+          mode: "receipt",
         },
       });
 
       if (error) throw error;
 
-      const result = data as ExtractedReceiptData;
+      if (!data?.success) {
+        toast.error(data?.error || "Extraction failed");
+        return;
+      }
 
-      if (result.error) {
-        toast.error(result.error);
+      const result = data.structuredData as ExtractedReceiptData;
+
+      if (!result || result.error) {
+        toast.error(result?.error || "Could not read receipt");
         return;
       }
 
