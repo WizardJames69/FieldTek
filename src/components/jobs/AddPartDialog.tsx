@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, X, ImageIcon, Loader2, Sparkles, BookOpen, Plus, Search } from "lucide-react";
+import { Camera, X, ImageIcon, Loader2, Sparkles, BookOpen, Plus, Search, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,17 +125,24 @@ export function AddPartDialog({
     },
   });
 
-  const extractReceiptData = async (imageBase64: string) => {
+  const extractReceiptData = async (fileBase64: string, fileName: string, mimeType: string) => {
     setIsExtracting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("extract-receipt", {
-        body: { imageBase64 },
+      console.log("[AddPartDialog] file.type:", mimeType);
+      console.log("[AddPartDialog] base64.length:", fileBase64.length);
+
+      const { data, error } = await supabase.functions.invoke("extract-document-text", {
+        body: {
+          fileBase64,
+          fileName,
+          mimeType,
+        },
       });
 
       if (error) throw error;
 
       const result = data as ExtractedReceiptData;
-      
+
       if (result.error) {
         toast.error(result.error);
         return;
@@ -143,7 +150,7 @@ export function AddPartDialog({
 
       if (result.parts && result.parts.length > 0) {
         setExtractedParts(result.parts);
-        
+
         // Auto-fill with the first part
         const firstPart = result.parts[0];
         form.setValue("part_name", firstPart.name);
@@ -152,7 +159,7 @@ export function AddPartDialog({
         if (firstPart.part_number) {
           form.setValue("part_number", firstPart.part_number);
         }
-        
+
         // Set supplier if detected
         if (result.supplier) {
           const matchingSupplier = COMMON_SUPPLIERS.find(
@@ -175,31 +182,41 @@ export function AddPartDialog({
         toast.info("No items found on receipt. Please enter details manually.");
       }
     } catch (error) {
-      console.error("Receipt extraction failed:", error);
+      console.error("[AddPartDialog] Receipt extraction failed:", error);
       toast.error("Could not read receipt. Please enter details manually.");
     } finally {
       setIsExtracting(false);
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("File size must be less than 10MB");
-        return;
-      }
-      setReceiptFile(file);
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        setReceiptPreview(base64);
-        // Auto-extract when image is loaded
-        await extractReceiptData(base64);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
     }
+
+    setReceiptFile(file);
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+
+      // For image files, use the data URL as preview directly
+      // For PDFs, store the data URL but render a placeholder in the UI
+      setReceiptPreview(dataUrl);
+
+      // Extract only the base64 portion (strip "data:<mime>;base64," prefix)
+      const base64 = dataUrl.split(",")[1];
+
+      await extractReceiptData(base64, file.name, file.type);
+    };
+    reader.readAsDataURL(file);
   };
+
+  const isPreviewPdf = receiptFile?.type === "application/pdf";
 
   const clearReceipt = () => {
     setReceiptFile(null);
@@ -231,7 +248,7 @@ export function AddPartDialog({
   const addPart = useMutation({
     mutationFn: async (values: PartFormValues) => {
       setIsUploading(true);
-      
+
       let receiptUrl: string | null = null;
       if (receiptFile) {
         receiptUrl = await uploadReceipt();
@@ -258,7 +275,7 @@ export function AddPartDialog({
         const existingPart = catalogParts.find(
           p => p.part_name.toLowerCase() === values.part_name.toLowerCase()
         );
-        
+
         if (!existingPart) {
           await supabase.from("parts_catalog").insert({
             tenant_id: tenantId,
@@ -352,7 +369,7 @@ export function AddPartDialog({
                 className="pl-9"
               />
             </div>
-            
+
             {catalogParts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -497,10 +514,10 @@ export function AddPartDialog({
                   />
                 </div>
 
-                {/* Receipt Photo with OCR */}
+                {/* Receipt Photo / PDF with OCR */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <FormLabel>Receipt Photo</FormLabel>
+                    <FormLabel>Receipt Photo / PDF</FormLabel>
                     {isExtracting && (
                       <span className="inline-flex items-center text-xs text-muted-foreground">
                         <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -511,19 +528,26 @@ export function AddPartDialog({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,.pdf,application/pdf"
                     capture="environment"
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-                  
+
                   {receiptPreview ? (
                     <div className="relative w-full">
-                      <img
-                        src={receiptPreview}
-                        alt="Receipt preview"
-                        className="w-full h-32 object-cover rounded-lg border"
-                      />
+                      {isPreviewPdf ? (
+                        <div className="w-full h-32 rounded-lg border bg-muted flex flex-col items-center justify-center gap-2">
+                          <FileText className="h-8 w-8 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{receiptFile?.name}</span>
+                        </div>
+                      ) : (
+                        <img
+                          src={receiptPreview}
+                          alt="Receipt preview"
+                          className="w-full h-32 object-cover rounded-lg border"
+                        />
+                      )}
                       {isExtracting && (
                         <div className="absolute inset-0 bg-background/80 rounded-lg flex items-center justify-center">
                           <div className="flex items-center gap-2 text-sm">
@@ -575,7 +599,7 @@ export function AddPartDialog({
                     <Sparkles className="h-3 w-3 inline mr-1" />
                     AI will auto-extract part details from your receipt
                   </p>
-                  
+
                   {/* Show extracted parts if multiple */}
                   {extractedParts.length > 1 && (
                     <div className="p-2 bg-muted rounded-md space-y-1">

@@ -28,7 +28,7 @@ CREATE POLICY "Users can insert own feedback"
 ON public.ai_response_feedback FOR INSERT TO authenticated
 WITH CHECK (user_id = auth.uid() AND tenant_id = (
   SELECT tu.tenant_id FROM public.tenant_users tu
-  WHERE tu.user_id = auth.uid() AND tu.status = 'active'
+  WHERE tu.user_id = auth.uid() AND tu.is_active = true
   LIMIT 1
 ));
 
@@ -43,12 +43,12 @@ ON public.ai_response_feedback FOR SELECT TO authenticated
 USING (
   tenant_id = (
     SELECT tu.tenant_id FROM public.tenant_users tu
-    WHERE tu.user_id = auth.uid() AND tu.status = 'active'
+    WHERE tu.user_id = auth.uid() AND tu.is_active = true
     LIMIT 1
   )
   AND (
     SELECT tu.role FROM public.tenant_users tu
-    WHERE tu.user_id = auth.uid() AND tu.status = 'active'
+    WHERE tu.user_id = auth.uid() AND tu.is_active = true
     LIMIT 1
   ) IN ('owner', 'admin')
 );
