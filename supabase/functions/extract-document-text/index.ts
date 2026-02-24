@@ -143,7 +143,7 @@ async function extractTextFromImage(
   const dataUri = `data:${mimeType};base64,${base64Data}`;
 
   const response = await openai.responses.create({
-    model: "gpt-4.1",
+    model: "gpt-4.1-mini",
     instructions: prompt,
     input: [
       {
@@ -173,7 +173,7 @@ async function extractTextFromPDF(
   const dataUri = `data:application/pdf;base64,${base64Data}`;
 
   const response = await openai.responses.create({
-    model: "gpt-4.1",
+    model: "gpt-4.1-mini",
     instructions: prompt,
     input: [
       {
