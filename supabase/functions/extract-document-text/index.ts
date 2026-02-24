@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import OpenAI from "https://esm.sh/openai@4.52.0";
 
@@ -165,46 +164,40 @@ async function extractTextFromImage(
 }
 
 // ── PDF extraction ──────────────────────────────────────────
-// Accepts base64 string → decodes to bytes → uploads via files.create → sends via Responses API input_file
+// Accepts base64 string → constructs data URI → sends via Responses API input_file inline
 async function extractTextFromPDF(
   base64Data: string,
   fileName: string,
   prompt: string
 ): Promise<string> {
-  const pdfBytes = base64Decode(base64Data);
+  const dataUri = `data:application/pdf;base64,${base64Data}`;
 
-  const uploadedFile = await openai.files.create({
-    file: new File([pdfBytes], fileName, { type: "application/pdf" }),
-    purpose: "assistants",
+  const response = await openai.responses.create({
+    model: "gpt-4.1",
+    instructions: prompt,
+    input: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "input_file",
+            filename: fileName,
+            file_data: dataUri,
+          },
+          {
+            type: "input_text",
+            text: `Extract content from "${fileName}".`,
+          },
+        ],
+      },
+    ],
   });
 
-  try {
-    const response = await openai.responses.create({
-      model: "gpt-4.1",
-      instructions: prompt,
-      input: [
-        {
-          role: "user",
-          content: [
-            { type: "input_file", file_id: uploadedFile.id },
-            {
-              type: "input_text",
-              text: `Extract content from "${fileName}".`,
-            },
-          ],
-        },
-      ],
-    });
-
-    const text = response.output_text;
-    if (!text || text.length < 5) {
-      throw new Error("Insufficient text extracted from PDF");
-    }
-    return text.trim();
-  } finally {
-    // Best-effort cleanup of uploaded file
-    await openai.files.del(uploadedFile.id).catch(() => {});
+  const text = response.output_text;
+  if (!text || text.length < 5) {
+    throw new Error("Insufficient text extracted from PDF");
   }
+  return text.trim();
 }
 
 // ── Main handler ────────────────────────────────────────────
