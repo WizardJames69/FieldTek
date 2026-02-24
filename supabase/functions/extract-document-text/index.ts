@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import OpenAI from "https://deno.land/x/openai@v4.52.0/mod.ts";
+import OpenAI from "https://esm.sh/openai@4.52.0";
 
 // ── Constants ───────────────────────────────────────────────
 const corsHeaders = {
