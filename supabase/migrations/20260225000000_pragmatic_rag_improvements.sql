@@ -66,7 +66,7 @@ ALTER TABLE public.ai_audit_logs
 -- ── 6. Updated search RPC with hybrid scoring ──────────────────
 CREATE OR REPLACE FUNCTION public.search_document_chunks(
   p_tenant_id uuid,
-  p_query_embedding extensions.vector,
+  p_query_embedding vector,
   p_match_count integer DEFAULT 10,
   p_match_threshold double precision DEFAULT 0.5,
   p_keyword_query text DEFAULT NULL,
