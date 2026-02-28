@@ -207,6 +207,28 @@ serve(async (req) => {
   }
 
   try {
+    // ── Auth check — allow both user auth and service role key ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return jsonResponse({ success: false, extractedText: "", structuredData: null, error: "Unauthorized" }, 401);
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const isServiceRole = token === serviceRoleKey;
+
+    if (!isServiceRole) {
+      const supabaseAuth = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY") ?? serviceRoleKey,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) {
+        return jsonResponse({ success: false, extractedText: "", structuredData: null, error: "Unauthorized" }, 401);
+      }
+    }
+
     // ── Parse & validate request ────────────────────────────
     const body = await req.json();
     const {

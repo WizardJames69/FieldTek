@@ -264,8 +264,27 @@ Deno.serve(async (req) => {
         } else {
           console.log(`[MONITOR-HEALTH] Created alert: ${alert.alertType} (${alert.severity})`);
           
-          // TODO: Send notification email for critical/high alerts
-          // Could invoke send-health-alert function here
+          // Send notification email for critical/high alerts
+          if (alert.severity === "critical" || alert.severity === "high") {
+            try {
+              const alertUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-health-alert`;
+              await fetch(alertUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+                },
+                body: JSON.stringify({
+                  alertType: alert.alertType,
+                  severity: alert.severity,
+                  message: alert.message,
+                  source: alert.source,
+                }),
+              });
+            } catch (emailErr) {
+              console.error("[MONITOR-HEALTH] Failed to send alert email:", emailErr);
+            }
+          }
         }
       }
     }

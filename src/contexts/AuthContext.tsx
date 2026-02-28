@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { setUser as setTrackingUser, addBreadcrumb, clearUser as clearTrackingUser } from '@/lib/errorTracking';
+import * as Sentry from '@sentry/react';
 
 interface AuthContextType {
   user: User | null;
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
         
         // Track auth state changes for error monitoring
+        Sentry.setUser(session?.user ? { id: session.user.id } : null);
         if (session?.user) {
           setTrackingUser(session.user.id);
           addBreadcrumb({
