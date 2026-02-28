@@ -37,10 +37,18 @@ type TextContent = { type: "text"; text: string };
 type ImageContent = { type: "image_url"; image_url: { url: string } };
 type MessageContent = string | Array<TextContent | ImageContent>;
 
-type Message = { 
-  role: "user" | "assistant"; 
+type ResponseMetadata = {
+  retrieval_quality_score: number;
+  confidence: 'high' | 'medium' | 'low';
+  chunk_count: number;
+  documents_used: number;
+};
+
+type Message = {
+  role: "user" | "assistant";
   content: MessageContent;
   suggestions?: string[];
+  metadata?: ResponseMetadata;
 };
 
 // Helper to extract text content from a message
@@ -140,6 +148,7 @@ export default function Assistant() {
   const [rateLimitInfo, setRateLimitInfo] = useState<{ limit: number; used: number; resets_at: string; tier: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<number>(0);
+  const pendingDiagnosticDataRef = useRef<Record<string, string> | null>(null);
 
 
   // Fetch jobs for context selection with optional search
@@ -287,6 +296,10 @@ export default function Assistant() {
     if (equipment) context.equipment = equipment;
     if (client) context.client = client;
     if (documents.length > 0) context.documents = documents;
+    if (pendingDiagnosticDataRef.current) {
+      context.diagnosticData = pendingDiagnosticDataRef.current;
+      pendingDiagnosticDataRef.current = null;
+    }
 
     // Get user's session token for authentication
     const { data: { session } } = await supabase.auth.getSession();
@@ -343,6 +356,7 @@ export default function Assistant() {
     const decoder = new TextDecoder();
     let textBuffer = "";
     let assistantContent = "";
+    let responseMetadata: ResponseMetadata | undefined;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -364,6 +378,13 @@ export default function Assistant() {
 
         try {
           const parsed = JSON.parse(jsonStr);
+
+          // Check for metadata event (sent before content)
+          if (parsed.metadata) {
+            responseMetadata = parsed.metadata as ResponseMetadata;
+            continue;
+          }
+
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
           if (content) {
             assistantContent += content;
@@ -391,12 +412,12 @@ export default function Assistant() {
       documents.length > 0
     );
 
-    // Update the last message with suggestions
+    // Update the last message with suggestions and metadata
     setMessages((prev) => {
       const last = prev[prev.length - 1];
       if (last?.role === "assistant") {
         return prev.map((m, i) =>
-          i === prev.length - 1 ? { ...m, suggestions } : m
+          i === prev.length - 1 ? { ...m, suggestions, metadata: responseMetadata } : m
         );
       }
       return prev;
@@ -462,6 +483,8 @@ export default function Assistant() {
     const diagnosticContext = formatDiagnosticData(data);
     const fullMessage = `${pendingDiagnosticText}\n\n${diagnosticContext}`;
     setPendingDiagnosticText("");
+    // Store raw diagnostic data for structured audit logging
+    pendingDiagnosticDataRef.current = data;
     handleSend(fullMessage);
   };
 
@@ -885,6 +908,24 @@ export default function Assistant() {
                                   </div>
                                   {sources.length > 0 && (
                                     <DocumentCitation sources={sources} />
+                                  )}
+                                  {msg.metadata?.confidence && (
+                                    <div className={cn(
+                                      "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md w-fit",
+                                      msg.metadata.confidence === 'high' && "text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-950/30",
+                                      msg.metadata.confidence === 'medium' && "text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/30",
+                                      msg.metadata.confidence === 'low' && "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-950/30",
+                                    )}>
+                                      <span className={cn(
+                                        "h-1.5 w-1.5 rounded-full",
+                                        msg.metadata.confidence === 'high' && "bg-green-500",
+                                        msg.metadata.confidence === 'medium' && "bg-yellow-500",
+                                        msg.metadata.confidence === 'low' && "bg-red-500",
+                                      )} />
+                                      {msg.metadata.confidence === 'high' && "High confidence"}
+                                      {msg.metadata.confidence === 'medium' && "Medium confidence"}
+                                      {msg.metadata.confidence === 'low' && "Low confidence — verify with documentation"}
+                                    </div>
                                   )}
                                 </div>
                               );

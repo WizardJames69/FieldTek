@@ -29,6 +29,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [branding, setBranding] = useState<TenantBranding | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Track which user ID we last completed a fetch for.
+  // This prevents a race condition where AuthContext resolves (user becomes non-null)
+  // but TenantContext's useEffect hasn't fired yet to set loading=true.
+  // During that gap, loading is false and tenant is null — which would cause
+  // pages like Equipment.tsx to falsely redirect to /onboarding.
+  const fetchedForUserRef = useRef<string | null>(null);
+
   // Retry bookkeeping
   const retryCountRef = useRef(0);
   const emptyResultRetryRef = useRef(0);
@@ -104,6 +111,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setSettings(null);
       setBranding(null);
       setLoading(false);
+      fetchedForUserRef.current = null;
       retryCountRef.current = 0;
       emptyResultRetryRef.current = 0;
       sessionRefreshAttemptedRef.current = false;
@@ -198,8 +206,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Successfully found tenant user - reset retry counters
-      retryCountRef.current = 0;
+      // Successfully found tenant user — reset empty-result counter only.
+      // Do NOT reset retryCountRef here: the catch block uses it to cap error
+      // retries and resetting it after each successful tenant_users query
+      // causes an infinite retry loop when the subsequent parallel fetch fails.
       emptyResultRetryRef.current = 0;
       sessionRefreshAttemptedRef.current = false;
 
@@ -256,11 +266,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         // This prevents "flash of fallback branding" if we already have data
         console.error('All retries exhausted after error');
         setLoading(false);
+        fetchedForUserRef.current = user?.id ?? null;
       }
     } finally {
       // Only the latest request should control the loading flag.
       if (requestId === requestIdRef.current && !didScheduleRetry) {
         setLoading(false);
+        fetchedForUserRef.current = user?.id ?? null;
       }
     }
   };
@@ -274,6 +286,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     await fetchTenantData(true);
   };
+
+  // Depend on the user's ID (a primitive string) rather than the user object reference.
+  // AuthContext fires setUser() from both onAuthStateChange and getSession(), producing
+  // two distinct object references for the same user.  Using [user] would trigger this
+  // effect twice, each time incrementing requestIdRef and discarding the previous
+  // in-flight fetch — leaving effectiveLoading stuck at true forever.
+  const userId = user?.id ?? null;
 
   useEffect(() => {
     // Cancel stale async work when auth changes
@@ -298,7 +317,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return () => {
       clearPendingRetry();
     };
-  }, [user]);
+  }, [userId]);
 
   // Use impersonated tenant data when impersonating
   const effectiveTenant = isImpersonating && impersonatedTenant ? impersonatedTenant.tenant : tenant;
@@ -310,6 +329,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = isImpersonating || role === 'admin' || role === 'owner';
   const isOwner = isImpersonating || role === 'owner';
 
+  // Derived loading: true when a fetch is actively running OR when the user changed
+  // but we haven't started fetching yet (gap between AuthContext resolving and our useEffect firing).
+  // This prevents downstream components from seeing loading=false with stale tenant=null.
+  const effectiveLoading = loading || (!!user && fetchedForUserRef.current !== user.id);
+
   return (
     <TenantContext.Provider
       value={{
@@ -317,7 +341,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         tenantUser,
         settings: effectiveSettings,
         branding: effectiveBranding,
-        loading,
+        loading: effectiveLoading,
         role,
         isAdmin,
         isOwner,

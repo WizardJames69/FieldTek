@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-// Routes that actively redirect unauthenticated users to /auth (handled by each page component).
-// Routes wrapped in <RoleGuard> (/clients, /invoices, /team, /settings, /reports) return null
-// without redirecting when unauthenticated — auth is verified by admin access tests instead.
+// Routes that redirect unauthenticated users to /auth.
+// RoleGuard handles auth redirects for role-protected routes.
+// FeatureGate-only routes (e.g. /equipment) rely on the page component's own auth guard.
 const PROTECTED_ROUTES = [
   '/dashboard',
   '/jobs',
@@ -97,20 +97,22 @@ test.describe('Navigation & Route Guards', () => {
 
     test('technician is redirected or denied access to /clients', async ({ page }) => {
       await page.goto('/clients');
-      await page.waitForTimeout(2000);
-      // Either redirected away from /clients or shows a permission error
-      const url = page.url();
-      const isBlocked = !url.includes('/clients') || await page.getByText(/permission|access denied|not authorized/i).isVisible().catch(() => false);
-      // If the page allows access, at minimum the page should not crash
-      await expect(page.locator('main')).toBeVisible({ timeout: 10_000 });
+      // Wait for tenant data to load (RoleGuard shows skeleton until loaded)
+      await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+      // RoleGuard should redirect technician away from /clients
+      await expect(page).not.toHaveURL(/\/clients/, { timeout: 15_000 });
+      // After redirect chain completes, the page should render with content
+      await expect(page.locator('main')).toBeVisible({ timeout: 15_000 });
     });
 
     test('technician is redirected or denied access to /settings', async ({ page }) => {
       await page.goto('/settings');
-      await page.waitForTimeout(2000);
-      const url = page.url();
-      const isBlocked = !url.includes('/settings') || await page.getByText(/permission|access denied|not authorized/i).isVisible().catch(() => false);
-      await expect(page.locator('main')).toBeVisible({ timeout: 10_000 });
+      // Wait for tenant data to load (RoleGuard shows skeleton until loaded)
+      await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+      // RoleGuard should redirect technician away from /settings
+      await expect(page).not.toHaveURL(/\/settings/, { timeout: 15_000 });
+      // After redirect chain completes, the page should render with content
+      await expect(page.locator('main')).toBeVisible({ timeout: 15_000 });
     });
   });
 

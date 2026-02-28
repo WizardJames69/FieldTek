@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,11 +13,16 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard' }: RoleGuardProps) {
+  const { user, loading: authLoading } = useAuth();
   const { role, loading } = useTenant();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth', { replace: true });
+      return;
+    }
     if (!loading && role && !allowedRoles.includes(role)) {
       toast({
         variant: 'destructive',
@@ -25,9 +31,9 @@ export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard' 
       });
       navigate(fallbackPath, { replace: true });
     }
-  }, [loading, role, allowedRoles, fallbackPath, navigate, toast]);
+  }, [authLoading, user, loading, role, allowedRoles, fallbackPath, navigate, toast]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen p-6 space-y-4">
         <Skeleton className="h-8 w-48" />
@@ -36,7 +42,7 @@ export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard' 
     );
   }
 
-  if (!role || !allowedRoles.includes(role)) {
+  if (!user || !role || !allowedRoles.includes(role)) {
     return null;
   }
 

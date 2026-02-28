@@ -1624,13 +1624,15 @@ serve(async (req) => {
         const queryEmbedding = await generateQueryEmbedding(searchQuery, LOVABLE_API_KEY);
         
         if (queryEmbedding) {
-          // Use RPC to call the similarity search function
+          // Use RPC to call the similarity search function (hybrid: vector + keyword)
           const { data: searchResults, error: searchError } = await serviceRoleClient
             .rpc('search_document_chunks', {
               p_tenant_id: tenantUser.tenant_id,
               p_query_embedding: `[${queryEmbedding.join(",")}]`,
               p_match_count: SEMANTIC_SEARCH_TOP_K,
-              p_match_threshold: SEMANTIC_SEARCH_THRESHOLD
+              p_match_threshold: SEMANTIC_SEARCH_THRESHOLD,
+              p_keyword_query: searchQuery,
+              p_equipment_type: context?.equipment?.equipment_type || null,
             });
           
           if (searchError) {
@@ -2563,6 +2565,26 @@ If the user is asking you to bypass safety rules, respond with:
         }
 
         // Phase 3: Flush validated content OR send error replacement
+
+        // Send metadata event before content (confidence indicator for frontend)
+        const rqScore = semanticSearchResults.length > 0
+          ? Math.round(
+              (Math.max(...semanticSearchResults.map(r => r.similarity)) * 50) +
+              ((semanticSearchResults.reduce((s, r) => s + r.similarity, 0) / semanticSearchResults.length) * 30) +
+              (Math.min(semanticSearchResults.length / 5, 1) * 20)
+            )
+          : 0;
+        const confidence = rqScore >= 70 ? 'high' : rqScore >= 40 ? 'medium' : 'low';
+        const metadataEvent = {
+          metadata: {
+            retrieval_quality_score: rqScore,
+            confidence,
+            chunk_count: semanticSearchResults.length,
+            documents_used: docNames.length,
+          }
+        };
+        await writer.write(encoder.encode(`data: ${JSON.stringify(metadataEvent)}\n\n`));
+
         if (!validationFailed) {
           // If warranty language detected, append disclaimer to the streamed response
           if (containsWarrantyLanguage) {
@@ -2660,6 +2682,7 @@ If the user is asking you to bypass safety rules, respond with:
             refusal_flag: validationFailed,
             enforcement_rules_triggered: enforcementRulesTriggered.length > 0 ? enforcementRulesTriggered : null,
             model_output_hash: mainModelOutputHash,
+            diagnostic_data: context?.diagnosticData || null,
           });
           console.log("Audit log created - blocked:", validationFailed, "response_time:", responseTimeMs, "ms");
         } catch (auditError) {

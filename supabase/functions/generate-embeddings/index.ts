@@ -46,6 +46,26 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+// Classify chunk content type based on line patterns
+function classifyChunkType(text: string): string {
+  const lines = text.split('\n').filter(l => l.trim());
+  if (lines.length === 0) return 'narrative';
+
+  // Table: 30%+ lines contain multiple | delimiters or tab-separated columns
+  const tableLines = lines.filter(l => (l.match(/\|/g) || []).length >= 2 || l.includes('\t'));
+  if (tableLines.length / lines.length >= 0.3) return 'table';
+
+  // Procedure: 40%+ lines start with numbered steps, bullets, or "Step N"
+  const stepLines = lines.filter(l => /^\s*(\d+[\.\):]|\-|\•|Step\s+\d)/i.test(l));
+  if (stepLines.length / lines.length >= 0.4) return 'procedure';
+
+  // Specification: 40%+ lines are key:value pairs
+  const specLines = lines.filter(l => /^[A-Za-z][^:]{2,30}:\s+\S/.test(l));
+  if (specLines.length / lines.length >= 0.4) return 'specification';
+
+  return 'narrative';
+}
+
 // Generate embedding using Lovable AI gateway
 async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
   const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
@@ -135,7 +155,7 @@ serve(async (req) => {
     // Get document with extracted text
     const { data: doc, error: docError } = await supabaseAdmin
       .from("documents")
-      .select("id, tenant_id, name, extracted_text, extraction_status, category")
+      .select("id, tenant_id, name, extracted_text, extraction_status, category, equipment_types")
       .eq("id", documentId)
       .single();
 
@@ -186,6 +206,11 @@ serve(async (req) => {
           batch.map(chunk => generateEmbedding(chunk, LOVABLE_API_KEY))
         );
 
+        // Extract equipment type from parent document (first entry if array)
+        const equipmentType = Array.isArray(doc.equipment_types) && doc.equipment_types.length > 0
+          ? doc.equipment_types[0]
+          : null;
+
         // Prepare chunk records
         const chunkRecords = batch.map((chunkText, batchIndex) => ({
           document_id: doc.id,
@@ -193,7 +218,9 @@ serve(async (req) => {
           chunk_index: i + batchIndex,
           chunk_text: chunkText,
           embedding: `[${embeddings[batchIndex].join(",")}]`, // Format as vector string
-          token_count: estimateTokens(chunkText)
+          token_count: estimateTokens(chunkText),
+          chunk_type: classifyChunkType(chunkText),
+          equipment_type: equipmentType,
         }));
 
         // Insert chunks
