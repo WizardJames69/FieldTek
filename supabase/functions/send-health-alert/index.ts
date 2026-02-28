@@ -1,6 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 serve(async (req) => {
   try {
     const resendKey = Deno.env.get("RESEND_API_KEY");
@@ -11,10 +20,18 @@ serve(async (req) => {
     }
 
     const recipient = Deno.env.get("ALERT_EMAIL_RECIPIENT") || "founder@fieldtek.ai";
-    const { alertType, severity, message, source } = await req.json();
+    const body = await req.json();
+
+    // Validate, truncate, and escape all dynamic inputs
+    const alertType = escapeHtml(String(body.alertType || "unknown").slice(0, 100));
+    const severity = escapeHtml(String(body.severity || "unknown").slice(0, 20));
+    const message = escapeHtml(String(body.message || "No details").slice(0, 1000));
+    const source = escapeHtml(String(body.source || "unknown").slice(0, 100));
+
     const resend = new Resend(resendKey);
-    const emoji = severity === "critical" ? "\u{1F534}" : "\u{1F7E0}";
-    const color = severity === "critical" ? "#ef4444" : "#f97316";
+    // Derived from strict ternary — safe, not user-controlled
+    const emoji = body.severity === "critical" ? "\u{1F534}" : "\u{1F7E0}";
+    const color = body.severity === "critical" ? "#ef4444" : "#f97316";
     const timestamp = new Date().toLocaleString("en-US", {
       timeZone: "America/New_York",
       dateStyle: "medium",
