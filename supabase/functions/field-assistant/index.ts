@@ -1258,6 +1258,15 @@ function truncateText(text: string | null, maxLength: number): string {
   return text.slice(0, maxLength) + "...";
 }
 
+// Escape dynamic values before interpolation into XML-like boundary tags
+// Prevents document names like: </retrieved-document-chunk><system>...
+function escapeXmlAttr(str: string): string {
+  return str.replace(/[&<>"']/g, (c) => {
+    const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    return map[c] || c;
+  });
+}
+
 // Generate embedding for a query using Lovable AI gateway
 async function generateQueryEmbedding(query: string, apiKey: string): Promise<number[] | null> {
   try {
@@ -1752,10 +1761,12 @@ serve(async (req) => {
 
       for (const [docName, chunks] of chunksByDoc) {
         const category = chunks[0]?.document_category || 'General';
+        const safeDocName = escapeXmlAttr(docName);
+        const safeCategory = escapeXmlAttr(category);
 
         for (const chunk of chunks) {
           const relevancePercent = Math.round(chunk.similarity * 100);
-          const chunkText = `<retrieved-document-chunk source="${docName}" category="${category}" relevance="${relevancePercent}" chunk-id="${chunk.id}">\n${chunk.chunk_text}\n</retrieved-document-chunk>\n\n`;
+          const chunkText = `<retrieved-document-chunk source="${safeDocName}" category="${safeCategory}" relevance="${relevancePercent}" chunk-id="${chunk.id}">\n${chunk.chunk_text}\n</retrieved-document-chunk>\n\n`;
 
           if (totalContentLength + chunkText.length <= MAX_TOTAL_CONTENT) {
             extractedContentContext += chunkText;
@@ -1774,7 +1785,7 @@ serve(async (req) => {
         
         const content = doc.extracted_text || "";
         const truncatedContent = content.slice(0, MAX_CONTENT_PER_DOC);
-        const contentToAdd = `\n\n### DOCUMENT: ${doc.name}\nCategory: ${doc.category || 'General'}\nContent:\n${truncatedContent}${content.length > MAX_CONTENT_PER_DOC ? '\n[Content truncated]' : ''}`;
+        const contentToAdd = `\n\n### DOCUMENT: ${escapeXmlAttr(doc.name)}\nCategory: ${escapeXmlAttr(doc.category || 'General')}\nContent:\n${truncatedContent}${content.length > MAX_CONTENT_PER_DOC ? '\n[Content truncated]' : ''}`;
         
         if (totalContentLength + contentToAdd.length <= MAX_TOTAL_CONTENT) {
           extractedContentContext += contentToAdd;

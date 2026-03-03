@@ -274,6 +274,22 @@ serve(async (req) => {
 
     console.log("[extract-document-text] mode:", mode, "type:", normalizedType, "name:", docName, "base64Len:", fileBase64.length);
 
+    // ── Mark extraction as processing (for retry tracking) ──
+    if (mode === "document" && documentId) {
+      try {
+        const supabaseEarly = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        await supabaseEarly
+          .from("documents")
+          .update({ extraction_status: "processing", processing_started_at: new Date().toISOString() })
+          .eq("id", documentId);
+      } catch (earlyErr) {
+        console.warn("[extract-document-text] Could not set processing status:", earlyErr);
+      }
+    }
+
     if (SUPPORTED_IMAGE_TYPES.some((t) => normalizedType.includes(t))) {
       extractedText = await extractTextFromImage(fileBase64, normalizedType, prompt);
     } else if (SUPPORTED_PDF_TYPES.some((t) => normalizedType.includes(t))) {

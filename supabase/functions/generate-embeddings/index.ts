@@ -177,10 +177,10 @@ serve(async (req) => {
 
     console.log("Processing embeddings for document:", doc.id, doc.name);
 
-    // Update embedding status to processing
+    // Update embedding status to processing with timestamp for retry tracking
     await supabaseAdmin
       .from("documents")
-      .update({ embedding_status: "processing" })
+      .update({ embedding_status: "processing", processing_started_at: new Date().toISOString() })
       .eq("id", documentId);
 
     try {
