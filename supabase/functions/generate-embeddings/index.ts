@@ -132,7 +132,8 @@ serve(async (req) => {
     } else {
       console.log("[generate-embeddings] Service role access");
     }
-    const { documentId } = await req.json();
+    const { documentId, correlationId: incomingCorrelationId } = await req.json();
+    const correlationId = incomingCorrelationId || crypto.randomUUID();
 
     if (!documentId) {
       return new Response(
@@ -175,7 +176,7 @@ serve(async (req) => {
       );
     }
 
-    console.log("Processing embeddings for document:", doc.id, doc.name);
+    console.log(`[generate-embeddings] [correlation_id=${correlationId}] Processing document:`, doc.id, doc.name);
 
     // Update embedding status to processing with timestamp for retry tracking
     await supabaseAdmin
@@ -211,7 +212,7 @@ serve(async (req) => {
           ? doc.equipment_types[0]
           : null;
 
-        // Prepare chunk records
+        // Prepare chunk records with full metadata for tracing + model versioning
         const chunkRecords = batch.map((chunkText, batchIndex) => ({
           document_id: doc.id,
           tenant_id: doc.tenant_id,
@@ -221,6 +222,9 @@ serve(async (req) => {
           token_count: estimateTokens(chunkText),
           chunk_type: classifyChunkType(chunkText),
           equipment_type: equipmentType,
+          correlation_id: correlationId,
+          embedding_model: EMBEDDING_MODEL,
+          embedding_dimensions: EMBEDDING_DIMENSION,
         }));
 
         // Insert chunks
@@ -248,7 +252,7 @@ serve(async (req) => {
         .update({ embedding_status: "completed" })
         .eq("id", documentId);
 
-      console.log("Embedding generation completed:", doc.id, "Chunks created:", insertedChunkCount);
+      console.log(`[generate-embeddings] [correlation_id=${correlationId}] Completed:`, doc.id, "Chunks:", insertedChunkCount);
 
       return new Response(
         JSON.stringify({

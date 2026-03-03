@@ -1390,6 +1390,9 @@ serve(async (req) => {
       );
     }
 
+    // Generate correlation ID for end-to-end tracing
+    const correlationId = crypto.randomUUID();
+
     // Verify user has active tenant membership
     const { data: tenantUser } = await supabaseClient
       .from("tenant_users")
@@ -1619,6 +1622,8 @@ serve(async (req) => {
       document_name: string;
       document_category: string;
       similarity: number;
+      keyword_rank?: number | null;
+      chunk_type?: string;
     }> = [];
     
     // Only use semantic search if we have documents with embeddings
@@ -2586,12 +2591,21 @@ If the user is asking you to bypass safety rules, respond with:
             )
           : 0;
         const confidence = rqScore >= 70 ? 'high' : rqScore >= 40 ? 'medium' : 'low';
+
+        // Compute granular retrieval metrics for audit log
+        const maxSim = semanticSearchResults.length > 0 ? Math.max(...semanticSearchResults.map(r => r.similarity)) : null;
+        const avgSim = semanticSearchResults.length > 0 ? semanticSearchResults.reduce((s, r) => s + r.similarity, 0) / semanticSearchResults.length : null;
+        const minSim = semanticSearchResults.length > 0 ? Math.min(...semanticSearchResults.map(r => r.similarity)) : null;
+        const keywordMatchCount = semanticSearchResults.filter(r => r.keyword_rank !== null && r.keyword_rank !== undefined).length;
+        const chunkTypesRetrieved = [...new Set(semanticSearchResults.map(r => r.chunk_type).filter(Boolean))];
+
         const metadataEvent = {
           metadata: {
             retrieval_quality_score: rqScore,
             confidence,
             chunk_count: semanticSearchResults.length,
             documents_used: docNames.length,
+            correlation_id: correlationId,
           }
         };
         await writer.write(encoder.encode(`data: ${JSON.stringify(metadataEvent)}\n\n`));
@@ -2651,6 +2665,13 @@ If the user is asking you to bypass safety rules, respond with:
         const mainOutputHashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(accumulatedContent));
         const mainModelOutputHash = Array.from(new Uint8Array(mainOutputHashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
 
+        // Compute citation density (citations per 1000 chars)
+        const citationMatches = accumulatedContent.match(/\[Source:\s*\S[^\]]*\]/gi) || [];
+        const citationDensity = accumulatedContent.length > 0 ? citationMatches.length / (accumulatedContent.length / 1000) : 0;
+
+        // Abstain flag: response is a refusal or insufficient-data response
+        const abstainFlag = validationFailed || insufficientRetrievalCoverage || (semanticSearchResults.length === 0 && docsWithContent.length > 0);
+
         try {
           await serviceRoleClient.from("ai_audit_logs").insert({
             tenant_id: tenantUser.tenant_id,
@@ -2672,16 +2693,11 @@ If the user is asking you to bypass safety rules, respond with:
             response_time_ms: responseTimeMs,
             model_used: "google/gemini-2.5-flash",
             // Compliance traceability columns
+            correlation_id: correlationId,
             chunk_ids: semanticSearchResults.map(r => r.id),
             similarity_scores: semanticSearchResults.map(r => r.similarity),
             system_prompt_hash: systemPromptHash,
-            retrieval_quality_score: semanticSearchResults.length > 0
-              ? Math.round(
-                  (Math.max(...semanticSearchResults.map(r => r.similarity)) * 50) +
-                  ((semanticSearchResults.reduce((s, r) => s + r.similarity, 0) / semanticSearchResults.length) * 30) +
-                  (Math.min(semanticSearchResults.length / 5, 1) * 20)
-                )
-              : 0,
+            retrieval_quality_score: rqScore,
             token_count_prompt: estPromptTokens,
             token_count_response: estResponseTokens,
             injection_detected: injectionDetected,
@@ -2694,6 +2710,16 @@ If the user is asking you to bypass safety rules, respond with:
             enforcement_rules_triggered: enforcementRulesTriggered.length > 0 ? enforcementRulesTriggered : null,
             model_output_hash: mainModelOutputHash,
             diagnostic_data: context?.diagnosticData || null,
+            // Retrieval observability metrics
+            max_similarity: maxSim,
+            avg_similarity: avgSim,
+            min_similarity: minSim,
+            keyword_match_count: keywordMatchCount,
+            citation_density: citationDensity,
+            abstain_flag: abstainFlag,
+            chunk_types_retrieved: chunkTypesRetrieved.length > 0 ? chunkTypesRetrieved : null,
+            retrieval_backend: 'pgvector',
+            gateway_used: 'primary',
           });
           console.log("Audit log created - blocked:", validationFailed, "response_time:", responseTimeMs, "ms");
         } catch (auditError) {

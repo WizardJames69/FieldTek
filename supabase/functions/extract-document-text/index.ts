@@ -266,13 +266,16 @@ serve(async (req) => {
       );
     }
 
+    // ── Generate correlation ID for end-to-end tracing ──────
+    const correlationId = crypto.randomUUID();
+
     // ── Route by file type ──────────────────────────────────
     const normalizedType = mimeType.toLowerCase();
     const prompt = mode === "receipt" ? RECEIPT_PROMPT : DOCUMENT_PROMPT;
     const docName = fileName || "document";
     let extractedText: string;
 
-    console.log("[extract-document-text] mode:", mode, "type:", normalizedType, "name:", docName, "base64Len:", fileBase64.length);
+    console.log(`[extract-document-text] [correlation_id=${correlationId}] mode:`, mode, "type:", normalizedType, "name:", docName, "base64Len:", fileBase64.length);
 
     // ── Mark extraction as processing (for retry tracking) ──
     if (mode === "document" && documentId) {
@@ -283,7 +286,11 @@ serve(async (req) => {
         );
         await supabaseEarly
           .from("documents")
-          .update({ extraction_status: "processing", processing_started_at: new Date().toISOString() })
+          .update({
+            extraction_status: "processing",
+            processing_started_at: new Date().toISOString(),
+            correlation_id: correlationId,
+          })
           .eq("id", documentId);
       } catch (earlyErr) {
         console.warn("[extract-document-text] Could not set processing status:", earlyErr);
@@ -339,15 +346,15 @@ serve(async (req) => {
 
         console.log("[extract-document-text] Saved to DB for document:", documentId);
 
-        // Fire-and-forget: trigger embedding generation
+        // Fire-and-forget: trigger embedding generation (pass correlationId for tracing)
         supabaseAdmin.functions
-          .invoke("generate-embeddings", { body: { documentId } })
+          .invoke("generate-embeddings", { body: { documentId, correlationId } })
           .then(({ error: invokeErr }) => {
-            if (invokeErr) console.error("[extract-document-text] Embeddings trigger failed:", invokeErr);
-            else console.log("[extract-document-text] Embeddings triggered for:", documentId);
+            if (invokeErr) console.error(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger failed:`, invokeErr);
+            else console.log(`[extract-document-text] [correlation_id=${correlationId}] Embeddings triggered for:`, documentId);
           })
           .catch((err: unknown) => {
-            console.error("[extract-document-text] Embeddings trigger error:", err);
+            console.error(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger error:`, err);
           });
       } catch (dbErr) {
         // Don't fail the response — text was extracted successfully
