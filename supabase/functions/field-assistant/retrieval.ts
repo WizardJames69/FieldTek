@@ -17,6 +17,7 @@ import type {
   RetrievalResponse,
   RetrievalResult,
 } from "./types.ts";
+import { rerankChunks } from "./rerank.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -64,12 +65,33 @@ export class PgVectorAdapter implements RetrievalAdapter {
       })
     );
 
+    // Cross-encoder re-ranking (if enabled and results warrant it)
+    if (query.options.enableReranking && results.length > 2) {
+      const reranked = await rerankChunks(
+        query.keywordQuery || "",
+        results,
+        query.options.rerankTopN,
+        query.correlationId,
+      );
+
+      return {
+        results: reranked.results,
+        backend: "pgvector",
+        latencyMs: Date.now() - start,
+        rerankModel: reranked.rerankModel,
+        rerankLatencyMs: reranked.rerankLatencyMs,
+        rerankScores: reranked.rerankScores,
+        correlationId: query.correlationId,
+      };
+    }
+
     return {
       results,
       backend: "pgvector",
       latencyMs: Date.now() - start,
       rerankModel: null,
       rerankLatencyMs: null,
+      rerankScores: null,
       correlationId: query.correlationId,
     };
   }
@@ -135,6 +157,7 @@ export class ExternalRetrievalAdapter implements RetrievalAdapter {
       latencyMs: Date.now() - start,
       rerankModel: data.rerank_model || null,
       rerankLatencyMs: data.rerank_latency_ms || null,
+      rerankScores: data.rerank_scores || null,
       correlationId: query.correlationId,
     };
   }

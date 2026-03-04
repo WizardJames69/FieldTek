@@ -1475,6 +1475,32 @@ serve(async (req) => {
       console.warn("[judge] Failed to check feature flag, defaulting to disabled:", flagErr);
     }
 
+    // --- Re-ranking Feature Flag ---
+    let rerankingEnabled = false;
+    try {
+      const { data: rerankFlag } = await serviceRoleClient
+        .from("feature_flags")
+        .select("is_enabled, rollout_percentage, allowed_tenant_ids, blocked_tenant_ids")
+        .eq("key", "rag_reranking")
+        .maybeSingle();
+
+      if (rerankFlag?.is_enabled) {
+        const tid = tenantUser.tenant_id;
+        if (rerankFlag.blocked_tenant_ids?.includes(tid)) {
+          rerankingEnabled = false;
+        } else if (rerankFlag.allowed_tenant_ids?.length > 0 && rerankFlag.allowed_tenant_ids.includes(tid)) {
+          rerankingEnabled = true;
+        } else if (rerankFlag.rollout_percentage >= 100) {
+          rerankingEnabled = true;
+        } else if (rerankFlag.rollout_percentage > 0) {
+          const hash = parseInt(tid.replace(/-/g, "").slice(0, 8), 16);
+          rerankingEnabled = (hash % 100) < rerankFlag.rollout_percentage;
+        }
+      }
+    } catch (flagErr) {
+      console.warn("[rerank] Failed to check feature flag, defaulting to disabled:", flagErr);
+    }
+
     // --- Per-Tenant AI Rate Limiting ---
     const TIER_DAILY_LIMITS: Record<string, number> = {
       trial: 10,
@@ -1729,6 +1755,9 @@ serve(async (req) => {
     
     // Only use semantic search if we have documents with embeddings
     let retrievalBackend = "pgvector";
+    let rerankModel: string | null = null;
+    let rerankLatencyMs: number | null = null;
+    let rerankScores: number[] | null = null;
     if (SEMANTIC_SEARCH_ENABLED && docsWithEmbeddings.length > 0) {
       // Extract query from user messages
       const searchQuery = extractQueryForSearch(messages);
@@ -1759,7 +1788,7 @@ serve(async (req) => {
               options: {
                 matchCount: SEMANTIC_SEARCH_TOP_K,
                 matchThreshold: policySimThreshold,
-                enableReranking: false,
+                enableReranking: rerankingEnabled,
                 rerankTopN: 8,
               },
               correlationId,
@@ -1767,6 +1796,9 @@ serve(async (req) => {
 
             const retrievalResponse = await retrievalAdapter.retrieve(retrievalQuery);
             retrievalBackend = retrievalResponse.backend;
+            rerankModel = retrievalResponse.rerankModel;
+            rerankLatencyMs = retrievalResponse.rerankLatencyMs;
+            rerankScores = retrievalResponse.rerankScores;
 
             if (retrievalResponse.results.length > 0) {
               semanticSearchResults = retrievalResponse.results.map(r => ({
@@ -2857,6 +2889,10 @@ If the user is asking you to bypass safety rules, respond with:
             chunk_types_retrieved: chunkTypesRetrieved.length > 0 ? chunkTypesRetrieved : null,
             retrieval_backend: retrievalBackend,
             gateway_used: chatGatewayUsed,
+            // Phase 5: Re-ranking metrics
+            rerank_scores: rerankScores,
+            rerank_model: rerankModel,
+            rerank_latency_ms: rerankLatencyMs,
           }).select("id").single();
           auditLogId = auditRow?.id || null;
           console.log("Audit log created - blocked:", validationFailed, "response_time:", responseTimeMs, "ms");

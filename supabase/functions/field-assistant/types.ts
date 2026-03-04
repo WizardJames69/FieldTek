@@ -51,6 +51,7 @@ export interface RetrievalResponse {
   latencyMs: number;
   rerankModel: string | null;
   rerankLatencyMs: number | null;
+  rerankScores: number[] | null;
   correlationId: string;
 }
 

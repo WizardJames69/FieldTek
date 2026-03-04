@@ -8,38 +8,226 @@ const corsHeaders = {
 };
 
 // Configuration
-const CHUNK_SIZE = 1500; // Characters per chunk (roughly 375 tokens)
-const CHUNK_OVERLAP = 200; // Overlap between chunks for context continuity
+const MAX_CHUNK_SIZE = 3000; // Max chars for structured chunks (tables, procedures)
+const DEFAULT_CHUNK_SIZE = 1500; // Default chars for narrative chunks (~375 tokens)
+const CHUNK_OVERLAP = 200; // Overlap between narrative chunks for context continuity
 const EMBEDDING_MODEL = "text-embedding-3-small"; // OpenAI embedding model
 const EMBEDDING_DIMENSION = 1536;
 
-// Text chunking function with overlap
-function chunkText(text: string, chunkSize: number, overlap: number): string[] {
+// ── Structured Chunk Interface ──────────────────────────────
+
+interface StructuredChunk {
+  text: string;
+  type: 'narrative' | 'table' | 'procedure' | 'specification';
+}
+
+// ── Content-Aware Chunking ──────────────────────────────────
+// Splits text into sections by structure, then chunks each section
+// according to its type. Tables and procedures are kept as complete
+// units (up to MAX_CHUNK_SIZE); narratives use sliding window.
+
+function chunkTextStructured(text: string): StructuredChunk[] {
+  const chunks: StructuredChunk[] = [];
+  const sections = splitIntoSections(text);
+
+  for (const section of sections) {
+    const type = classifyChunkType(section);
+
+    if (type === 'table' || type === 'procedure' || type === 'specification') {
+      // Structured content: keep as one chunk if it fits, otherwise split carefully
+      if (section.length <= MAX_CHUNK_SIZE) {
+        chunks.push({ text: section.trim(), type });
+      } else {
+        // Split structured content at logical boundaries
+        const subChunks = splitStructuredContent(section, type);
+        for (const sub of subChunks) {
+          chunks.push({ text: sub.trim(), type });
+        }
+      }
+    } else {
+      // Narrative content: use sliding window with overlap
+      const narrativeChunks = chunkTextSliding(section, DEFAULT_CHUNK_SIZE, CHUNK_OVERLAP);
+      for (const nc of narrativeChunks) {
+        chunks.push({ text: nc.trim(), type: 'narrative' });
+      }
+    }
+  }
+
+  return chunks.filter(c => c.text.length > 50);
+}
+
+// Split text into logical sections by blank lines, headings, or structure changes
+function splitIntoSections(text: string): string[] {
+  const lines = text.split('\n');
+  const sections: string[] = [];
+  let currentSection: string[] = [];
+  let currentType: string | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineType = getLineType(line);
+
+    // Detect section boundaries: blank lines, heading changes, type transitions
+    const isBlankLine = line.trim() === '';
+    const isHeading = /^#{1,6}\s/.test(line) || /^[A-Z][A-Z\s]{3,}:?\s*$/.test(line.trim());
+    const typeChanged = currentType !== null && lineType !== 'neutral' && lineType !== currentType;
+
+    if ((isBlankLine && currentSection.length > 0) || isHeading || typeChanged) {
+      // If the current section is substantial, flush it
+      if (currentSection.length > 0) {
+        const sectionText = currentSection.join('\n');
+        if (sectionText.trim().length > 0) {
+          sections.push(sectionText);
+        }
+        currentSection = [];
+        currentType = null;
+      }
+    }
+
+    if (!isBlankLine || currentSection.length > 0) {
+      currentSection.push(line);
+      if (lineType !== 'neutral') {
+        currentType = lineType;
+      }
+    }
+  }
+
+  // Flush remaining
+  if (currentSection.length > 0) {
+    const sectionText = currentSection.join('\n');
+    if (sectionText.trim().length > 0) {
+      sections.push(sectionText);
+    }
+  }
+
+  // Merge very small sections (< 100 chars) with neighbors
+  return mergeTinySections(sections, 100);
+}
+
+function getLineType(line: string): 'table' | 'procedure' | 'specification' | 'neutral' {
+  const trimmed = line.trim();
+  if (!trimmed) return 'neutral';
+
+  // Table line: has multiple | delimiters or tab-separated values
+  if ((trimmed.match(/\|/g) || []).length >= 2) return 'table';
+
+  // Procedure line: numbered step, bullet, or "Step N"
+  if (/^\s*(\d+[\.\):]|\-|\•|Step\s+\d)/i.test(trimmed)) return 'procedure';
+
+  // Specification line: key:value pair
+  if (/^[A-Za-z][^:]{2,30}:\s+\S/.test(trimmed)) return 'specification';
+
+  return 'neutral';
+}
+
+function mergeTinySections(sections: string[], minLength: number): string[] {
+  if (sections.length <= 1) return sections;
+
+  const merged: string[] = [];
+  let buffer = '';
+
+  for (const section of sections) {
+    if (buffer.length > 0) {
+      if (section.length < minLength) {
+        buffer += '\n' + section;
+      } else if (buffer.length < minLength) {
+        buffer += '\n' + section;
+        merged.push(buffer);
+        buffer = '';
+      } else {
+        merged.push(buffer);
+        buffer = section;
+      }
+    } else if (section.length < minLength) {
+      buffer = section;
+    } else {
+      merged.push(section);
+    }
+  }
+
+  if (buffer.length > 0) {
+    if (merged.length > 0 && buffer.length < minLength) {
+      merged[merged.length - 1] += '\n' + buffer;
+    } else {
+      merged.push(buffer);
+    }
+  }
+
+  return merged;
+}
+
+// Split large structured content at logical boundaries
+function splitStructuredContent(text: string, type: string): string[] {
+  const lines = text.split('\n');
+  const chunks: string[] = [];
+  let current: string[] = [];
+  let currentLen = 0;
+
+  for (const line of lines) {
+    const lineLen = line.length + 1; // +1 for newline
+
+    if (currentLen + lineLen > MAX_CHUNK_SIZE && current.length > 0) {
+      // For tables: try to keep header row with data
+      if (type === 'table' && current.length > 0) {
+        // Check if first line looks like a header
+        const firstLine = current[0];
+        chunks.push(current.join('\n'));
+        current = [];
+        currentLen = 0;
+        // Re-add header for context in next chunk
+        if ((firstLine.match(/\|/g) || []).length >= 2) {
+          current.push(firstLine);
+          // Also include separator line if it exists
+          if (lines.length > 1 && /^[\|\s\-:]+$/.test(lines[1])) {
+            current.push(lines[1]);
+          }
+          currentLen = current.join('\n').length;
+        }
+      } else {
+        chunks.push(current.join('\n'));
+        current = [];
+        currentLen = 0;
+      }
+    }
+
+    current.push(line);
+    currentLen += lineLen;
+  }
+
+  if (current.length > 0) {
+    chunks.push(current.join('\n'));
+  }
+
+  return chunks;
+}
+
+// Sliding window chunker for narrative text (original algorithm)
+function chunkTextSliding(text: string, chunkSize: number, overlap: number): string[] {
   const chunks: string[] = [];
   let start = 0;
-  
+
   while (start < text.length) {
     const end = Math.min(start + chunkSize, text.length);
     let chunk = text.slice(start, end);
-    
+
     // Try to break at sentence or paragraph boundaries
     if (end < text.length) {
       const lastPeriod = chunk.lastIndexOf('.');
       const lastNewline = chunk.lastIndexOf('\n');
       const breakPoint = Math.max(lastPeriod, lastNewline);
-      
+
       if (breakPoint > chunkSize * 0.5) {
         chunk = chunk.slice(0, breakPoint + 1);
       }
     }
-    
+
     chunks.push(chunk.trim());
     start = start + chunk.length - overlap;
-    
+
     if (start >= text.length) break;
   }
-  
-  return chunks.filter(c => c.length > 50); // Filter out very small chunks
+
+  return chunks.filter(c => c.length > 50);
 }
 
 // Estimate token count (rough approximation: 4 chars per token)
@@ -215,20 +403,20 @@ serve(async (req) => {
         .delete()
         .eq("document_id", documentId);
 
-      // Chunk the document text
-      const chunks = chunkText(doc.extracted_text, CHUNK_SIZE, CHUNK_OVERLAP);
-      console.log(`Document split into ${chunks.length} chunks`);
+      // Chunk the document text using structure-aware chunking
+      const structuredChunks = chunkTextStructured(doc.extracted_text);
+      console.log(`[generate-embeddings] [correlation_id=${correlationId}] Document split into ${structuredChunks.length} structured chunks`);
 
       // Process chunks in batches to avoid rate limits
       const BATCH_SIZE = 5;
       let insertedChunkCount = 0;
 
-      for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
-        const batch = chunks.slice(i, i + BATCH_SIZE);
-        
+      for (let i = 0; i < structuredChunks.length; i += BATCH_SIZE) {
+        const batch = structuredChunks.slice(i, i + BATCH_SIZE);
+
         // Generate embeddings for this batch
         const embeddings = await Promise.all(
-          batch.map(chunk => generateEmbedding(chunk, LOVABLE_API_KEY, correlationId))
+          batch.map(chunk => generateEmbedding(chunk.text, LOVABLE_API_KEY, correlationId))
         );
 
         // Extract equipment type from parent document (first entry if array)
@@ -237,14 +425,14 @@ serve(async (req) => {
           : null;
 
         // Prepare chunk records with full metadata for tracing + model versioning
-        const chunkRecords = batch.map((chunkText, batchIndex) => ({
+        const chunkRecords = batch.map((chunk, batchIndex) => ({
           document_id: doc.id,
           tenant_id: doc.tenant_id,
           chunk_index: i + batchIndex,
-          chunk_text: chunkText,
+          chunk_text: chunk.text,
           embedding: `[${embeddings[batchIndex].join(",")}]`, // Format as vector string
-          token_count: estimateTokens(chunkText),
-          chunk_type: classifyChunkType(chunkText),
+          token_count: estimateTokens(chunk.text),
+          chunk_type: chunk.type, // Pre-classified by structure-aware chunker
           equipment_type: equipmentType,
           brand: equipmentBrand,
           model: equipmentModel,
@@ -265,10 +453,10 @@ serve(async (req) => {
 
         insertedChunkCount += chunkRecords.length;
 
-        console.log(`Processed chunks ${i + 1} to ${Math.min(i + BATCH_SIZE, chunks.length)} of ${chunks.length}`);
-        
+        console.log(`Processed chunks ${i + 1} to ${Math.min(i + BATCH_SIZE, structuredChunks.length)} of ${structuredChunks.length}`);
+
         // Small delay between batches to avoid rate limits
-        if (i + BATCH_SIZE < chunks.length) {
+        if (i + BATCH_SIZE < structuredChunks.length) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
@@ -286,7 +474,7 @@ serve(async (req) => {
           success: true,
           documentId: doc.id,
           chunksCreated: insertedChunkCount,
-          totalTokens: chunks.reduce((sum, c) => sum + estimateTokens(c), 0)
+          totalTokens: structuredChunks.reduce((sum, c) => sum + estimateTokens(c.text), 0)
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
