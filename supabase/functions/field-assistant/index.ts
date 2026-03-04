@@ -4,6 +4,7 @@ import { createRetrievalAdapter } from "./retrieval.ts";
 import type { RetrievalQuery } from "./types.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
+import { evaluateWithJudge } from "./judge.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1445,6 +1446,35 @@ serve(async (req) => {
 
     console.log(`[tenant_ai_policies] tenant=${tenantUser.tenant_id} threshold=${policySimThreshold} blocked_topics=${policyBlockedTopics.length}`);
 
+    // --- Judge Model Feature Flag ---
+    let judgeEnabled = false;
+    try {
+      const { data: judgeFlag } = await serviceRoleClient
+        .from("feature_flags")
+        .select("is_enabled, rollout_percentage, allowed_tenant_ids, blocked_tenant_ids")
+        .eq("key", "rag_judge")
+        .maybeSingle();
+
+      if (judgeFlag?.is_enabled) {
+        const tid = tenantUser.tenant_id;
+        // Blocked tenants never get the judge
+        if (judgeFlag.blocked_tenant_ids?.includes(tid)) {
+          judgeEnabled = false;
+        // Explicitly allowed tenants always get it
+        } else if (judgeFlag.allowed_tenant_ids?.length > 0 && judgeFlag.allowed_tenant_ids.includes(tid)) {
+          judgeEnabled = true;
+        // Percentage-based rollout via consistent hash
+        } else if (judgeFlag.rollout_percentage >= 100) {
+          judgeEnabled = true;
+        } else if (judgeFlag.rollout_percentage > 0) {
+          const hash = parseInt(tid.replace(/-/g, "").slice(0, 8), 16);
+          judgeEnabled = (hash % 100) < judgeFlag.rollout_percentage;
+        }
+      }
+    } catch (flagErr) {
+      console.warn("[judge] Failed to check feature flag, defaulting to disabled:", flagErr);
+    }
+
     // --- Per-Tenant AI Rate Limiting ---
     const TIER_DAILY_LIMITS: Record<string, number> = {
       trial: 10,
@@ -2778,8 +2808,9 @@ If the user is asking you to bypass safety rules, respond with:
         // Abstain flag: response is a refusal or insufficient-data response
         const abstainFlag = validationFailed || insufficientRetrievalCoverage || (semanticSearchResults.length === 0 && docsWithContent.length > 0);
 
+        let auditLogId: string | null = null;
         try {
-          await serviceRoleClient.from("ai_audit_logs").insert({
+          const { data: auditRow } = await serviceRoleClient.from("ai_audit_logs").insert({
             tenant_id: tenantUser.tenant_id,
             user_id: user.id,
             user_message: userMessageText.slice(0, 10000),
@@ -2826,10 +2857,24 @@ If the user is asking you to bypass safety rules, respond with:
             chunk_types_retrieved: chunkTypesRetrieved.length > 0 ? chunkTypesRetrieved : null,
             retrieval_backend: retrievalBackend,
             gateway_used: chatGatewayUsed,
-          });
+          }).select("id").single();
+          auditLogId = auditRow?.id || null;
           console.log("Audit log created - blocked:", validationFailed, "response_time:", responseTimeMs, "ms");
         } catch (auditError) {
           console.error("Failed to create audit log:", auditError);
+        }
+
+        // Phase 4: Async Judge Model evaluation (non-blocking)
+        if (judgeEnabled && auditLogId && accumulatedContent.length > 0 && !validationFailed) {
+          evaluateWithJudge(
+            serviceRoleClient,
+            auditLogId,
+            userMessageText,
+            semanticSearchResults.map(r => r.chunk_text),
+            accumulatedContent,
+            correlationId,
+            LOVABLE_API_KEY,
+          ).catch(err => console.warn(`[judge] [correlation_id=${correlationId}] Unexpected error:`, err));
         }
 
         // Phase 5: Conversation tracking — persist to conversations/messages tables
