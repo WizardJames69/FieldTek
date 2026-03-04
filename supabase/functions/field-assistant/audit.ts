@@ -48,6 +48,10 @@ export interface AuditLogData {
   rerankModel: string | null;
   rerankLatencyMs: number | null;
   insufficientRetrievalCoverage: boolean;
+  workflowStage?: string;
+  complianceRulesEvaluated?: string[];
+  complianceVerdictIds?: string[];
+  workflowContextInjected?: boolean;
 }
 
 // ── Write Audit Log ─────────────────────────────────────────
@@ -123,6 +127,10 @@ export async function writeAuditLog(
       rerank_scores: data.rerankScores,
       rerank_model: data.rerankModel,
       rerank_latency_ms: data.rerankLatencyMs,
+      workflow_stage: data.workflowStage || null,
+      compliance_rules_evaluated: data.complianceRulesEvaluated?.length ? data.complianceRulesEvaluated : null,
+      compliance_verdict_ids: data.complianceVerdictIds?.length ? data.complianceVerdictIds : null,
+      workflow_context_injected: data.workflowContextInjected || false,
     }).select("id").single();
 
     const auditLogId = auditRow?.id || null;

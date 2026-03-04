@@ -144,3 +144,21 @@ export interface SymptomOccurrence {
   count: number;
   occurrences: { date: string; jobTitle: string; excerpt: string }[];
 }
+
+// ── Compliance Engine Types ─────────────────────────────────
+
+export interface ComplianceVerdictSummary {
+  ruleName: string;
+  ruleKey: string;
+  verdict: "pass" | "fail" | "warn" | "block";
+  severity: "info" | "warning" | "blocking" | "critical";
+  explanation: string;
+  codeReferences: string[];
+}
+
+export interface WorkflowComplianceContext {
+  currentStage: string;
+  completedStages: string[];
+  verdicts: ComplianceVerdictSummary[];
+  blockingIssues: string[];
+}

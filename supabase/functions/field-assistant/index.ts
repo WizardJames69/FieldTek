@@ -57,6 +57,9 @@ import { createRetrievalAdapter } from "./retrieval.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
 import { evaluateWithJudge } from "./judge.ts";
+import { fetchWorkflowState } from "./workflow.ts";
+import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
+import type { ComplianceContext, ComplianceVerdict } from "./compliance.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -157,10 +160,12 @@ serve(async (req) => {
     console.log(`[tenant_ai_policies] tenant=${tenantUser.tenant_id} threshold=${policySimThreshold} blocked_topics=${policyBlockedTopics.length}`);
 
     // ── 3. Feature Flags (parallel) ──────────────────────────
-    const [judgeEnabled, rerankingEnabled] = await Promise.all([
+    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled] = await Promise.all([
       evaluateFeatureFlag(serviceRoleClient, "rag_judge", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "rag_reranking", tenantUser.tenant_id),
+      evaluateFeatureFlag(serviceRoleClient, "compliance_engine", tenantUser.tenant_id),
     ]);
+    const complianceActive = complianceEngineEnabled && aiPolicy?.compliance_engine_enabled === true;
 
     // ── 4. Rate Limiting ─────────────────────────────────────
     let subscriptionTier = "trial";
@@ -303,6 +308,91 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         error: "Your message was blocked by our security system. Please rephrase your question about the equipment or documentation.",
       }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── 7b. Deterministic Compliance Engine (runs BEFORE AI) ─
+    let complianceVerdicts: ComplianceVerdict[] = [];
+    let complianceBlockingVerdicts: ComplianceVerdict[] = [];
+
+    if (complianceActive && context?.job?.id) {
+      try {
+        // 1. Fetch workflow state
+        const workflowState = await fetchWorkflowState(serviceRoleClient, context.job.id);
+
+        // 2. Fetch checklist completions for this job
+        const { data: jobCompletions } = await serviceRoleClient
+          .from("job_checklist_completions")
+          .select("id, job_id, stage_name, checklist_item, completed, notes, completed_at, measurement_value, measurement_unit")
+          .eq("job_id", context.job.id);
+
+        // 3. Build compliance context
+        const complianceCtx: ComplianceContext = {
+          jobId: context.job.id,
+          tenantId: tenantUser.tenant_id,
+          industry: context.industry || "general",
+          currentStage: context.job.current_stage || "Service",
+          jobType: context.job.job_type || null,
+          equipmentType: context.equipment?.equipment_type || null,
+          completions: jobCompletions || [],
+          workflowState,
+        };
+
+        // 4. Evaluate deterministic rules (no AI involved)
+        complianceVerdicts = await evaluateCompliance(serviceRoleClient, complianceCtx);
+
+        // 5. Persist verdicts
+        if (complianceVerdicts.length > 0) {
+          await persistVerdicts(
+            serviceRoleClient,
+            tenantUser.tenant_id,
+            context.job.id,
+            complianceCtx.currentStage,
+            complianceVerdicts,
+          );
+        }
+
+        // 6. Check for blocking verdicts (critical/blocking severity that failed)
+        complianceBlockingVerdicts = complianceVerdicts.filter(
+          (v) => (v.verdict === "block") ||
+            (v.verdict === "fail" && (v.severity === "critical" || v.severity === "blocking")),
+        );
+
+        if (complianceBlockingVerdicts.length > 0 && aiPolicy?.auto_block_on_critical !== false) {
+          // Update job compliance status
+          await serviceRoleClient
+            .from("scheduled_jobs")
+            .update({ compliance_status: "blocked" })
+            .eq("id", context.job.id);
+
+          // Short-circuit: return structured compliance error (NO LLM call)
+          console.warn(`[compliance] Blocked job ${context.job.id}: ${complianceBlockingVerdicts.length} blocking verdicts`);
+          return new Response(JSON.stringify({
+            compliance_blocked: true,
+            verdicts: complianceBlockingVerdicts.map((v) => ({
+              rule: v.ruleName,
+              rule_key: v.ruleKey,
+              verdict: v.verdict,
+              severity: v.severity,
+              explanation: v.explanation,
+              code_references: v.codeReferences,
+            })),
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // Non-blocking: update compliance status
+        const hasFailures = complianceVerdicts.some((v) => v.verdict === "fail");
+        const hasWarnings = complianceVerdicts.some((v) => v.verdict === "warn");
+        await serviceRoleClient
+          .from("scheduled_jobs")
+          .update({
+            compliance_status: hasFailures ? "violations" : hasWarnings ? "warnings" : "compliant",
+          })
+          .eq("id", context.job.id);
+
+      } catch (complianceErr) {
+        // Compliance engine failure should not block the AI pipeline
+        console.error("[compliance] Engine error (non-fatal):", complianceErr);
+      }
     }
 
     // ── 8. Document Retrieval ────────────────────────────────
@@ -684,10 +774,29 @@ serve(async (req) => {
     }
 
     // ── 13. Build System Prompt ───────────────────────────────
+    // Build compliance context for prompt injection (read-only)
+    const promptComplianceContext = (complianceActive && complianceVerdicts.length > 0 && context?.job)
+      ? {
+          currentStage: context.job.current_stage || "Service",
+          completedStages: [] as string[], // populated from workflow_state if available
+          verdicts: complianceVerdicts.map((v) => ({
+            ruleName: v.ruleName,
+            verdict: v.verdict,
+            severity: v.severity,
+            explanation: v.explanation,
+            codeReferences: v.codeReferences,
+          })),
+          blockingIssues: complianceVerdicts
+            .filter((v) => v.verdict === "fail" || v.verdict === "warn")
+            .map((v) => `${v.ruleName}: ${v.explanation}`),
+        }
+      : null;
+
     const { systemPrompt, codeComplianceActive } = buildSystemPrompt({
       context, messages, documentContext, extractedContentContext,
       semanticSearchResults, insufficientRetrievalCoverage, injectionDetected,
       policyDisclaimer, serviceHistoryContext, docsWithContent,
+      complianceContext: promptComplianceContext,
     });
 
     const promptHashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(systemPrompt));
@@ -956,6 +1065,11 @@ serve(async (req) => {
           rerankModel,
           rerankLatencyMs,
           insufficientRetrievalCoverage,
+          workflowStage: context?.job?.current_stage || undefined,
+          complianceRulesEvaluated: complianceVerdicts.length > 0
+            ? complianceVerdicts.map((v) => v.ruleKey)
+            : undefined,
+          workflowContextInjected: promptComplianceContext !== null,
         } satisfies AuditLogData);
 
         // Phase 4b: Async Judge Model evaluation

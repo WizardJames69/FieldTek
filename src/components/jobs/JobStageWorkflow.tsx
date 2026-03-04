@@ -1,15 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  CheckCircle2, 
-  Circle, 
-  Loader2, 
+import {
+  CheckCircle2,
+  Circle,
+  Loader2,
   Lightbulb,
   Check,
-  X
+  X,
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +44,19 @@ interface ChecklistCompletion {
   completed_by: string | null;
 }
 
+interface ComplianceVerdictRow {
+  id: string;
+  stage_name: string;
+  verdict: 'pass' | 'fail' | 'warn' | 'block';
+  explanation: string | null;
+  overridden: boolean;
+  compliance_rules: {
+    rule_name: string;
+    severity: string;
+    code_references: string[] | null;
+  } | null;
+}
+
 interface JobStageWorkflowProps {
   jobId: string;
   jobType: string | null;
@@ -56,6 +73,7 @@ const stageStyles = {
 
 export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }: JobStageWorkflowProps) {
   const { tenant } = useTenant();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeStage, setActiveStage] = useState(currentStage || 'Service');
@@ -92,6 +110,38 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
     enabled: !!jobId,
   });
 
+  // Fetch compliance verdicts for this job
+  const { data: complianceVerdicts } = useQuery({
+    queryKey: ['compliance-verdicts', jobId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('compliance_verdicts')
+        .select('id, stage_name, verdict, explanation, overridden, compliance_rules:rule_id(rule_name, severity, code_references)')
+        .eq('job_id', jobId)
+        .eq('overridden', false);
+
+      if (error) throw error;
+      return (data || []) as unknown as ComplianceVerdictRow[];
+    },
+    enabled: !!jobId,
+  });
+
+  // Get verdict status for a stage
+  const getStageVerdictStatus = (stage: string): 'pass' | 'warn' | 'fail' | 'block' | null => {
+    const stageVerdicts = complianceVerdicts?.filter(v => v.stage_name === stage) || [];
+    if (stageVerdicts.length === 0) return null;
+    if (stageVerdicts.some(v => v.verdict === 'block')) return 'block';
+    if (stageVerdicts.some(v => v.verdict === 'fail')) return 'fail';
+    if (stageVerdicts.some(v => v.verdict === 'warn')) return 'warn';
+    return 'pass';
+  };
+
+  // Check if a stage is blocked by safety_gate rules
+  const isStageBlocked = (stage: string): boolean => {
+    const status = getStageVerdictStatus(stage);
+    return status === 'block';
+  };
+
   // Get the current stage template
   const stageTemplate = templates?.find(t => t.stage_name === activeStage);
   const checklistItems: ChecklistItem[] = Array.isArray(stageTemplate?.checklist_items) 
@@ -112,17 +162,21 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
 
   // Save completion mutation
   const saveCompletionMutation = useMutation({
-    mutationFn: async ({ 
-      itemId, 
-      completed, 
-      notes 
-    }: { 
-      itemId: string; 
-      completed: boolean; 
+    mutationFn: async ({
+      itemId,
+      completed,
+      notes,
+      measurementValue,
+      measurementUnit,
+    }: {
+      itemId: string;
+      completed: boolean;
       notes?: string;
+      measurementValue?: number;
+      measurementUnit?: string;
     }) => {
       const existing = getCompletion(itemId);
-      
+
       if (existing) {
         const { error } = await supabase
           .from('job_checklist_completions')
@@ -130,6 +184,8 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
             completed,
             notes: notes || existing.notes,
             completed_at: completed ? new Date().toISOString() : null,
+            ...(measurementValue !== undefined && { measurement_value: measurementValue }),
+            ...(measurementUnit !== undefined && { measurement_unit: measurementUnit }),
           })
           .eq('id', existing.id);
         if (error) throw error;
@@ -143,6 +199,8 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
             completed,
             notes,
             completed_at: completed ? new Date().toISOString() : null,
+            ...(measurementValue !== undefined && { measurement_value: measurementValue }),
+            ...(measurementUnit !== undefined && { measurement_unit: measurementUnit }),
           });
         if (error) throw error;
       }
@@ -182,21 +240,36 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
     [saveCompletionMutation]
   );
 
+  // Debounced save for measurement fields (includes typed value + unit)
+  const debouncedMeasurementSave = useCallback(
+    debounce((itemId: string, notes: string, unit?: string) => {
+      const numVal = parseFloat(notes);
+      saveCompletionMutation.mutate({
+        itemId,
+        completed: true,
+        notes,
+        measurementValue: isNaN(numVal) ? undefined : numVal,
+        measurementUnit: unit,
+      });
+    }, 2000),
+    [saveCompletionMutation]
+  );
+
   const handleCheckboxChange = (itemId: string, checked: boolean) => {
     saveCompletionMutation.mutate({ itemId, completed: checked });
   };
 
   const handlePassFail = (itemId: string, passed: boolean) => {
-    saveCompletionMutation.mutate({ 
-      itemId, 
-      completed: true, 
-      notes: passed ? 'PASS' : 'FAIL' 
+    saveCompletionMutation.mutate({
+      itemId,
+      completed: true,
+      notes: passed ? 'PASS' : 'FAIL',
     });
   };
 
-  const handleMeasurement = (itemId: string, value: string) => {
+  const handleMeasurement = (itemId: string, value: string, unit?: string) => {
     setLocalValues(prev => ({ ...prev, [itemId]: value }));
-    debouncedSave(itemId, value);
+    debouncedMeasurementSave(itemId, value, unit);
   };
 
   const handleTextChange = (itemId: string, value: string) => {
@@ -236,23 +309,74 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
           const stageCompletions = completions?.filter(c => c.stage_name === stage && c.completed).length || 0;
           const stageItems = templates?.find(t => t.stage_name === stage)?.checklist_items;
           const stageTotal = Array.isArray(stageItems) ? stageItems.length : 0;
-          
+          const verdictStatus = getStageVerdictStatus(stage);
+          const blocked = isStageBlocked(stage);
+
           return (
             <Button
               key={stage}
               variant={isActive ? 'default' : 'outline'}
               size="sm"
+              disabled={blocked && !isActive}
               className={cn(
                 'flex-shrink-0',
                 isActive && sStyle.bg,
                 isActive && sStyle.text,
-                isActive && sStyle.border
+                isActive && sStyle.border,
+                blocked && !isActive && 'opacity-50'
               )}
-              onClick={() => {
+              onClick={async () => {
+                if (blocked && !isActive) {
+                  toast({
+                    title: 'Stage Blocked',
+                    description: 'This stage is blocked by compliance rules. Resolve required items first.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
+                const previousStage = activeStage;
                 setActiveStage(stage);
                 onStageChange?.(stage);
+                // Record stage transition in workflow_state JSONB
+                if (stage !== previousStage && user?.id) {
+                  try {
+                    const { data: jobData } = await supabase
+                      .from('scheduled_jobs')
+                      .select('workflow_state')
+                      .eq('id', jobId)
+                      .single();
+                    const ws = jobData?.workflow_state || { completed_stages: [], stage_transitions: [] };
+                    const completedStages = Array.isArray(ws.completed_stages) ? ws.completed_stages : [];
+                    const transitions = Array.isArray(ws.stage_transitions) ? ws.stage_transitions : [];
+                    if (previousStage && !completedStages.includes(previousStage)) {
+                      completedStages.push(previousStage);
+                    }
+                    transitions.push({
+                      from: previousStage,
+                      to: stage,
+                      at: new Date().toISOString(),
+                      by: user.id,
+                    });
+                    await supabase
+                      .from('scheduled_jobs')
+                      .update({
+                        workflow_state: {
+                          completed_stages: completedStages,
+                          current_stage_started_at: new Date().toISOString(),
+                          stage_transitions: transitions,
+                        },
+                        current_stage: stage,
+                      })
+                      .eq('id', jobId);
+                  } catch (err) {
+                    console.error('Failed to record stage transition:', err);
+                  }
+                }
               }}
             >
+              {verdictStatus === 'pass' && <ShieldCheck className="h-3.5 w-3.5 mr-1 text-green-600" />}
+              {verdictStatus === 'warn' && <AlertTriangle className="h-3.5 w-3.5 mr-1 text-yellow-600" />}
+              {(verdictStatus === 'fail' || verdictStatus === 'block') && <ShieldAlert className="h-3.5 w-3.5 mr-1 text-red-600" />}
               {stage}
               {stageTotal > 0 && (
                 <Badge variant="secondary" className="ml-2 h-5 px-1.5 text-xs">
@@ -272,6 +396,39 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
         </div>
         <Progress value={getProgress()} className="h-2" />
       </div>
+
+      {/* Compliance Verdicts for Active Stage */}
+      {(() => {
+        const activeVerdicts = complianceVerdicts?.filter(v => v.stage_name === activeStage && v.verdict !== 'pass') || [];
+        if (activeVerdicts.length === 0) return null;
+        return (
+          <Card className="border-2 border-amber-200 bg-amber-50">
+            <CardContent className="py-3">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="h-5 w-5 mt-0.5 text-amber-600 flex-shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-medium text-sm text-amber-800">Compliance Issues</p>
+                  {activeVerdicts.map(v => (
+                    <div key={v.id} className="flex items-center gap-2 text-sm">
+                      {v.verdict === 'block' && <Badge className="bg-red-500 text-white text-[10px] h-4 px-1">BLOCKED</Badge>}
+                      {v.verdict === 'fail' && <Badge className="bg-red-400 text-white text-[10px] h-4 px-1">FAIL</Badge>}
+                      {v.verdict === 'warn' && <Badge className="bg-yellow-500 text-white text-[10px] h-4 px-1">WARN</Badge>}
+                      <span className="text-amber-900">
+                        {v.compliance_rules?.rule_name || 'Unknown rule'}: {v.explanation}
+                      </span>
+                      {v.compliance_rules?.code_references && v.compliance_rules.code_references.length > 0 && (
+                        <span className="text-amber-600 text-xs">
+                          ({v.compliance_rules.code_references.join(', ')})
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* AI Guidance Banner */}
       <Card className={cn('border-2', styles.border, styles.bg)}>
@@ -356,7 +513,7 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
                             type="number"
                             placeholder="Enter value"
                             value={notes}
-                            onChange={(e) => handleMeasurement(item.id, e.target.value)}
+                            onChange={(e) => handleMeasurement(item.id, e.target.value, item.unit)}
                             className="w-32 h-8"
                           />
                           <span className="text-sm text-muted-foreground">{item.unit}</span>
