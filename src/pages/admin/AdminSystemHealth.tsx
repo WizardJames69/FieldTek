@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Activity, 
@@ -51,6 +54,52 @@ export default function AdminSystemHealth() {
   const acknowledgeAlert = useAcknowledgeAlert();
   const resolveAlert = useResolveAlert();
   const triggerHealthCheck = useTriggerHealthCheck();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Re-embedding status query
+  const { data: embedStats, isLoading: embedLoading } = useQuery({
+    queryKey: ["embed-stats"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("embedding_status");
+      if (error) throw error;
+      const counts = { pending: 0, processing: 0, completed: 0, failed: 0, total: 0 };
+      for (const row of data || []) {
+        counts.total++;
+        const s = row.embedding_status as keyof typeof counts;
+        if (s in counts) counts[s]++;
+      }
+      return counts;
+    },
+    refetchInterval: 30000,
+  });
+
+  // Re-embed trigger mutation
+  const triggerReembed = useMutation({
+    mutationFn: async (batchSize: number) => {
+      const { data, error } = await supabase.rpc("admin_trigger_reembed", {
+        p_limit: batchSize,
+      });
+      if (error) throw error;
+      return data as number;
+    },
+    onSuccess: (count) => {
+      toast({
+        title: "Re-embedding triggered",
+        description: `${count} document(s) marked for re-embedding.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["embed-stats"] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Re-embedding failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const getStatusColor = (status: string): string => {
     switch (status) {
@@ -228,6 +277,7 @@ export default function AdminSystemHealth() {
               )}
             </TabsTrigger>
             <TabsTrigger value="metrics">Metrics History</TabsTrigger>
+            <TabsTrigger value="embeddings">Re-embedding</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
@@ -495,6 +545,96 @@ export default function AdminSystemHealth() {
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <Activity className="h-12 w-12 mb-4" />
                     <p>No metrics recorded yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="embeddings" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Document Embedding Status</CardTitle>
+                    <CardDescription>
+                      Re-embed legacy documents using the latest content-aware chunker
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => triggerReembed.mutate(50)}
+                      disabled={triggerReembed.isPending}
+                    >
+                      {triggerReembed.isPending ? (
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3 mr-2" />
+                      )}
+                      Re-embed 50
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => triggerReembed.mutate(200)}
+                      disabled={triggerReembed.isPending}
+                    >
+                      {triggerReembed.isPending ? (
+                        <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3 mr-2" />
+                      )}
+                      Re-embed 200
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {embedLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : embedStats ? (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="p-4 rounded-lg border text-center">
+                      <p className="text-2xl font-bold">{embedStats.total}</p>
+                      <p className="text-sm text-muted-foreground">Total</p>
+                    </div>
+                    <div className="p-4 rounded-lg border text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        <p className="text-2xl font-bold text-emerald-600">{embedStats.completed}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Completed</p>
+                    </div>
+                    <div className="p-4 rounded-lg border text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Clock className="h-4 w-4 text-amber-500" />
+                        <p className="text-2xl font-bold text-amber-600">{embedStats.pending}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Pending</p>
+                    </div>
+                    <div className="p-4 rounded-lg border text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                        <p className="text-2xl font-bold text-blue-600">{embedStats.processing}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Processing</p>
+                    </div>
+                    <div className="p-4 rounded-lg border text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <XCircle className="h-4 w-4 text-red-500" />
+                        <p className="text-2xl font-bold text-red-600">{embedStats.failed}</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">Failed</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                    <Database className="h-12 w-12 mb-4" />
+                    <p>No documents found</p>
                   </div>
                 )}
               </CardContent>

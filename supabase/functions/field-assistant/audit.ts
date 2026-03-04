@@ -52,6 +52,17 @@ export interface AuditLogData {
   complianceRulesEvaluated?: string[];
   complianceVerdictIds?: string[];
   workflowContextInjected?: boolean;
+  graphExpansionTerms?: string[];
+  graphExpansionCount?: number;
+  judgeVerdict?: string;
+  judgeResultSync?: {
+    grounded: boolean;
+    confidence: number;
+    contradiction_detected: boolean;
+    explanation: string;
+  } | null;
+  judgeBlockingLatencyMs?: number | null;
+  judgeBlockingGateway?: string | null;
 }
 
 // ── Write Audit Log ─────────────────────────────────────────
@@ -130,7 +141,18 @@ export async function writeAuditLog(
       workflow_stage: data.workflowStage || null,
       compliance_rules_evaluated: data.complianceRulesEvaluated?.length ? data.complianceRulesEvaluated : null,
       compliance_verdict_ids: data.complianceVerdictIds?.length ? data.complianceVerdictIds : null,
+      graph_expansion_terms: data.graphExpansionTerms?.length ? data.graphExpansionTerms : null,
+      graph_expansion_count: data.graphExpansionCount || 0,
       workflow_context_injected: data.workflowContextInjected || false,
+      judge_verdict: data.judgeVerdict || null,
+      ...(data.judgeResultSync ? {
+        judge_grounded: data.judgeResultSync.grounded,
+        judge_confidence: Math.min(5, Math.max(1, Math.round(data.judgeResultSync.confidence || 3))),
+        judge_contradiction: data.judgeResultSync.contradiction_detected,
+        judge_explanation: (data.judgeResultSync.explanation || "").slice(0, 500),
+        judge_model: "gpt-4.1-mini",
+        judge_latency_ms: data.judgeBlockingLatencyMs,
+      } : {}),
     }).select("id").single();
 
     const auditLogId = auditRow?.id || null;

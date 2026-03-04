@@ -88,6 +88,7 @@ const AdminFeatureFlags = lazy(() => import("./pages/admin/AdminFeatureFlags"));
 const AdminBetaApplications = lazy(() => import("./pages/admin/AdminBetaApplications"));
 const AdminSystemHealth = lazy(() => import("./pages/admin/AdminSystemHealth"));
 const AdminVoiceUsage = lazy(() => import("./pages/admin/AdminVoiceUsage"));
+const AdminRAGQuality = lazy(() => import("./pages/admin/AdminRAGQuality"));
 
 // Demo sandbox routes
 const DemoSandbox = lazy(() => import("./pages/DemoSandbox"));
@@ -260,6 +261,7 @@ function App() {
                           <Route path="beta-applications" element={<AdminBetaApplications />} />
                           <Route path="system-health" element={<AdminSystemHealth />} />
                           <Route path="voice-usage" element={<AdminVoiceUsage />} />
+                          <Route path="rag-quality" element={<AdminRAGQuality />} />
                         </Route>
                         
                         {/* Portal routes - own auth context */}

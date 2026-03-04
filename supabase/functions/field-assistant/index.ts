@@ -56,10 +56,12 @@ import type { AuditLogData } from "./audit.ts";
 import { createRetrievalAdapter } from "./retrieval.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
-import { evaluateWithJudge } from "./judge.ts";
+import { evaluateWithJudge, evaluateWithJudgeBlocking } from "./judge.ts";
+import type { JudgeResult } from "./judge.ts";
 import { fetchWorkflowState } from "./workflow.ts";
 import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
 import type { ComplianceContext, ComplianceVerdict } from "./compliance.ts";
+import { expandQueryWithGraph } from "./graph.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -160,10 +162,12 @@ serve(async (req) => {
     console.log(`[tenant_ai_policies] tenant=${tenantUser.tenant_id} threshold=${policySimThreshold} blocked_topics=${policyBlockedTopics.length}`);
 
     // ── 3. Feature Flags (parallel) ──────────────────────────
-    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled] = await Promise.all([
+    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled, graphExpansionEnabled, judgeBlockingEnabled] = await Promise.all([
       evaluateFeatureFlag(serviceRoleClient, "rag_judge", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "rag_reranking", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "compliance_engine", tenantUser.tenant_id),
+      evaluateFeatureFlag(serviceRoleClient, "equipment_graph", tenantUser.tenant_id),
+      evaluateFeatureFlag(serviceRoleClient, "judge_blocking_mode", tenantUser.tenant_id),
     ]);
     const complianceActive = complianceEngineEnabled && aiPolicy?.compliance_engine_enabled === true;
 
@@ -428,12 +432,33 @@ serve(async (req) => {
     let rerankModel: string | null = null;
     let rerankLatencyMs: number | null = null;
     let rerankScores: number[] | null = null;
+    let graphExpansionTerms: string[] = [];
 
     if (SEMANTIC_SEARCH_ENABLED && docsWithEmbeddings.length > 0) {
       const searchQuery = extractQueryForSearch(messages);
 
       if (searchQuery.length > 10) {
         console.log("Performing semantic search for query:", searchQuery.slice(0, 100));
+
+        // ── Graph-based keyword expansion (pre-retrieval) ───
+        let enrichedKeywordQuery = searchQuery;
+        if (graphExpansionEnabled) {
+          try {
+            const queryWords = searchQuery.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
+            graphExpansionTerms = await expandQueryWithGraph(
+              serviceRoleClient,
+              context?.equipment?.equipment_type || null,
+              queryWords,
+              tenantUser.tenant_id,
+            );
+            if (graphExpansionTerms.length > 0) {
+              enrichedKeywordQuery = searchQuery + " " + graphExpansionTerms.join(" ");
+              console.log(`[graph] Enriched keyword query with ${graphExpansionTerms.length} terms`);
+            }
+          } catch (graphErr) {
+            console.warn("[graph] Expansion error (non-fatal):", graphErr);
+          }
+        }
 
         // LRU cache check
         let queryEmbedding = getCachedEmbedding(searchQuery);
@@ -458,7 +483,7 @@ serve(async (req) => {
             const retrievalQuery: RetrievalQuery = {
               tenantId: tenantUser.tenant_id,
               queryEmbedding,
-              keywordQuery: searchQuery,
+              keywordQuery: enrichedKeywordQuery,
               filters: {
                 equipmentType: context?.equipment?.equipment_type || undefined,
                 brand: context?.equipment?.brand || undefined,
@@ -1004,6 +1029,44 @@ serve(async (req) => {
         };
         await writer.write(encoder.encode(`data: ${JSON.stringify(metadataEvent)}\n\n`));
 
+        // ── Phase 8D: Judge Warning Mode (synchronous) ────────
+        let judgeVerdict: "none" | "pass" | "warn_appended" = "none";
+        let judgeResultSync: JudgeResult | null = null;
+        let judgeBlockingLatencyMs: number | null = null;
+        let judgeBlockingGateway: string | null = null;
+
+        if (judgeBlockingEnabled && !validationFailed && accumulatedContent.length > 0 && semanticSearchResults.length > 0) {
+          try {
+            const judgeBlockingResult = await evaluateWithJudgeBlocking(
+              userMessageText,
+              semanticSearchResults.map((r) => r.chunk_text),
+              accumulatedContent,
+              correlationId,
+              LOVABLE_API_KEY,
+            );
+
+            if (judgeBlockingResult) {
+              judgeResultSync = judgeBlockingResult.result;
+              judgeBlockingLatencyMs = judgeBlockingResult.latencyMs;
+              judgeBlockingGateway = judgeBlockingResult.gatewayUsed;
+
+              if (!judgeBlockingResult.result.grounded && judgeBlockingResult.result.confidence >= 4) {
+                judgeVerdict = "warn_appended";
+                responseModified = true;
+                matchedPatterns.push("JUDGE_UNGROUNDED_WARNING");
+                console.warn(
+                  `[judge-blocking] [correlation_id=${correlationId}] Appending disclaimer: ` +
+                  `grounded=${judgeBlockingResult.result.grounded} confidence=${judgeBlockingResult.result.confidence}`,
+                );
+              } else {
+                judgeVerdict = "pass";
+              }
+            }
+          } catch (judgeBlockErr) {
+            console.warn("[judge-blocking] Error (non-fatal):", judgeBlockErr);
+          }
+        }
+
         if (!validationFailed) {
           if (containsWarrantyLanguage) {
             responseModified = true;
@@ -1013,6 +1076,15 @@ serve(async (req) => {
               choices: [{ index: 0, delta: { content: "\n\n---\n**IMPORTANT DISCLAIMER:** Warranty information provided is based solely on uploaded documentation and may not reflect the most current warranty terms. Always verify warranty coverage directly with the manufacturer or your organization's warranty administrator before making service decisions that depend on warranty status." }, finish_reason: null }],
             };
             await writer.write(encoder.encode(`data: ${JSON.stringify(disclaimerChunk)}\n\n`));
+            await writer.write(encoder.encode("data: [DONE]\n\n"));
+          } else if (judgeVerdict === "warn_appended") {
+            // Flush original response + judge warning disclaimer
+            for (const chunk of allChunks) await writer.write(chunk);
+            const judgeDisclaimer = {
+              id: "judge-warning", object: "chat.completion.chunk",
+              choices: [{ index: 0, delta: { content: "\n\n---\n**Notice:** This response may contain information not fully supported by the available documentation. Please verify critical details with authoritative sources or contact your supervisor." }, finish_reason: null }],
+            };
+            await writer.write(encoder.encode(`data: ${JSON.stringify(judgeDisclaimer)}\n\n`));
             await writer.write(encoder.encode("data: [DONE]\n\n"));
           } else {
             for (const chunk of allChunks) await writer.write(chunk);
@@ -1070,10 +1142,16 @@ serve(async (req) => {
             ? complianceVerdicts.map((v) => v.ruleKey)
             : undefined,
           workflowContextInjected: promptComplianceContext !== null,
+          graphExpansionTerms: graphExpansionTerms.length > 0 ? graphExpansionTerms : undefined,
+          graphExpansionCount: graphExpansionTerms.length,
+          judgeVerdict: judgeVerdict !== "none" ? judgeVerdict : undefined,
+          judgeResultSync: judgeResultSync || undefined,
+          judgeBlockingLatencyMs: judgeBlockingLatencyMs,
+          judgeBlockingGateway: judgeBlockingGateway,
         } satisfies AuditLogData);
 
-        // Phase 4b: Async Judge Model evaluation
-        if (judgeEnabled && auditLogId && accumulatedContent.length > 0 && !validationFailed) {
+        // Phase 4b: Async Judge Model evaluation (skip if blocking mode already ran it)
+        if (judgeEnabled && !judgeBlockingEnabled && auditLogId && accumulatedContent.length > 0 && !validationFailed) {
           evaluateWithJudge(
             serviceRoleClient, auditLogId, userMessageText,
             semanticSearchResults.map(r => r.chunk_text), accumulatedContent,

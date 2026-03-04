@@ -34,6 +34,7 @@ const navItems = [
   { label: "Beta Applications", icon: FlaskConical, path: "/admin/beta-applications" },
   { label: "AI Demo Analytics", icon: Volume2, path: "/admin/demo-analytics" },
   { label: "AI Audit Logs", icon: ShieldX, path: "/admin/ai-audit" },
+  { label: "RAG Quality", icon: BarChart3, path: "/admin/rag-quality" },
   { label: "Beta Feedback", icon: MessageSquarePlus, path: "/admin/feedback" },
   { label: "Waitlist", icon: ClipboardList, path: "/admin/waitlist" },
   { label: "Tenants", icon: Building2, path: "/admin/tenants" },

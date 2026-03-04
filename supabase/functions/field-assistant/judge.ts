@@ -14,7 +14,7 @@ import { fetchWithFallback } from "../_shared/aiClient.ts";
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
 
-interface JudgeResult {
+export interface JudgeResult {
   grounded: boolean;
   confidence: number;
   contradiction_detected: boolean;
@@ -157,5 +157,101 @@ Rules:
       `[judge] [correlation_id=${correlationId}] Error after ${latencyMs}ms:`,
       err instanceof Error ? err.message : String(err),
     );
+  }
+}
+
+// ── Synchronous Judge (for blocking mode) ─────────────────────
+
+/**
+ * Synchronous judge evaluation for blocking/warning mode.
+ * Returns the JudgeResult instead of updating the audit log.
+ * On any error or timeout, returns null (graceful degradation).
+ */
+export async function evaluateWithJudgeBlocking(
+  userQuery: string,
+  retrievedChunks: string[],
+  aiResponse: string,
+  correlationId: string,
+  apiKey: string,
+): Promise<{ result: JudgeResult; latencyMs: number; gatewayUsed: string } | null> {
+  const startTime = Date.now();
+
+  const chunksText = retrievedChunks
+    .slice(0, 8)
+    .map((c, i) => `[Chunk ${i + 1}]: ${c.slice(0, 500)}`)
+    .join("\n");
+
+  const judgePrompt = `You are a grounding verification judge for a field-service AI assistant.
+
+TASK: Evaluate whether the ANSWER is grounded in the RETRIEVED CHUNKS.
+
+QUERY: ${userQuery.slice(0, 500)}
+
+RETRIEVED CHUNKS:
+${chunksText.slice(0, 3000)}
+
+ANSWER:
+${aiResponse.slice(0, 2000)}
+
+Respond ONLY with valid JSON:
+{
+  "grounded": true/false,
+  "confidence": 1-5,
+  "contradiction_detected": true/false,
+  "explanation": "Brief explanation (max 100 words)"
+}
+
+Rules:
+- grounded=true: ALL factual claims in the answer are supported by the chunks
+- grounded=false: ANY factual claim lacks chunk support
+- confidence: 1=very uncertain, 5=very confident in your assessment
+- contradiction_detected: true if the answer contradicts information in the chunks
+- Ignore formatting, tone, and structure — focus only on factual accuracy
+- "I don't have enough information" responses are grounded=true (correct abstention)`;
+
+  try {
+    const { response, gatewayUsed } = await fetchWithFallback(
+      "/chat/completions",
+      {
+        model: JUDGE_MODEL,
+        messages: [{ role: "user", content: judgePrompt }],
+        temperature: 0,
+        max_tokens: JUDGE_MAX_TOKENS,
+        response_format: { type: "json_object" },
+      },
+      apiKey,
+      correlationId,
+    );
+
+    if (!response.ok) {
+      console.warn(
+        `[judge-blocking] [correlation_id=${correlationId}] API returned ${response.status} (${gatewayUsed})`,
+      );
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      console.warn(`[judge-blocking] [correlation_id=${correlationId}] Empty response`);
+      return null;
+    }
+
+    const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
+    const judgment: JudgeResult = JSON.parse(cleanContent);
+    const latencyMs = Date.now() - startTime;
+
+    console.log(
+      `[judge-blocking] [correlation_id=${correlationId}] grounded=${judgment.grounded} confidence=${judgment.confidence} latency=${latencyMs}ms (${gatewayUsed})`,
+    );
+
+    return { result: judgment, latencyMs, gatewayUsed };
+  } catch (err) {
+    const latencyMs = Date.now() - startTime;
+    console.warn(
+      `[judge-blocking] [correlation_id=${correlationId}] Error after ${latencyMs}ms:`,
+      err instanceof Error ? err.message : String(err),
+    );
+    return null;
   }
 }
