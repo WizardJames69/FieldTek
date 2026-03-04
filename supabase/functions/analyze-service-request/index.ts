@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchWithFallback } from "../_shared/aiClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,26 +133,26 @@ ${client_info ? `Client Info: ${JSON.stringify(client_info)}` : ''}
 
 Provide your analysis as a JSON object.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const { response, gatewayUsed } = await fetchWithFallback(
+      "/chat/completions",
+      {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.3,
-      }),
-    });
+      },
+      LOVABLE_API_KEY,
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error(`AI gateway error (${gatewayUsed}):`, response.status, errorText);
       throw new Error(`AI service error: ${response.status}`);
+    }
+    if (gatewayUsed === "fallback") {
+      console.warn("[analyze-service-request] Used fallback gateway");
     }
 
     const aiResponse = await response.json();

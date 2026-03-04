@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { fetchWithFallback } from "../_shared/aiClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,25 +67,23 @@ function classifyChunkType(text: string): string {
   return 'narrative';
 }
 
-// Generate embedding using Lovable AI gateway
-async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+// Generate embedding using AI gateway with fallback
+async function generateEmbedding(text: string, apiKey: string, correlationId?: string): Promise<number[]> {
+  const { response, gatewayUsed } = await fetchWithFallback(
+    "/embeddings",
+    {
       model: EMBEDDING_MODEL,
       input: text,
-      dimensions: EMBEDDING_DIMENSION
-    }),
-  });
+      dimensions: EMBEDDING_DIMENSION,
+    },
+    apiKey,
+    correlationId,
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Embedding generation failed:", response.status, errorText);
-    
+    console.error(`Embedding generation failed (${gatewayUsed}):`, response.status, errorText);
+
     if (response.status === 429) {
       throw new Error("Rate limit exceeded. Please try again later.");
     }
@@ -92,6 +91,10 @@ async function generateEmbedding(text: string, apiKey: string): Promise<number[]
       throw new Error("AI credits exhausted. Please add credits to continue.");
     }
     throw new Error(`Embedding generation failed: ${response.status}`);
+  }
+
+  if (gatewayUsed === "fallback") {
+    console.warn(`[generate-embeddings] Used fallback gateway for embedding`);
   }
 
   const data = await response.json();
@@ -178,6 +181,27 @@ serve(async (req) => {
 
     console.log(`[generate-embeddings] [correlation_id=${correlationId}] Processing document:`, doc.id, doc.name);
 
+    // Resolve brand/model from equipment_registry if document is linked to equipment
+    let equipmentBrand: string | null = null;
+    let equipmentModel: string | null = null;
+    if (Array.isArray(doc.equipment_types) && doc.equipment_types.length > 0) {
+      try {
+        const { data: equipment } = await supabaseAdmin
+          .from("equipment_registry")
+          .select("brand, model")
+          .eq("tenant_id", doc.tenant_id)
+          .eq("equipment_type", doc.equipment_types[0])
+          .limit(1)
+          .maybeSingle();
+        if (equipment) {
+          equipmentBrand = equipment.brand || null;
+          equipmentModel = equipment.model || null;
+        }
+      } catch (e) {
+        console.warn(`[generate-embeddings] [correlation_id=${correlationId}] Failed to resolve equipment metadata:`, e);
+      }
+    }
+
     // Update embedding status to processing with timestamp for retry tracking
     await supabaseAdmin
       .from("documents")
@@ -204,7 +228,7 @@ serve(async (req) => {
         
         // Generate embeddings for this batch
         const embeddings = await Promise.all(
-          batch.map(chunk => generateEmbedding(chunk, LOVABLE_API_KEY))
+          batch.map(chunk => generateEmbedding(chunk, LOVABLE_API_KEY, correlationId))
         );
 
         // Extract equipment type from parent document (first entry if array)
@@ -222,6 +246,9 @@ serve(async (req) => {
           token_count: estimateTokens(chunkText),
           chunk_type: classifyChunkType(chunkText),
           equipment_type: equipmentType,
+          brand: equipmentBrand,
+          model: equipmentModel,
+          document_category: doc.category || null,
           correlation_id: correlationId,
           embedding_model: EMBEDDING_MODEL,
           embedding_dimensions: EMBEDDING_DIMENSION,
