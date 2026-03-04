@@ -94,6 +94,53 @@ export default defineConfig({
       dependencies: ['setup'],
       testMatch: ['e2e/specs/admin.spec.ts'],
     },
+
+    // AI chat interface tests (admin auth, many test.slow)
+    {
+      name: 'chromium-ai-chat',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/auth/admin.json',
+      },
+      dependencies: ['setup'],
+      testMatch: ['e2e/specs/assistant.spec.ts'],
+    },
+
+    // AI admin pages (platform-admin auth)
+    {
+      name: 'chromium-ai-admin',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/auth/platform-admin.json',
+      },
+      dependencies: ['setup'],
+      testMatch: [
+        'e2e/specs/ai-audit.spec.ts',
+        'e2e/specs/ai-rag-quality.spec.ts',
+        'e2e/specs/ai-feature-flags.spec.ts',
+      ],
+    },
+
+    // AI pipeline, security, compliance, degradation, rate-limit, isolation, regression, judge, graph
+    {
+      name: 'chromium-ai-pipeline',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/auth/admin.json',
+      },
+      dependencies: ['setup'],
+      testMatch: [
+        'e2e/specs/assistant-pipeline.spec.ts',
+        'e2e/specs/ai-security.spec.ts',
+        'e2e/specs/ai-compliance.spec.ts',
+        'e2e/specs/ai-degradation.spec.ts',
+        'e2e/specs/ai-rate-limiting.spec.ts',
+        'e2e/specs/ai-multi-tenant.spec.ts',
+        'e2e/specs/ai-regression.spec.ts',
+        'e2e/specs/ai-judge.spec.ts',
+        'e2e/specs/ai-graph.spec.ts',
+      ],
+    },
   ],
 
   webServer: {

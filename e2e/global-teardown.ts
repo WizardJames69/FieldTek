@@ -5,6 +5,9 @@ import { config } from 'dotenv';
 
 config({ path: '.env.test' });
 
+import { cleanupTenantB } from './helpers/ai-seed-helpers';
+import { cleanupAuditLogs } from './helpers/audit-log-helpers';
+
 async function globalTeardown() {
   console.log('\n[global-teardown] Cleaning up E2E test data...');
 
@@ -27,7 +30,20 @@ async function globalTeardown() {
     return;
   }
 
-  const { tenantId, userIds } = JSON.parse(fs.readFileSync(contextFile, 'utf-8'));
+  const { tenantId, userIds, tenantBId } = JSON.parse(fs.readFileSync(contextFile, 'utf-8'));
+
+  // Clean up AI audit logs before tenant deletion
+  if (tenantId) {
+    await cleanupAuditLogs(tenantId);
+    console.log('[global-teardown]   ✓ Cleaned up audit logs');
+  }
+  if (tenantBId) {
+    await cleanupAuditLogs(tenantBId);
+  }
+
+  // Clean up Tenant B
+  await cleanupTenantB();
+  console.log('[global-teardown]   ✓ Cleaned up Tenant B');
 
   // Delete tenant (cascade deletes jobs, clients, invoices, equipment, etc.)
   if (tenantId) {

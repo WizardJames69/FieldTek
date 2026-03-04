@@ -8,6 +8,16 @@ import { config } from 'dotenv';
 config({ path: '.env.test' });
 
 import { TEST_USERS, TEST_TENANT, TEST_ACCESS_CODE, SAMPLE_JOB, SAMPLE_CLIENT } from './helpers/test-data';
+import {
+  seedTestDocuments,
+  seedDocumentChunks,
+  seedFeatureFlags,
+  seedTenantAIPolicy,
+  seedComplianceRules,
+  seedEquipmentComponents,
+  seedWorkflowIntelligence,
+  seedTenantB,
+} from './helpers/ai-seed-helpers';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -215,13 +225,60 @@ async function globalSetup(config: FullConfig) {
   }
   console.log(`[global-setup]   ✓ Set platform admin`);
 
-  // ─── Step 7: Write context for teardown ─────────────────────────────────
+  // ─── Step 7: Seed AI test documents ────────────────────────────────────
+
+  const docIds = await seedTestDocuments(tenantId);
+  console.log(`[global-setup]   ✓ Seeded ${docIds.length} test documents`);
+
+  // ─── Step 8: Seed document chunks with pre-computed embeddings ────────
+
+  await seedDocumentChunks(tenantId, docIds);
+  console.log('[global-setup]   ✓ Seeded document chunks with embeddings');
+
+  // ─── Step 9: Ensure feature flags exist ───────────────────────────────
+
+  await seedFeatureFlags();
+  console.log('[global-setup]   ✓ Seeded feature flags');
+
+  // ─── Step 10: Create tenant AI policy ─────────────────────────────────
+
+  await seedTenantAIPolicy(tenantId);
+  console.log('[global-setup]   ✓ Seeded tenant AI policy');
+
+  // ─── Step 11: Seed compliance rules ───────────────────────────────────
+
+  await seedComplianceRules(tenantId);
+  console.log('[global-setup]   ✓ Seeded compliance rules');
+
+  // ─── Step 12: Seed equipment components + relationships ───────────────
+
+  await seedEquipmentComponents(tenantId);
+  console.log('[global-setup]   ✓ Seeded equipment components');
+
+  // ─── Step 13: Seed workflow intelligence data ─────────────────────────
+
+  await seedWorkflowIntelligence(tenantId);
+  console.log('[global-setup]   ✓ Seeded workflow intelligence data');
+
+  // ─── Step 14: Seed Tenant B for isolation tests ───────────────────────
+
+  const tenantB = await seedTenantB();
+  console.log(`[global-setup]   ✓ Seeded Tenant B: ${tenantB.tenantId}`);
+
+  // ─── Step 15: Write context for teardown ──────────────────────────────
 
   const contextFile = path.join(process.cwd(), '.playwright', 'e2e-context.json');
   fs.mkdirSync(path.dirname(contextFile), { recursive: true });
   fs.writeFileSync(
     contextFile,
-    JSON.stringify({ tenantId, userIds, testAccessCode: TEST_ACCESS_CODE }, null, 2)
+    JSON.stringify({
+      tenantId,
+      userIds,
+      testAccessCode: TEST_ACCESS_CODE,
+      tenantBId: tenantB.tenantId,
+      tenantBUserId: tenantB.userId,
+      docIds,
+    }, null, 2)
   );
 
   console.log('[global-setup] ✅ DB seeding complete. Browser auth states will be saved by auth.setup.ts\n');
