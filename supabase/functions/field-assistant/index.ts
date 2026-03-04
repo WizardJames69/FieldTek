@@ -62,6 +62,9 @@ import { fetchWorkflowState } from "./workflow.ts";
 import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
 import type { ComplianceContext, ComplianceVerdict } from "./compliance.ts";
 import { expandQueryWithGraph } from "./graph.ts";
+import type { GraphExpansionResult } from "./graph.ts";
+import { applyGraphScoring } from "./graphScoring.ts";
+import { GRAPH_SCORING_WEIGHT } from "./constants.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -162,12 +165,13 @@ serve(async (req) => {
     console.log(`[tenant_ai_policies] tenant=${tenantUser.tenant_id} threshold=${policySimThreshold} blocked_topics=${policyBlockedTopics.length}`);
 
     // ── 3. Feature Flags (parallel) ──────────────────────────
-    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled, graphExpansionEnabled, judgeBlockingEnabled] = await Promise.all([
+    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled, graphExpansionEnabled, judgeBlockingEnabled, judgeFullBlockingEnabled] = await Promise.all([
       evaluateFeatureFlag(serviceRoleClient, "rag_judge", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "rag_reranking", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "compliance_engine", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "equipment_graph", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "judge_blocking_mode", tenantUser.tenant_id),
+      evaluateFeatureFlag(serviceRoleClient, "judge_full_blocking", tenantUser.tenant_id),
     ]);
     const complianceActive = complianceEngineEnabled && aiPolicy?.compliance_engine_enabled === true;
 
@@ -433,6 +437,7 @@ serve(async (req) => {
     let rerankLatencyMs: number | null = null;
     let rerankScores: number[] | null = null;
     let graphExpansionTerms: string[] = [];
+    let graphExpansionResult: GraphExpansionResult | null = null;
 
     if (SEMANTIC_SEARCH_ENABLED && docsWithEmbeddings.length > 0) {
       const searchQuery = extractQueryForSearch(messages);
@@ -445,15 +450,16 @@ serve(async (req) => {
         if (graphExpansionEnabled) {
           try {
             const queryWords = searchQuery.toLowerCase().split(/\s+/).filter((w: string) => w.length > 3);
-            graphExpansionTerms = await expandQueryWithGraph(
+            graphExpansionResult = await expandQueryWithGraph(
               serviceRoleClient,
               context?.equipment?.equipment_type || null,
               queryWords,
               tenantUser.tenant_id,
             );
-            if (graphExpansionTerms.length > 0) {
-              enrichedKeywordQuery = searchQuery + " " + graphExpansionTerms.join(" ");
-              console.log(`[graph] Enriched keyword query with ${graphExpansionTerms.length} terms`);
+            graphExpansionTerms = graphExpansionResult.terms;
+            if (graphExpansionResult.terms.length > 0) {
+              enrichedKeywordQuery = searchQuery + " " + graphExpansionResult.terms.join(" ");
+              console.log(`[graph] Enriched keyword query with ${graphExpansionResult.terms.length} terms`);
             }
           } catch (graphErr) {
             console.warn("[graph] Expansion error (non-fatal):", graphErr);
@@ -517,6 +523,37 @@ serve(async (req) => {
             console.error("Semantic search error:", searchError);
           }
         }
+      }
+    }
+
+    // ── 9b. Graph Relationship Scoring (post-retrieval) ─────
+    let graphScoringApplied = false;
+    let maxGraphScore = 0;
+
+    if (graphExpansionEnabled && graphExpansionResult && graphExpansionResult.componentScores.size > 0 && semanticSearchResults.length > 0) {
+      try {
+        const scored = applyGraphScoring(
+          semanticSearchResults.map(r => ({
+            id: r.id, chunk_text: r.chunk_text, document_name: r.document_name,
+            document_category: r.document_category, similarity: r.similarity,
+            keyword_rank: r.keyword_rank ?? null, chunk_type: r.chunk_type || "narrative",
+            brand: r.brand ?? null, model: r.model ?? null, embedding_model: r.embedding_model || "text-embedding-3-small",
+            graphScore: 0,
+          })),
+          graphExpansionResult,
+          GRAPH_SCORING_WEIGHT,
+        );
+        semanticSearchResults = scored.map(r => ({
+          id: r.id, chunk_text: r.chunk_text, document_name: r.document_name,
+          document_category: r.document_category, similarity: r.similarity,
+          keyword_rank: r.keyword_rank, chunk_type: r.chunk_type,
+          brand: r.brand, model: r.model, embedding_model: r.embedding_model,
+        }));
+        graphScoringApplied = true;
+        maxGraphScore = Math.max(...scored.map(r => r.graphScore), 0);
+        console.log(`[graph-scoring] Applied to ${scored.length} results, max_graph_score=${maxGraphScore.toFixed(3)}`);
+      } catch (gsErr) {
+        console.warn("[graph-scoring] Error (non-fatal):", gsErr);
       }
     }
 
@@ -1029,13 +1066,16 @@ serve(async (req) => {
         };
         await writer.write(encoder.encode(`data: ${JSON.stringify(metadataEvent)}\n\n`));
 
-        // ── Phase 8D: Judge Warning Mode (synchronous) ────────
-        let judgeVerdict: "none" | "pass" | "warn_appended" = "none";
+        // ── Phase 8D/9D: Judge Evaluation (warning + full blocking) ─
+        let judgeVerdict: "none" | "pass" | "warn_appended" | "blocked" = "none";
         let judgeResultSync: JudgeResult | null = null;
         let judgeBlockingLatencyMs: number | null = null;
         let judgeBlockingGateway: string | null = null;
 
-        if (judgeBlockingEnabled && !validationFailed && accumulatedContent.length > 0 && semanticSearchResults.length > 0) {
+        // Full blocking supersedes warning mode
+        const judgeBlockingActive = judgeFullBlockingEnabled || judgeBlockingEnabled;
+
+        if (judgeBlockingActive && !validationFailed && accumulatedContent.length > 0 && semanticSearchResults.length > 0) {
           try {
             const judgeBlockingResult = await evaluateWithJudgeBlocking(
               userMessageText,
@@ -1050,7 +1090,21 @@ serve(async (req) => {
               judgeBlockingLatencyMs = judgeBlockingResult.latencyMs;
               judgeBlockingGateway = judgeBlockingResult.gatewayUsed;
 
-              if (!judgeBlockingResult.result.grounded && judgeBlockingResult.result.confidence >= 4) {
+              if (judgeFullBlockingEnabled &&
+                  !judgeBlockingResult.result.grounded &&
+                  judgeBlockingResult.result.confidence >= 5) {
+                // FULL BLOCK — replace response with safe fallback
+                judgeVerdict = "blocked";
+                validationFailed = true;
+                failureReason = "Judge full blocking: ungrounded response (confidence 5)";
+                accumulatedContent = "I don't have enough verified information in the available documentation to answer this question confidently. Please consult the equipment documentation directly or contact your supervisor for guidance.";
+                matchedPatterns.push("JUDGE_FULL_BLOCK");
+                console.warn(
+                  `[judge-blocking] [correlation_id=${correlationId}] BLOCKED: ` +
+                  `grounded=${judgeBlockingResult.result.grounded} confidence=${judgeBlockingResult.result.confidence}`,
+                );
+              } else if (!judgeBlockingResult.result.grounded && judgeBlockingResult.result.confidence >= 4) {
+                // WARNING — append disclaimer (existing behavior)
                 judgeVerdict = "warn_appended";
                 responseModified = true;
                 matchedPatterns.push("JUDGE_UNGROUNDED_WARNING");
@@ -1144,6 +1198,8 @@ serve(async (req) => {
           workflowContextInjected: promptComplianceContext !== null,
           graphExpansionTerms: graphExpansionTerms.length > 0 ? graphExpansionTerms : undefined,
           graphExpansionCount: graphExpansionTerms.length,
+          graphScoringApplied,
+          maxGraphScore: graphScoringApplied ? maxGraphScore : undefined,
           judgeVerdict: judgeVerdict !== "none" ? judgeVerdict : undefined,
           judgeResultSync: judgeResultSync || undefined,
           judgeBlockingLatencyMs: judgeBlockingLatencyMs,
@@ -1151,7 +1207,7 @@ serve(async (req) => {
         } satisfies AuditLogData);
 
         // Phase 4b: Async Judge Model evaluation (skip if blocking mode already ran it)
-        if (judgeEnabled && !judgeBlockingEnabled && auditLogId && accumulatedContent.length > 0 && !validationFailed) {
+        if (judgeEnabled && !judgeBlockingEnabled && !judgeFullBlockingEnabled && auditLogId && accumulatedContent.length > 0 && !validationFailed) {
           evaluateWithJudge(
             serviceRoleClient, auditLogId, userMessageText,
             semanticSearchResults.map(r => r.chunk_text), accumulatedContent,

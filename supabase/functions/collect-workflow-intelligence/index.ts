@@ -1,0 +1,446 @@
+// ============================================================
+// Collect Workflow Intelligence — Edge Function
+// ============================================================
+// Triggered when a job completes. Extracts diagnostic patterns
+// (symptoms, failures, diagnostics, repairs, outcomes) from
+// the job data and upserts into the workflow intelligence graph.
+//
+// Called from frontend when scheduled_jobs.status → 'completed'.
+// Behind the 'workflow_intelligence' feature flag.
+// ============================================================
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+// ── Extraction Helpers ────────────────────────────────────────
+
+const SYMPTOM_PATTERNS: Record<string, RegExp> = {
+  "no_cooling": /\b(no\s+cool|not\s+cool|won'?t\s+cool|no\s+ac|ac\s+not\s+working)\b/i,
+  "no_heating": /\b(no\s+heat|not\s+heat|won'?t\s+heat|furnace\s+not\s+working)\b/i,
+  "strange_noise": /\b(strange\s+noise|loud\s+noise|rattling|buzzing|humming|grinding|squealing)\b/i,
+  "leaking": /\b(leak|leaking|water\s+drip|dripping|puddle)\b/i,
+  "short_cycling": /\b(short\s+cycl|cycling\s+on\s+and\s+off|keeps\s+turning\s+off)\b/i,
+  "high_energy": /\b(high\s+energy|high\s+bill|energy\s+cost|inefficient)\b/i,
+  "bad_smell": /\b(bad\s+smell|burning\s+smell|musty|odor|smell)\b/i,
+  "tripped_breaker": /\b(tripped?\s+breaker|breaker\s+trip|circuit\s+trip|blowing\s+fuse)\b/i,
+  "frozen_coil": /\b(frozen|froze|ice\s+on|iced?\s+up|frost)\b/i,
+  "thermostat_issue": /\b(thermostat\s+not|thermostat\s+blank|no\s+display|wrong\s+temp)\b/i,
+  "weak_airflow": /\b(weak\s+air|low\s+airflow|no\s+air|poor\s+airflow|reduced\s+air)\b/i,
+  "vibration": /\b(vibrat|shaking|wobbl)\b/i,
+  "electrical_issue": /\b(electrical|wiring|no\s+power|power\s+issue|voltage)\b/i,
+};
+
+const FAILURE_PATTERNS: Record<string, RegExp> = {
+  "capacitor_failure": /\b(capacitor\s+fail|bad\s+cap|cap\s+fail|weak\s+cap|blown\s+cap|swollen\s+cap)\b/i,
+  "compressor_failure": /\b(compressor\s+fail|bad\s+compressor|compressor\s+locked|compressor\s+seized)\b/i,
+  "contactor_failure": /\b(contactor\s+fail|bad\s+contactor|pitted\s+contactor|contactor\s+stuck)\b/i,
+  "refrigerant_leak": /\b(refrigerant\s+leak|low\s+charge|low\s+refrigerant|freon\s+leak)\b/i,
+  "motor_failure": /\b(motor\s+fail|bad\s+motor|burned?\s+(out\s+)?motor|motor\s+seized)\b/i,
+  "board_failure": /\b(board\s+fail|bad\s+board|control\s+board|circuit\s+board)\b/i,
+  "thermostat_failure": /\b(thermostat\s+fail|bad\s+thermostat|thermostat\s+malfunction)\b/i,
+  "coil_damage": /\b(coil\s+(damage|leak|corrode|dirty)|damaged?\s+coil|plugged\s+coil)\b/i,
+  "relay_failure": /\b(relay\s+fail|bad\s+relay|stuck\s+relay)\b/i,
+  "transformer_failure": /\b(transformer\s+fail|bad\s+transformer|burned?\s+transformer)\b/i,
+  "valve_failure": /\b(valve\s+fail|bad\s+valve|stuck\s+valve|txv\s+fail)\b/i,
+  "ductwork_issue": /\b(duct\s+(leak|damage|disconnect)|ductwork\s+issue)\b/i,
+  "filter_blocked": /\b(filter\s+(block|clog|dirty|restrict)|clogged\s+filter)\b/i,
+  "wiring_fault": /\b(wiring\s+fault|loose\s+wire|bad\s+connection|corroded?\s+wire)\b/i,
+};
+
+const REPAIR_PATTERNS: Record<string, RegExp> = {
+  "replaced_capacitor": /\b(replace[d]?\s+cap|new\s+cap|installed?\s+cap)\b/i,
+  "replaced_compressor": /\b(replace[d]?\s+compressor|new\s+compressor|installed?\s+compressor)\b/i,
+  "replaced_contactor": /\b(replace[d]?\s+contactor|new\s+contactor|installed?\s+contactor)\b/i,
+  "recharged_refrigerant": /\b(recharg|add(ed)?\s+refrigerant|add(ed)?\s+freon|topped?\s+(off|up))\b/i,
+  "replaced_motor": /\b(replace[d]?\s+motor|new\s+motor|installed?\s+motor)\b/i,
+  "replaced_board": /\b(replace[d]?\s+board|new\s+board|installed?\s+board)\b/i,
+  "replaced_thermostat": /\b(replace[d]?\s+thermostat|new\s+thermostat|installed?\s+thermostat)\b/i,
+  "cleaned_coil": /\b(clean(ed)?\s+coil|coil\s+clean|wash(ed)?\s+coil)\b/i,
+  "repaired_wiring": /\b(repair(ed)?\s+wir|fix(ed)?\s+wir|rewire|re-?wire)\b/i,
+  "replaced_filter": /\b(replace[d]?\s+filter|new\s+filter|changed?\s+filter)\b/i,
+  "sealed_duct": /\b(seal(ed)?\s+duct|duct\s+seal|repair(ed)?\s+duct)\b/i,
+  "replaced_valve": /\b(replace[d]?\s+valve|new\s+valve|installed?\s+valve|new\s+txv)\b/i,
+  "replaced_relay": /\b(replace[d]?\s+relay|new\s+relay)\b/i,
+};
+
+function extractPatternMatches(
+  text: string,
+  patterns: Record<string, RegExp>,
+): string[] {
+  const matches: string[] = [];
+  for (const [key, regex] of Object.entries(patterns)) {
+    if (regex.test(text)) {
+      matches.push(key);
+    }
+  }
+  return matches;
+}
+
+function formatLabel(key: string): string {
+  return key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function classifyOutcome(
+  job: { status: string; resolution_notes: string | null; notes: string | null },
+): { key: string; label: string; type: string } {
+  const text = `${job.resolution_notes || ""} ${job.notes || ""}`.toLowerCase();
+
+  if (/\b(escalat|refer|supervisor|specialist)\b/.test(text)) {
+    return { key: "escalated", label: "Escalated", type: "escalated" };
+  }
+  if (/\b(parts?\s+order|order(ed)?\s+parts?|back\s*order)\b/.test(text)) {
+    return { key: "parts_ordered", label: "Parts Ordered", type: "parts_ordered" };
+  }
+  if (/\b(warranty\s+claim|warranty\s+replace|under\s+warranty)\b/.test(text)) {
+    return { key: "warranty_claim", label: "Warranty Claim", type: "warranty_claim" };
+  }
+  if (/\b(return\s+visit|come\s+back|follow\s*up\s+visit|repeat)\b/.test(text)) {
+    return { key: "repeat_visit", label: "Repeat Visit", type: "repeat_visit" };
+  }
+  // Default for completed jobs
+  return { key: "resolved", label: "Resolved", type: "resolved" };
+}
+
+// ── Main Handler ──────────────────────────────────────────────
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const start = Date.now();
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const client = createClient(supabaseUrl, serviceRoleKey);
+
+    const { job_id } = await req.json();
+
+    if (!job_id) {
+      return new Response(
+        JSON.stringify({ error: "job_id is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Check feature flag
+    const { data: flag } = await client
+      .from("feature_flags")
+      .select("is_enabled")
+      .eq("key", "workflow_intelligence")
+      .single();
+
+    if (!flag?.is_enabled) {
+      return new Response(
+        JSON.stringify({ skipped: true, reason: "workflow_intelligence flag disabled" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ── Fetch job data ────────────────────────────────────────
+
+    const [
+      { data: job },
+      { data: checklists },
+      { data: verdicts },
+    ] = await Promise.all([
+      client
+        .from("scheduled_jobs")
+        .select("id, tenant_id, title, description, notes, resolution_notes, status, job_type, stage_data, workflow_state, equipment_id")
+        .eq("id", job_id)
+        .single(),
+      client
+        .from("job_checklist_completions")
+        .select("stage_name, checklist_item, completed, notes, measurement_value, measurement_unit")
+        .eq("job_id", job_id),
+      client
+        .from("compliance_verdicts")
+        .select("rule_id, stage_name, verdict, explanation")
+        .eq("job_id", job_id),
+    ]);
+
+    if (!job) {
+      return new Response(
+        JSON.stringify({ error: "Job not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Fetch equipment type if equipment_id is present
+    let equipmentType: string | null = null;
+    if (job.equipment_id) {
+      const { data: equipment } = await client
+        .from("equipment_registry")
+        .select("equipment_type")
+        .eq("id", job.equipment_id)
+        .single();
+      equipmentType = equipment?.equipment_type || null;
+    }
+
+    const tenantId = job.tenant_id;
+    const combinedText = [
+      job.title, job.description, job.notes, job.resolution_notes,
+      ...(checklists || []).map((c) => c.notes).filter(Boolean),
+    ].join(" ");
+
+    // ── Extract patterns ──────────────────────────────────────
+
+    const symptomKeys = extractPatternMatches(combinedText, SYMPTOM_PATTERNS);
+    const failureKeys = extractPatternMatches(
+      `${job.resolution_notes || ""} ${(checklists || []).filter((c) => !c.completed).map((c) => c.notes || c.checklist_item).join(" ")}`,
+      FAILURE_PATTERNS,
+    );
+    const repairKeys = extractPatternMatches(
+      job.resolution_notes || "",
+      REPAIR_PATTERNS,
+    );
+
+    // Extract diagnostics from checklist items with measurements
+    const diagnosticItems = (checklists || []).filter(
+      (c) => c.measurement_value !== null && c.measurement_value !== undefined,
+    );
+
+    // Classify outcome
+    const outcome = classifyOutcome(job);
+
+    console.log(
+      `[workflow-intelligence] job=${job_id} symptoms=${symptomKeys.length} failures=${failureKeys.length} ` +
+      `repairs=${repairKeys.length} diagnostics=${diagnosticItems.length} outcome=${outcome.key}`,
+    );
+
+    // ── Upsert nodes (via RPC for atomic increment) ──────────
+
+    const nodeIds: Record<string, Record<string, string>> = {
+      symptom: {},
+      failure: {},
+      diagnostic: {},
+      repair: {},
+      outcome: {},
+    };
+
+    // Symptoms
+    for (const key of symptomKeys) {
+      const { data: id } = await client.rpc("upsert_workflow_symptom", {
+        p_tenant_id: tenantId,
+        p_symptom_key: key,
+        p_symptom_label: formatLabel(key),
+        p_equipment_type: equipmentType,
+        p_category: key.split("_")[0],
+      });
+      if (id) nodeIds.symptom[key] = id;
+    }
+
+    // Failures
+    for (const key of failureKeys) {
+      const { data: id } = await client.rpc("upsert_workflow_failure", {
+        p_tenant_id: tenantId,
+        p_failure_key: key,
+        p_failure_label: formatLabel(key),
+        p_equipment_type: equipmentType,
+      });
+      if (id) nodeIds.failure[key] = id;
+    }
+
+    // Diagnostics
+    for (const item of diagnosticItems) {
+      const diagnosticKey = `${item.stage_name}:${item.checklist_item}`
+        .toLowerCase()
+        .replace(/[^a-z0-9:_]/g, "_")
+        .slice(0, 100);
+
+      const { data: id } = await client.rpc("upsert_workflow_diagnostic", {
+        p_tenant_id: tenantId,
+        p_diagnostic_key: diagnosticKey,
+        p_diagnostic_label: item.checklist_item,
+        p_equipment_type: equipmentType,
+        p_success: !!item.completed,
+      });
+      if (id) nodeIds.diagnostic[diagnosticKey] = id;
+    }
+
+    // Repairs
+    for (const key of repairKeys) {
+      const { data: id } = await client.rpc("upsert_workflow_repair", {
+        p_tenant_id: tenantId,
+        p_repair_key: key,
+        p_repair_label: formatLabel(key),
+        p_equipment_type: equipmentType,
+      });
+      if (id) nodeIds.repair[key] = id;
+    }
+
+    // Outcome
+    {
+      const { data: id } = await client.rpc("upsert_workflow_outcome", {
+        p_tenant_id: tenantId,
+        p_outcome_key: outcome.key,
+        p_outcome_label: outcome.label,
+        p_outcome_type: outcome.type,
+      });
+      if (id) nodeIds.outcome[outcome.key] = id;
+    }
+
+    // ── Upsert edges (via RPC for atomic frequency increment) ─
+
+    interface EdgeDef {
+      source_type: string;
+      source_id: string;
+      target_type: string;
+      target_id: string;
+      edge_type: string;
+    }
+
+    const edgeDefs: EdgeDef[] = [];
+
+    // symptom → failure (leads_to)
+    for (const sKey of Object.keys(nodeIds.symptom)) {
+      for (const fKey of Object.keys(nodeIds.failure)) {
+        edgeDefs.push({
+          source_type: "symptom",
+          source_id: nodeIds.symptom[sKey],
+          target_type: "failure",
+          target_id: nodeIds.failure[fKey],
+          edge_type: "leads_to",
+        });
+      }
+    }
+
+    // failure → diagnostic (diagnosed_by)
+    for (const fKey of Object.keys(nodeIds.failure)) {
+      for (const dKey of Object.keys(nodeIds.diagnostic)) {
+        edgeDefs.push({
+          source_type: "failure",
+          source_id: nodeIds.failure[fKey],
+          target_type: "diagnostic",
+          target_id: nodeIds.diagnostic[dKey],
+          edge_type: "diagnosed_by",
+        });
+      }
+    }
+
+    // failure → repair (repaired_by)
+    for (const fKey of Object.keys(nodeIds.failure)) {
+      for (const rKey of Object.keys(nodeIds.repair)) {
+        edgeDefs.push({
+          source_type: "failure",
+          source_id: nodeIds.failure[fKey],
+          target_type: "repair",
+          target_id: nodeIds.repair[rKey],
+          edge_type: "repaired_by",
+        });
+      }
+    }
+
+    // repair → outcome (resulted_in)
+    for (const rKey of Object.keys(nodeIds.repair)) {
+      for (const oKey of Object.keys(nodeIds.outcome)) {
+        edgeDefs.push({
+          source_type: "repair",
+          source_id: nodeIds.repair[rKey],
+          target_type: "outcome",
+          target_id: nodeIds.outcome[oKey],
+          edge_type: "resulted_in",
+        });
+      }
+    }
+
+    // If no repairs, connect failure → outcome directly
+    if (repairKeys.length === 0) {
+      for (const fKey of Object.keys(nodeIds.failure)) {
+        for (const oKey of Object.keys(nodeIds.outcome)) {
+          edgeDefs.push({
+            source_type: "failure",
+            source_id: nodeIds.failure[fKey],
+            target_type: "outcome",
+            target_id: nodeIds.outcome[oKey],
+            edge_type: "resulted_in",
+          });
+        }
+      }
+    }
+
+    // Upsert all edges via RPC
+    for (const edge of edgeDefs) {
+      await client.rpc("upsert_workflow_edge", {
+        p_tenant_id: tenantId,
+        p_source_type: edge.source_type,
+        p_source_id: edge.source_id,
+        p_target_type: edge.target_type,
+        p_target_id: edge.target_id,
+        p_edge_type: edge.edge_type,
+      });
+    }
+
+    // ── Recompute probabilities ───────────────────────────────
+
+    // Collect unique source nodes that were affected
+    const affectedSources = new Set<string>();
+    for (const edge of edgeDefs) {
+      affectedSources.add(`${edge.source_type}:${edge.source_id}`);
+    }
+
+    for (const sourceKey of affectedSources) {
+      const [sourceType, sourceId] = sourceKey.split(":");
+
+      // Get total frequency for this source
+      const { data: edges } = await client
+        .from("workflow_intelligence_edges")
+        .select("id, frequency")
+        .eq("source_type", sourceType)
+        .eq("source_id", sourceId);
+
+      if (edges && edges.length > 0) {
+        const totalFrequency = edges.reduce(
+          (sum: number, e: { frequency: number }) => sum + e.frequency,
+          0,
+        );
+
+        // Update each edge's probability
+        for (const edge of edges) {
+          await client
+            .from("workflow_intelligence_edges")
+            .update({ probability: edge.frequency / totalFrequency })
+            .eq("id", edge.id);
+        }
+      }
+    }
+
+    const latencyMs = Date.now() - start;
+    console.log(
+      `[workflow-intelligence] Complete: ${edgeDefs.length} edges upserted, ` +
+      `${affectedSources.size} sources recomputed (${latencyMs}ms)`,
+    );
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        job_id,
+        extracted: {
+          symptoms: symptomKeys.length,
+          failures: failureKeys.length,
+          diagnostics: diagnosticItems.length,
+          repairs: repairKeys.length,
+          outcome: outcome.key,
+        },
+        edges_upserted: edgeDefs.length,
+        latency_ms: latencyMs,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (error) {
+    console.error("[workflow-intelligence] Error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});

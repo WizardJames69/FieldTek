@@ -26,6 +26,10 @@ export const SEMANTIC_SEARCH_THRESHOLD = 0.55;
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 export const EMBEDDING_DIMENSION = 1536;
 
+// ── Graph Scoring ───────────────────────────────────────────
+
+export const GRAPH_SCORING_WEIGHT = 0.15; // Weight of graph score in blended formula
+
 // ── Content Limits ──────────────────────────────────────────
 
 export const MAX_TOTAL_CONTENT = 80000;

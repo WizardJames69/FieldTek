@@ -63,6 +63,8 @@ export interface AuditLogData {
   } | null;
   judgeBlockingLatencyMs?: number | null;
   judgeBlockingGateway?: string | null;
+  graphScoringApplied?: boolean;
+  maxGraphScore?: number;
 }
 
 // ── Write Audit Log ─────────────────────────────────────────
@@ -143,6 +145,8 @@ export async function writeAuditLog(
       compliance_verdict_ids: data.complianceVerdictIds?.length ? data.complianceVerdictIds : null,
       graph_expansion_terms: data.graphExpansionTerms?.length ? data.graphExpansionTerms : null,
       graph_expansion_count: data.graphExpansionCount || 0,
+      graph_scoring_applied: data.graphScoringApplied || false,
+      max_graph_score: data.maxGraphScore || null,
       workflow_context_injected: data.workflowContextInjected || false,
       judge_verdict: data.judgeVerdict || null,
       ...(data.judgeResultSync ? {

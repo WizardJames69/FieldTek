@@ -8,7 +8,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 import {
-  Activity, ShieldCheck, Search, Brain, TrendingUp, AlertTriangle,
+  Activity, ShieldCheck, Search, Brain, TrendingUp, AlertTriangle, GitBranch, Ban,
 } from "lucide-react";
 import { format, subDays } from "date-fns";
 
@@ -236,12 +236,14 @@ export default function AdminRAGQuality() {
     const ungrounded = evaluated.filter(l => l.judge_grounded === false).length;
     const contradictions = evaluated.filter(l => l.judge_contradiction === true).length;
     const warnAppended = auditLogs.filter(l => l.judge_verdict === "warn_appended").length;
+    const blocked = auditLogs.filter(l => l.judge_verdict === "blocked").length;
     return {
       evaluated: evaluated.length,
       groundedPct: Math.round((grounded / evaluated.length) * 100),
       ungroundedPct: Math.round((ungrounded / evaluated.length) * 100),
       contradictionPct: Math.round((contradictions / evaluated.length) * 100),
       warnAppended,
+      blocked,
     };
   }, [auditLogs]);
 
@@ -266,6 +268,79 @@ export default function AdminRAGQuality() {
     const totalRules = withRules.reduce((s, l) => s + (l.compliance_rules_evaluated?.length || 0), 0);
     return { evaluatedQueries: withRules.length, totalRules };
   }, [auditLogs]);
+
+  // ── Workflow Intelligence Metrics ──────────────────────────
+
+  const { data: workflowSymptoms } = useQuery({
+    queryKey: ["workflow-symptoms"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workflow_symptoms")
+        .select("symptom_label, equipment_type, occurrence_count")
+        .order("occurrence_count", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: workflowFailurePaths } = useQuery({
+    queryKey: ["workflow-failure-paths"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workflow_failure_paths")
+        .select("symptom_label, failure_label, probability, frequency")
+        .order("probability", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: workflowOutcomes } = useQuery({
+    queryKey: ["workflow-outcomes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("workflow_outcomes")
+        .select("outcome_label, outcome_type, occurrence_count")
+        .order("occurrence_count", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const workflowStats = useMemo(() => {
+    const totalSymptoms = workflowSymptoms?.length || 0;
+    const totalPaths = workflowFailurePaths?.length || 0;
+    const outcomes = workflowOutcomes || [];
+    const totalOutcomes = outcomes.reduce((s, o) => s + (o.occurrence_count || 0), 0);
+    const resolved = outcomes.filter(o => o.outcome_type === "resolved").reduce((s, o) => s + (o.occurrence_count || 0), 0);
+    const resolutionRate = totalOutcomes > 0 ? Math.round((resolved / totalOutcomes) * 100) : 0;
+    const topEquipment = workflowSymptoms?.length
+      ? Object.entries(
+          workflowSymptoms.reduce<Record<string, number>>((acc, s) => {
+            const key = s.equipment_type || "Unknown";
+            acc[key] = (acc[key] || 0) + (s.occurrence_count || 0);
+            return acc;
+          }, {}),
+        ).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
+      : "N/A";
+    return { totalSymptoms, totalPaths, resolutionRate, topEquipment };
+  }, [workflowSymptoms, workflowFailurePaths, workflowOutcomes]);
+
+  const symptomChartData = useMemo(() => {
+    return (workflowSymptoms || []).map(s => ({
+      name: s.symptom_label,
+      value: s.occurrence_count || 0,
+    }));
+  }, [workflowSymptoms]);
+
+  const outcomeChartData = useMemo(() => {
+    return (workflowOutcomes || []).map(o => ({
+      name: o.outcome_label,
+      value: o.occurrence_count || 0,
+    }));
+  }, [workflowOutcomes]);
 
   if (isLoading) {
     return (
@@ -299,6 +374,7 @@ export default function AdminRAGQuality() {
           <TabsTrigger value="retrieval">Retrieval</TabsTrigger>
           <TabsTrigger value="judge">Judge</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
+          <TabsTrigger value="workflow">Workflow</TabsTrigger>
         </TabsList>
 
         {/* ── Overview Tab ──────────────────────────────────────── */}
@@ -334,11 +410,12 @@ export default function AdminRAGQuality() {
         <TabsContent value="judge" className="space-y-4">
           {judgeStats ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <StatCard title="Evaluated" value={judgeStats.evaluated} icon={Brain} />
                 <StatCard title="Grounded" value={`${judgeStats.groundedPct}%`} icon={ShieldCheck} />
                 <StatCard title="Contradiction Rate" value={`${judgeStats.contradictionPct}%`} icon={AlertTriangle} />
-                <StatCard title="Warnings Appended" value={judgeStats.warnAppended} icon={AlertTriangle} description="Judge blocking mode" />
+                <StatCard title="Warnings Appended" value={judgeStats.warnAppended} icon={AlertTriangle} description="Disclaimer injected" />
+                <StatCard title="Responses Blocked" value={judgeStats.blocked} icon={Ban} description="Full blocking mode" />
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <BarDistributionChart data={confidenceDistribution} title="Confidence Score Distribution" description="Judge confidence scores (1-5)" />
@@ -364,6 +441,64 @@ export default function AdminRAGQuality() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 No compliance evaluations found in this period. Enable the <code>compliance_engine</code> feature flag to start collecting compliance data.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Workflow Intelligence Tab ───────────────────────────── */}
+        <TabsContent value="workflow" className="space-y-4">
+          {(workflowSymptoms?.length || 0) > 0 || (workflowOutcomes?.length || 0) > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <StatCard title="Symptoms Tracked" value={workflowStats.totalSymptoms} icon={Search} />
+                <StatCard title="Failure Paths" value={workflowStats.totalPaths} icon={GitBranch} />
+                <StatCard title="First-Visit Resolution" value={`${workflowStats.resolutionRate}%`} icon={ShieldCheck} />
+                <StatCard title="Top Equipment" value={workflowStats.topEquipment} icon={Activity} />
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <BarDistributionChart data={symptomChartData} title="Top Symptoms" description="Most frequently reported symptoms" />
+                <DistributionPieChart data={outcomeChartData} title="Outcome Distribution" description="Job resolution outcomes" />
+              </div>
+
+              {workflowFailurePaths && workflowFailurePaths.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Failure Probability Paths</CardTitle>
+                    <CardDescription>Symptom → failure correlations ranked by probability</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="pb-2 font-medium">Symptom</th>
+                            <th className="pb-2 font-medium">Failure</th>
+                            <th className="pb-2 font-medium text-right">Probability</th>
+                            <th className="pb-2 font-medium text-right">Frequency</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {workflowFailurePaths.map((path, i) => (
+                            <tr key={i} className="border-b last:border-0">
+                              <td className="py-2">{path.symptom_label}</td>
+                              <td className="py-2">{path.failure_label}</td>
+                              <td className="py-2 text-right font-mono">{path.probability ? `${(path.probability * 100).toFixed(1)}%` : "—"}</td>
+                              <td className="py-2 text-right">{path.frequency}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                No workflow intelligence data collected yet. Enable the <code>workflow_intelligence</code> feature flag and complete jobs to start building diagnostic patterns.
               </CardContent>
             </Card>
           )}

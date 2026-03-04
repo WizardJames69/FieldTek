@@ -1,10 +1,13 @@
 // ============================================================
-// Equipment Knowledge Graph — Query Expansion
+// Equipment Knowledge Graph — Query Expansion + Scoring
 // ============================================================
 // Expands retrieval keywords by matching user query terms
 // against equipment components' failure_modes and
 // diagnostic_keywords, then traversing 1 hop via
 // component_relationships to discover related terms.
+//
+// Phase 9A: Also returns componentScores for post-retrieval
+// graph relationship scoring (applyGraphScoring).
 //
 // Latency target: < 50ms (2 parallel + 1 sequential query)
 // ============================================================
@@ -12,22 +15,33 @@
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
 
+export interface GraphExpansionResult {
+  terms: string[];
+  componentScores: Map<string, number>; // component_name (lowercase) → max weight (0.0–1.0)
+}
+
+const EMPTY_RESULT: GraphExpansionResult = {
+  terms: [],
+  componentScores: new Map(),
+};
+
 /**
- * Expand a search query with graph-derived keywords.
+ * Expand a search query with graph-derived keywords and component scores.
  *
  * 1. Match input keywords against failure_modes[] and diagnostic_keywords[]
  *    on equipment_components (filtered by equipmentType if provided).
  * 2. For matched components, traverse 1 hop via component_relationships.
  * 3. Collect diagnostic_keywords from related components.
- * 4. Return de-duped expansion terms (excluding input keywords).
+ * 4. Return de-duped expansion terms (excluding input keywords) and
+ *    component scores for post-retrieval graph scoring.
  */
 export async function expandQueryWithGraph(
   client: SupabaseClient,
   equipmentType: string | null,
   queryKeywords: string[],
   tenantId: string,
-): Promise<string[]> {
-  if (queryKeywords.length === 0) return [];
+): Promise<GraphExpansionResult> {
+  if (queryKeywords.length === 0) return EMPTY_RESULT;
 
   const start = Date.now();
 
@@ -66,12 +80,13 @@ export async function expandQueryWithGraph(
     // Merge and de-dupe matched component IDs
     const matchedComponents = new Map<
       string,
-      { id: string; keywords: string[] }
+      { id: string; name: string; keywords: string[] }
     >();
     for (const row of [...(fmMatches || []), ...(dkMatches || [])]) {
       if (!matchedComponents.has(row.id)) {
         matchedComponents.set(row.id, {
           id: row.id,
+          name: row.component_name,
           keywords: [
             ...(row.diagnostic_keywords || []),
             ...(row.failure_modes || []),
@@ -84,7 +99,7 @@ export async function expandQueryWithGraph(
       console.log(
         `[graph] No component matches for keywords: ${lowerKeywords.slice(0, 5).join(", ")} (${Date.now() - start}ms)`,
       );
-      return [];
+      return EMPTY_RESULT;
     }
 
     const matchedIds = Array.from(matchedComponents.keys());
@@ -93,18 +108,22 @@ export async function expandQueryWithGraph(
     const { data: relationships } = await client
       .from("component_relationships")
       .select(
-        "target_id, relationship, weight, target:target_id(id, diagnostic_keywords)",
+        "target_id, relationship, weight, target:target_id(id, component_name, diagnostic_keywords)",
       )
       .in("source_id", matchedIds)
       .gte("weight", 0.5)
       .order("weight", { ascending: false })
       .limit(20);
 
-    // Step 3: Collect expansion terms
+    // Step 3: Collect expansion terms + component scores
     const expansionTerms = new Set<string>();
+    const componentScores = new Map<string, number>();
 
-    // Terms from directly matched components
+    // Directly matched components get score 1.0
     for (const comp of matchedComponents.values()) {
+      const nameKey = comp.name.toLowerCase();
+      componentScores.set(nameKey, 1.0);
+
       for (const kw of comp.keywords) {
         const lower = kw.toLowerCase();
         if (!lowerKeywords.includes(lower)) {
@@ -113,9 +132,16 @@ export async function expandQueryWithGraph(
       }
     }
 
-    // Terms from 1-hop related components
+    // 1-hop related components get score = relationship weight
     if (relationships) {
       for (const rel of relationships) {
+        const targetName = rel.target?.component_name;
+        if (targetName) {
+          const nameKey = targetName.toLowerCase();
+          const existing = componentScores.get(nameKey) || 0;
+          componentScores.set(nameKey, Math.max(existing, rel.weight));
+        }
+
         const targetKeywords = rel.target?.diagnostic_keywords || [];
         for (const kw of targetKeywords) {
           const lower = kw.toLowerCase();
@@ -127,20 +153,21 @@ export async function expandQueryWithGraph(
     }
 
     // Cap at 15 expansion terms to avoid query bloat
-    const result = Array.from(expansionTerms).slice(0, 15);
+    const terms = Array.from(expansionTerms).slice(0, 15);
     const latencyMs = Date.now() - start;
 
     console.log(
-      `[graph] Expanded ${queryKeywords.length} keywords -> ${result.length} new terms ` +
-        `(${matchedComponents.size} components matched, ${relationships?.length || 0} relationships traversed, ${latencyMs}ms)`,
+      `[graph] Expanded ${queryKeywords.length} keywords -> ${terms.length} new terms ` +
+        `(${matchedComponents.size} components matched, ${relationships?.length || 0} relationships traversed, ` +
+        `${componentScores.size} scored components, ${latencyMs}ms)`,
     );
 
-    return result;
+    return { terms, componentScores };
   } catch (err) {
     console.warn(
       `[graph] Error (${Date.now() - start}ms):`,
       err instanceof Error ? err.message : String(err),
     );
-    return []; // Graceful degradation
+    return EMPTY_RESULT; // Graceful degradation
   }
 }
