@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { BookOpen, Network, GitBranch, Brain } from "lucide-react";
 import { DisplayCards } from "./DisplayCards";
+import { IsometricLights } from "./IsometricLights";
 
 const capabilities = [
   {
@@ -31,8 +32,9 @@ const capabilities = [
 
 export function AIIntelligenceSection() {
   return (
-    <section id="ai-platform" className="landing-section-dark landing-ai-glow py-16 md:py-24 lg:py-32 overflow-hidden">
-      <div className="mx-auto max-w-6xl px-4">
+    <section id="ai-platform" className="landing-section-dark landing-ai-glow py-16 md:py-24 lg:py-32 overflow-hidden relative">
+      <IsometricLights />
+      <div className="mx-auto max-w-6xl px-4 relative z-[1]">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
           {/* Left: Text content */}
           <motion.div

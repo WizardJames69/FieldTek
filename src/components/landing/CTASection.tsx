@@ -39,7 +39,7 @@ export function CTASection({ onJoinWaitlist }: CTASectionProps) {
             <Button
               variant="outline"
               size="lg"
-              className="text-lg px-8 py-6 border-zinc-700 text-zinc-300 hover:text-white hover:bg-white/5 hover:border-zinc-600"
+              className="text-lg px-8 py-6 bg-transparent border border-white/25 text-white hover:border-white/50 hover:bg-white/5 transition-all duration-300"
               onClick={onJoinWaitlist}
             >
               Join Waitlist

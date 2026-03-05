@@ -91,8 +91,9 @@ function Card({
       }}
       className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full border-4 border-zinc-800 p-2 md:p-6 bg-[#0F0F11] rounded-[30px] shadow-2xl relative z-0"
     >
-      <div className="h-full w-full overflow-hidden rounded-2xl bg-[#111113] md:rounded-2xl">
+      <div className="h-full w-full overflow-hidden rounded-2xl bg-[#111113] md:rounded-2xl relative">
         {children}
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-[#09090B] pointer-events-none z-10" />
       </div>
     </motion.div>
   );
