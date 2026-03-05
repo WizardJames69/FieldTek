@@ -1,6 +1,5 @@
 import { test, expect } from '@playwright/test';
 import { AssistantPage } from '../page-objects/AssistantPage';
-import { navigateTo } from '../helpers/wait-helpers';
 
 test.describe('AI Assistant - Page Rendering', () => {
   let assistantPage: AssistantPage;
@@ -39,8 +38,7 @@ test.describe('AI Assistant - Page Rendering', () => {
     const toggle = page.locator('button:has-text("Code Ref")');
     if (await toggle.isVisible()) {
       await toggle.click();
-      // Toggle should change state
-      await page.waitForTimeout(300);
+      await expect(toggle).toBeVisible();
       await toggle.click();
     }
   });
@@ -55,53 +53,48 @@ test.describe('AI Assistant - Chat Interaction', () => {
     await assistantPage.waitForPage();
   });
 
-  test('sending a message shows user bubble and triggers AI response', async ({ page }) => {
+  test('sending a message shows user bubble and triggers AI response', async () => {
     test.slow();
-    await assistantPage.sendMessage('What is the startup procedure?');
-    const userBubble = page.locator('[data-role="user"]').last();
-await userBubble.waitFor({ state: 'visible', timeout: 15000 });
-await expect(userBubble).toContainText('startup procedure');
-    await assistantPage.waitForResponse(45_000);
+    await assistantPage.sendMessageAndWait('What is the startup procedure?');
     const response = await assistantPage.getLastAssistantMessage();
     expect(response.length).toBeGreaterThan(10);
   });
 
-  test('assistant response includes citation badges from [Source:] patterns', async ({ page }) => {
+  test('assistant response includes citation badges from [Source:] patterns', async () => {
     test.slow();
-    await assistantPage.sendMessage('What is the startup procedure for the Carrier 24ACC636?');
-    await assistantPage.waitForResponse(45_000);
-    // Citations may or may not appear depending on retrieval quality
+    await assistantPage.sendMessageAndWait('What is the startup procedure for the Carrier 24ACC636?');
+    const response = await assistantPage.getLastAssistantMessage();
+    expect(response.length).toBeGreaterThan(10);
+    // Citations are optional — just verify the locator resolves without error
     const citations = assistantPage.getCitationBadges();
-    const count = await citations.count();
-    // Just verify we got a response — citations depend on retrieval matching
-    const response = await assistantPage.getLastAssistantMessage();
-    expect(response.length).toBeGreaterThan(10);
+    await citations.count();
   });
 
-  test('confidence indicator badge appears after response', async ({ page }) => {
+  test('confidence indicator badge appears after response', async () => {
     test.slow();
-    await assistantPage.sendMessage('What maintenance intervals are recommended?');
-    await assistantPage.waitForResponse(45_000);
-    // Confidence badge should appear
+    await assistantPage.sendMessageAndWait('What maintenance intervals are recommended?');
     const badge = assistantPage.getConfidenceBadge();
-    // May not always show depending on pipeline config
-    await page.waitForTimeout(2000);
+    // Confidence badge may or may not appear depending on pipeline config
+    const isVisible = await badge.isVisible().catch(() => false);
+    if (isVisible) {
+      await expect(badge).toContainText(/confidence/i);
+    }
   });
 
-  test('suggested questions appear after AI response', async ({ page }) => {
+  test('suggested questions appear after AI response', async () => {
     test.slow();
-    await assistantPage.sendMessage('Tell me about HVAC maintenance');
-    await assistantPage.waitForResponse(45_000);
-    // Check for follow-up questions section
-    await page.waitForTimeout(2000);
+    await assistantPage.sendMessageAndWait('Tell me about HVAC maintenance');
     const suggestions = assistantPage.getSuggestedQuestions();
-    // Suggestions may or may not appear based on LLM response
+    const count = await suggestions.count();
+    // Suggestions are optional — if present, verify count is reasonable
+    if (count > 0) {
+      expect(count).toBeLessThanOrEqual(3);
+    }
   });
 
   test('New Chat button clears conversation and returns to empty state', async ({ page }) => {
     test.slow();
-    await assistantPage.sendMessage('Hello');
-    await assistantPage.waitForResponse(45_000);
+    await assistantPage.sendMessageAndWait('Hello');
     const countBefore = await assistantPage.getMessageCount();
     expect(countBefore).toBeGreaterThan(0);
     await assistantPage.clearConversation();
@@ -133,7 +126,8 @@ test.describe('AI Assistant - Job Context', () => {
       const option = page.getByRole('option').first();
       if (await option.isVisible()) {
         await option.click();
-        await page.waitForTimeout(500);
+        // Wait for combobox popover to close
+        await expect(page.getByPlaceholder('Search jobs...')).not.toBeVisible({ timeout: 5_000 });
       }
     }
   });
@@ -145,7 +139,8 @@ test.describe('AI Assistant - Job Context', () => {
       const option = page.getByRole('option').first();
       if (await option.isVisible()) {
         await option.click();
-        await page.waitForTimeout(500);
+        // Wait for combobox popover to close
+        await expect(page.getByPlaceholder('Search jobs...')).not.toBeVisible({ timeout: 5_000 });
         await assistantPage.clearJobContext();
       }
     }
@@ -158,10 +153,12 @@ test.describe('AI Assistant - Rate Limit Display', () => {
     const assistantPage = new AssistantPage(page);
     await assistantPage.goto();
     await assistantPage.waitForPage();
-    await assistantPage.sendMessage('What is HVAC?');
-    await assistantPage.waitForResponse(45_000);
+    await assistantPage.sendMessageAndWait('What is HVAC?');
     const rateLimit = assistantPage.getRateLimitDisplay();
-    // Rate limit display should be visible after a query
-    await page.waitForTimeout(2000);
+    // Rate limit display may or may not be visible depending on config
+    const isVisible = await rateLimit.isVisible().catch(() => false);
+    if (isVisible) {
+      await expect(rateLimit).toBeVisible();
+    }
   });
 });

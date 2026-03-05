@@ -568,7 +568,7 @@ export default function Assistant() {
           </div>
           <div className="flex items-center gap-4">
             {rateLimitInfo && (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div data-testid="rate-limit-display" className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Zap className="h-3.5 w-3.5" />
                 <span className={cn(
                   rateLimitInfo.used >= rateLimitInfo.limit && "text-destructive font-medium"
@@ -778,7 +778,7 @@ export default function Assistant() {
           <Card className="flex-1 flex flex-col min-w-0 app-glass-container">
             <ScrollArea className="flex-1 p-4" ref={scrollRef}>
               {messages.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center text-center p-8">
                   <Bot className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">How can I help you today?</h3>
                   
@@ -875,7 +875,7 @@ export default function Assistant() {
                     const isLastAssistantMessage = msg.role === "assistant" && i === messages.length - 1;
                     
                     return (
-                      <div key={i}>
+                      <div key={i} data-testid={`chat-message-${msg.role}`}>
                         <div
                           className={cn(
                             "flex gap-3",
@@ -910,7 +910,7 @@ export default function Assistant() {
                                     <DocumentCitation sources={sources} />
                                   )}
                                   {msg.metadata?.confidence && (
-                                    <div className={cn(
+                                    <div data-testid="confidence-badge" className={cn(
                                       "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md w-fit",
                                       msg.metadata.confidence === 'high' && "text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-950/30",
                                       msg.metadata.confidence === 'medium' && "text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/30",
@@ -973,7 +973,7 @@ export default function Assistant() {
                     );
                   })}
                   {isLoading && messages[messages.length - 1]?.role === "user" && (
-                    <div className="flex gap-3">
+                    <div data-testid="assistant-loading" className="flex gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                         <Bot className="h-4 w-4 text-primary" />
                       </div>
@@ -1012,6 +1012,7 @@ export default function Assistant() {
               
               <div className="flex gap-2">
                 <Input
+                  data-testid="chat-input"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -1019,8 +1020,9 @@ export default function Assistant() {
                   disabled={isLoading}
                   className="flex-1"
                 />
-                <Button 
-                  onClick={() => handleSend()} 
+                <Button
+                  data-testid="send-message-button"
+                  onClick={() => handleSend()}
                   disabled={isLoading || (!input.trim() && attachedImages.length === 0)}
                 >
                   {isLoading ? (

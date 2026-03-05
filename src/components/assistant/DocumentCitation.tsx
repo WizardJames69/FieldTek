@@ -29,7 +29,7 @@ export function DocumentCitation({
   };
 
   return (
-    <div className={cn("flex flex-wrap gap-1.5", className)}>
+    <div data-testid="document-citation" className={cn("flex flex-wrap gap-1.5", className)}>
       {sources.map((source, idx) => (
         <Badge
           key={idx}
@@ -91,6 +91,7 @@ export function ContextIndicator({
       )}
       {onClearContext && (
         <Button
+          data-testid="clear-job-context"
           variant="ghost"
           size="sm"
           className="h-5 px-1.5 text-xs ml-auto"

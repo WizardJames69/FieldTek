@@ -1,6 +1,19 @@
 import { Page, Locator, expect } from '@playwright/test';
 import { waitForDataLoad } from '../helpers/wait-helpers';
 
+const SELECTORS = {
+  chatMessageUser: '[data-testid="chat-message-user"]',
+  chatMessageAssistant: '[data-testid="chat-message-assistant"]',
+  assistantLoading: '[data-testid="assistant-loading"]',
+  sendMessageButton: '[data-testid="send-message-button"]',
+  confidenceBadge: '[data-testid="confidence-badge"]',
+  documentCitation: '[data-testid="document-citation"]',
+  rateLimitDisplay: '[data-testid="rate-limit-display"]',
+  clearJobContext: '[data-testid="clear-job-context"]',
+  chatInput: '[data-testid="chat-input"]',
+  emptyState: '[data-testid="assistant-empty-state"]',
+} as const;
+
 export class AssistantPage {
   constructor(private page: Page) {}
 
@@ -16,23 +29,39 @@ export class AssistantPage {
   async sendMessage(text: string) {
     const input = this.page.getByPlaceholder('Ask about troubleshooting');
     await input.fill(text);
-    await this.page.locator('button:has(svg.lucide-send)').click();
+    await this.page.locator(SELECTORS.sendMessageButton).click();
   }
 
-  async waitForResponse(timeout = 30_000) {
-    // Wait for an assistant message bubble to appear
+  async sendMessageAndWait(text: string, timeout = 45_000) {
+    const countBefore = await this.page.locator(SELECTORS.chatMessageAssistant).count();
+    await this.sendMessage(text);
+    // Wait for user bubble to appear with the sent text
     await expect(
-      this.page.locator('[data-role="assistant"]').last(),
-    ).toBeVisible({ timeout });
+      this.page.locator(SELECTORS.chatMessageUser).last(),
+    ).toContainText(text.substring(0, 20), { timeout: 10_000 });
+    // Wait for new assistant message (count increased)
+    await this.waitForResponse(countBefore + 1, timeout);
+  }
+
+  async waitForResponse(expectedCount: number, timeout = 30_000) {
+    // Wait for assistant message count to reach expected value
+    await expect(
+      this.page.locator(SELECTORS.chatMessageAssistant),
+    ).toHaveCount(expectedCount, { timeout });
+    // Then wait for streaming to complete (loading indicator gone)
+    await this.page
+      .locator(SELECTORS.assistantLoading)
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {}); // May already be gone
   }
 
   async getLastAssistantMessage(): Promise<string> {
-    const messages = this.page.locator('[data-role="assistant"]');
+    const messages = this.page.locator(SELECTORS.chatMessageAssistant);
     return (await messages.last().textContent()) ?? '';
   }
 
   async getLastUserMessage(): Promise<string> {
-    const messages = this.page.locator('[data-role="user"]');
+    const messages = this.page.locator(SELECTORS.chatMessageUser);
     return (await messages.last().textContent()) ?? '';
   }
 
@@ -43,8 +72,7 @@ export class AssistantPage {
   }
 
   async clearJobContext() {
-    // Click the X button on the context indicator
-    const clearButton = this.page.locator('[data-testid="clear-job-context"]');
+    const clearButton = this.page.locator(SELECTORS.clearJobContext);
     if (await clearButton.isVisible()) {
       await clearButton.click();
     }
@@ -63,11 +91,11 @@ export class AssistantPage {
   }
 
   getConfidenceBadge(): Locator {
-    return this.page.locator('text=/High confidence|Medium confidence|Low confidence/');
+    return this.page.locator(SELECTORS.confidenceBadge);
   }
 
   getCitationBadges(): Locator {
-    return this.page.locator('[data-testid="document-citation"]');
+    return this.page.locator(SELECTORS.documentCitation);
   }
 
   getSuggestedQuestions(): Locator {
@@ -75,7 +103,7 @@ export class AssistantPage {
   }
 
   getRateLimitDisplay(): Locator {
-    return this.page.locator('text=/\\d+\\/\\d+\\s+today/');
+    return this.page.locator(SELECTORS.rateLimitDisplay);
   }
 
   async isNoDocsWarningVisible(): Promise<boolean> {
@@ -91,8 +119,8 @@ export class AssistantPage {
   }
 
   async getMessageCount(): Promise<number> {
-    const user = await this.page.locator('[data-role="user"]').count();
-    const assistant = await this.page.locator('[data-role="assistant"]').count();
+    const user = await this.page.locator(SELECTORS.chatMessageUser).count();
+    const assistant = await this.page.locator(SELECTORS.chatMessageAssistant).count();
     return user + assistant;
   }
 }
