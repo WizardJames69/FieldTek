@@ -27,31 +27,82 @@ export class AssistantPage {
   }
 
   async sendMessage(text: string) {
-    const input = this.page.getByPlaceholder('Ask about troubleshooting');
+    const input = this.page.locator(SELECTORS.chatInput);
+    await expect(input).toBeEnabled({ timeout: 5_000 });
     await input.fill(text);
-    await this.page.locator(SELECTORS.sendMessageButton).click();
+    const sendBtn = this.page.locator(SELECTORS.sendMessageButton);
+    await expect(sendBtn).toBeEnabled({ timeout: 5_000 });
+    await sendBtn.click();
   }
 
-  async sendMessageAndWait(text: string, timeout = 45_000) {
+  async sendMessageAndWait(text: string, timeout = 60_000) {
     const countBefore = await this.page.locator(SELECTORS.chatMessageAssistant).count();
+
+    // Set up API response listener BEFORE sending (captures the fetch)
+    const apiResponsePromise = this.page.waitForResponse(
+      (resp) =>
+        resp.url().includes('/functions/v1/field-assistant') &&
+        resp.request().method() === 'POST',
+      { timeout },
+    );
+
     await this.sendMessage(text);
+
     // Wait for user bubble to appear with the sent text
     await expect(
       this.page.locator(SELECTORS.chatMessageUser).last(),
     ).toContainText(text.substring(0, 20), { timeout: 10_000 });
-    // Wait for new assistant message (count increased)
-    await this.waitForResponse(countBefore + 1, timeout);
+
+    // Wait for API response to arrive (network level)
+    const apiResponse = await apiResponsePromise;
+    const status = apiResponse.status();
+    if (status !== 200) {
+      throw new Error(
+        `Assistant API returned ${status} — expected 200. The edge function call failed.`,
+      );
+    }
+
+    // Now wait for the assistant message to render (SSE streaming completion)
+    await this.waitForAssistantMessage(countBefore + 1, timeout);
   }
 
-  async waitForResponse(expectedCount: number, timeout = 30_000) {
-    // Wait for assistant message count to reach expected value
+  async waitForAssistantMessage(expectedCount: number, timeout = 30_000) {
+    const assistantMessage = this.page
+      .locator(SELECTORS.chatMessageAssistant)
+      .nth(expectedCount - 1);
+    const errorToast = this.page.locator('[data-sonner-toast][data-type="error"]');
+
+    // Race: assistant message appears OR error toast appears
+    await Promise.race([
+      assistantMessage.waitFor({ state: 'visible', timeout }),
+      errorToast.waitFor({ state: 'visible', timeout }).then(async () => {
+        const errorText = await errorToast.textContent().catch(() => 'unknown');
+        throw new Error(`Assistant error toast appeared: "${errorText}"`);
+      }),
+    ]).catch(async (err) => {
+      // If it's our error toast detection, re-throw with details
+      if (err.message.includes('error toast appeared')) throw err;
+
+      // Otherwise check if an error toast appeared during the wait
+      const hasError = await errorToast.isVisible().catch(() => false);
+      if (hasError) {
+        const errorText = await errorToast.textContent().catch(() => 'unknown');
+        throw new Error(`Assistant response failed. Error toast: "${errorText}"`);
+      }
+
+      // No toast, genuine timeout — re-throw original
+      throw err;
+    });
+
+    // Verify exact count
     await expect(
       this.page.locator(SELECTORS.chatMessageAssistant),
-    ).toHaveCount(expectedCount, { timeout });
-    // Then wait for streaming to complete (loading indicator gone)
+    ).toHaveCount(expectedCount, { timeout: 5_000 });
+
+    // Wait for streaming to complete (loading indicator gone)
     await this.page
       .locator(SELECTORS.assistantLoading)
-      .waitFor({ state: 'hidden', timeout })
+      .waitFor({ state: 'hidden', timeout: 15_000 })
       .catch(() => {}); // May already be gone
   }
 
