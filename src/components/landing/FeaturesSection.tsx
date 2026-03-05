@@ -1,192 +1,87 @@
-import { 
-  ClipboardCheck, 
-  TicketPlus, 
-  Database, 
-  BarChart3,
-  CheckCircle2,
-  AlertTriangle,
-  FileCheck,
-  Camera,
-  Cpu,
-  Route,
-  History,
-  Shield,
-  TrendingUp,
-  Users,
-  Wrench,
-  Scale,
-  BookOpen,
-  LucideIcon
-} from "lucide-react";
+import { motion } from "framer-motion";
+import { ClipboardCheck, FileText, Shield } from "lucide-react";
 import { memo } from "react";
-import { ScrollReveal } from "./ParallaxSection";
-import { FloatingOrbs } from "./FloatingOrbs";
 
-
-interface CapabilityFeature {
-  icon: LucideIcon;
-  text: string;
-}
-
-interface Capability {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  features: CapabilityFeature[];
-}
-
-const capabilities: Capability[] = [
+const pillars = [
   {
     icon: ClipboardCheck,
-    title: "Smart Installation & Commissioning Checklists",
-    description: "Interactive digital checklists that ensure consistent quality across every job.",
+    title: "AI-Guided Installs",
+    description:
+      "Step-by-step procedures pulled directly from manufacturer documentation. Your technicians follow the spec every time — no guesswork, no missed steps.",
     features: [
-      { icon: Wrench, text: "Equipment installation workflows" },
-      { icon: CheckCircle2, text: "Startup and commissioning procedures" },
-      { icon: AlertTriangle, text: "Real-time validation flags missing or unsafe data" },
-      { icon: FileCheck, text: "Auto-generates documentation for warranty & compliance" },
-    ]
+      "Interactive checklists from OEM manuals",
+      "Real-time validation flags unsafe or missing data",
+      "Startup and commissioning workflows",
+      "Offline-capable for basements and remote sites",
+    ],
   },
   {
-    icon: TicketPlus,
-    title: "Recurring Maintenance Scheduling",
-    description: "Automate preventive maintenance with smart scheduling that generates jobs in advance.",
-    
+    icon: FileText,
+    title: "Automatic Documentation",
+    description:
+      "Every step is captured, timestamped, and stored. Compliance-ready documentation is generated automatically — no extra work for your techs.",
     features: [
-      { icon: History, text: "Weekly, monthly, quarterly, or annual schedules" },
-      { icon: Route, text: "Auto-generates jobs ahead of time" },
-      { icon: Users, text: "Auto-assign to preferred technicians" },
-      { icon: Database, text: "Linked to equipment for complete history" },
-    ]
+      "Auto-generated service reports",
+      "Timestamped completion records",
+      "Photo and measurement capture",
+      "Exportable for audits and inspections",
+    ],
   },
   {
-    icon: Database,
-    title: "Asset Management & Warranty Tracking",
-    description: "Centralized equipment history with AI-powered insights for every asset in your portfolio.",
-    
+    icon: Shield,
+    title: "Warranty Protection",
+    description:
+      "Compliance verification against manufacturer requirements before the job closes. Catch warranty-voiding mistakes before they cost you money.",
     features: [
-      { icon: Database, text: "Serial number tracking with full service history" },
-      { icon: History, text: "AI-powered recurring issue detection" },
-      { icon: Shield, text: "Proactive warranty expiration alerts" },
-      { icon: TrendingUp, text: "Parts prediction based on repair patterns" },
-    ]
+      "Manufacturer spec compliance checks",
+      "Warranty expiration tracking",
+      "Installation verification against OEM standards",
+      "Proactive alerts before warranties lapse",
+    ],
   },
-  {
-    icon: BarChart3,
-    title: "Mobile Offline Mode",
-    description: "Keep technicians productive even without signal — sync automatically when back online.",
-    
-    features: [
-      { icon: Camera, text: "View jobs, clients & checklists offline" },
-      { icon: CheckCircle2, text: "Complete checklists and update status" },
-      { icon: Cpu, text: "Background sync when connection restores" },
-      { icon: Shield, text: "No work lost, even in basements or remote sites" },
-    ]
-  },
-  {
-    icon: Scale,
-    title: "Instant Code Compliance Reference",
-    description: "Look up US and Canadian building and trade codes on the job site — no manuals to carry, no documents to upload.",
-    
-    features: [
-      { icon: BookOpen, text: "NEC & CEC electrical codes" },
-      { icon: BookOpen, text: "IPC & NPC plumbing codes" },
-      { icon: BookOpen, text: "IMC mechanical codes" },
-      { icon: Shield, text: "CSA & ASME standards" },
-    ]
-  }
 ];
-
-// Static feature item
-const FeatureItem = memo(function FeatureItem({
-  feature,
-}: {
-  feature: CapabilityFeature;
-}) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 group-hover:bg-muted transition-colors">
-      <feature.icon className="h-4 w-4 text-primary flex-shrink-0" />
-      <span className="text-sm text-foreground">{feature.text}</span>
-    </div>
-  );
-});
-
-// Fully static capability card — no motion, no useInView
-const CapabilityCard = memo(function CapabilityCard({
-  capability,
-}: {
-  capability: Capability;
-}) {
-  return (
-    <div
-      className="bg-card border border-border rounded-2xl p-8 hover:shadow-xl hover:shadow-primary/10 hover:border-primary/30 transition-all duration-300 group card-glow"
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-        e.currentTarget.style.setProperty('--mouse-x', `${x}%`);
-        e.currentTarget.style.setProperty('--mouse-y', `${y}%`);
-      }}
-    >
-      <div className="flex items-start gap-4 mb-6">
-        <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors overflow-hidden">
-          <capability.icon className="h-7 w-7 text-primary" />
-        </div>
-        <div>
-          <h3 className="text-xl font-semibold text-foreground mb-2">
-            {capability.title}
-          </h3>
-          <p className="text-muted-foreground">
-            {capability.description}
-          </p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {capability.features.map((feature, featureIndex) => (
-          <FeatureItem
-            key={featureIndex}
-            feature={feature}
-          />
-        ))}
-      </div>
-    </div>
-  );
-});
 
 export const FeaturesSection = memo(function FeaturesSection() {
   return (
-    <section id="features" className="relative py-20 bg-muted/30 overflow-hidden section-fade-top layered-bg">
-      <div className="absolute inset-0 grid-pattern -z-10" />
-      <FloatingOrbs variant="mixed" count={2} intensity="subtle" />
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-10 right-[10%] w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
-        <div className="absolute bottom-20 left-[5%] w-48 h-48 bg-accent/10 rounded-full blur-3xl" />
-      </div>
+    <section id="features" className="landing-section-light-muted py-16 md:py-24">
+      <div className="mx-auto max-w-6xl px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4 }}
+          className="text-center max-w-3xl mx-auto mb-16"
+        >
+          <p className="landing-eyebrow text-zinc-400 mb-4">The Solution</p>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-zinc-900 leading-[1.15]">
+            Three pillars of reliable field service
+          </h2>
+        </motion.div>
 
-      <div className="container mx-auto px-4">
-        <ScrollReveal direction="up">
-          <div className="text-center max-w-3xl mx-auto mb-16 header-spotlight">
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-4">
-              <ClipboardCheck className="h-4 w-4" />
-              Core Capabilities
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Purpose-Built for Field Operations
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              From installation checklists to warranty tracking, every feature is designed to 
-              standardize quality, reduce callbacks, and protect your business.
-            </p>
-          </div>
-        </ScrollReveal>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {capabilities.map((capability, index) => (
-            <CapabilityCard
-              key={index}
-              capability={capability}
-            />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {pillars.map((pillar, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.3, delay: i * 0.1 }}
+              className="rounded-xl border border-zinc-200 bg-white p-8 hover:border-zinc-300 hover:shadow-lg hover:shadow-zinc-200/50 transition-all duration-200"
+            >
+              <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center mb-5">
+                <pillar.icon className="h-6 w-6 text-orange-500" />
+              </div>
+              <h3 className="text-xl font-semibold text-zinc-900 mb-3">{pillar.title}</h3>
+              <p className="text-zinc-500 leading-relaxed mb-6">{pillar.description}</p>
+              <ul className="space-y-2.5">
+                {pillar.features.map((feature, j) => (
+                  <li key={j} className="flex items-start gap-2.5 text-sm text-zinc-600">
+                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
           ))}
         </div>
       </div>

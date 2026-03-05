@@ -716,6 +716,103 @@
 }
 
 /* ============================================
+   Landing Page: Forced Dark/Light Section System
+   ============================================ */
+
+/* Dark sections: Hero, AI Intelligence, CTA, Footer — always dark regardless of theme */
+.landing-section-dark {
+  background-color: #09090B;
+  color: #FAFAFA;
+}
+
+.landing-section-dark .landing-text-secondary {
+  color: #A1A1AA;
+}
+
+.landing-section-dark .landing-border {
+  border-color: #27272A;
+}
+
+.landing-section-dark .landing-card {
+  background-color: #18181B;
+  border: 1px solid #27272A;
+}
+
+/* Light sections: Trust, Problem, Features, Showcase, Social Proof, How It Works */
+.landing-section-light {
+  background-color: #FFFFFF;
+  color: #09090B;
+}
+
+.landing-section-light-muted {
+  background-color: #F4F4F5;
+  color: #09090B;
+}
+
+.landing-section-light .landing-text-secondary,
+.landing-section-light-muted .landing-text-secondary {
+  color: #71717A;
+}
+
+.landing-section-light .landing-border,
+.landing-section-light-muted .landing-border {
+  border-color: #E4E4E7;
+}
+
+.landing-section-light .landing-card,
+.landing-section-light-muted .landing-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E4E4E7;
+}
+
+/* Landing accent colors */
+.landing-accent {
+  color: #F97316;
+}
+
+.landing-accent-bg {
+  background-color: #F97316;
+}
+
+.landing-accent-bg:hover {
+  background-color: #EA580C;
+}
+
+/* Landing eyebrow text */
+.landing-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Landing nav glass on dark */
+.landing-nav-glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background-color: rgba(9, 9, 11, 0.8);
+  border-bottom: 1px solid #27272A;
+}
+
+/* Dark-to-light gradient transition between sections */
+.landing-gradient-dark-to-light {
+  background: linear-gradient(to bottom, #09090B, #FFFFFF);
+}
+
+/* Subtle radial glow for hero background */
+.landing-hero-glow {
+  position: relative;
+}
+
+.landing-hero-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 60% 40% at 50% 30%, rgba(249, 115, 22, 0.08), transparent 60%);
+}
+
+/* ============================================
    Phase 5: Cutting-Edge Native Design Utilities
    ============================================ */
 

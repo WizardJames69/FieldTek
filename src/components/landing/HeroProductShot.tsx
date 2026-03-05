@@ -1,287 +1,156 @@
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { 
-  LayoutDashboard, 
-  Clock, 
-  CheckCircle2, 
+import {
+  LayoutDashboard,
+  Clock,
+  CheckCircle2,
   AlertTriangle,
   Calendar,
-  Bell
+  Bell,
 } from "lucide-react";
-import { usePrefersReducedMotion } from "@/hooks/useReducedAnimations";
-import { HeroBeamLines } from "./HeroBeamLines";
-import { cn } from "@/lib/utils";
 
 const stats = [
-  { label: "Total Jobs", value: "24", icon: LayoutDashboard, trend: "+3", color: "primary" },
-  { label: "In Progress", value: "8", icon: Clock, color: "blue" },
-  { label: "Completed", value: "14", icon: CheckCircle2, color: "green" },
-  { label: "Urgent", value: "2", icon: AlertTriangle, color: "destructive" }
+  { label: "Total Jobs", value: "24", icon: LayoutDashboard, trend: "+3" },
+  { label: "In Progress", value: "8", icon: Clock },
+  { label: "Completed", value: "14", icon: CheckCircle2 },
+  { label: "Urgent", value: "2", icon: AlertTriangle },
 ];
 
 const jobs = [
-  { title: "AC Repair", client: "Johnson Residence", status: "in_progress", priority: "high" },
-  { title: "Furnace Install", client: "Martinez Office", status: "scheduled", priority: "medium" },
-  { title: "Emergency Leak", client: "Park Plaza", status: "pending", priority: "urgent" }
+  { title: "AC Unit Replacement", client: "Johnson Residence", status: "In Progress", priority: "high" },
+  { title: "Furnace Commissioning", client: "Martinez Office Park", status: "Scheduled", priority: "medium" },
+  { title: "Emergency Refrigerant Leak", client: "Park Plaza Hotel", status: "Pending", priority: "urgent" },
 ];
 
 const requests = [
-  { title: "HVAC Not Cooling", client: "Smith Home", time: "10 min ago" },
-  { title: "Annual Maintenance", client: "Tech Corp", time: "25 min ago" }
+  { title: "HVAC Not Cooling — Unit 4B", client: "Smith Home", time: "10 min ago" },
+  { title: "Annual Maintenance Due", client: "TechCorp HQ", time: "25 min ago" },
 ];
 
-// Helper for priority-based styling
-function getPriorityStyles(priority: string) {
-  switch (priority) {
-    case 'urgent':
-      return {
-        border: 'border-l-2 border-l-destructive',
-        shadow: 'shadow-[inset_4px_0_12px_-4px_hsl(var(--destructive)/0.15)]',
-        glow: 'priority-glow-urgent'
-      };
-    case 'high':
-      return {
-        border: 'border-l-2 border-l-warning',
-        shadow: 'shadow-[inset_4px_0_12px_-4px_hsl(var(--warning)/0.15)]',
-        glow: ''
-      };
-    default:
-      return {
-        border: 'border-l-2 border-l-muted-foreground/30',
-        shadow: '',
-        glow: ''
-      };
-  }
-}
-
-// Helper for stat color styling
-function getStatColorStyles(color: string) {
-  switch (color) {
-    case 'primary':
-      return {
-        iconBg: 'bg-primary/10',
-        iconColor: 'text-primary',
-        glowShadow: '0 0 15px hsl(var(--primary) / 0.2)'
-      };
-    case 'blue':
-      return {
-        iconBg: 'bg-blue-500/10',
-        iconColor: 'text-blue-500',
-        glowShadow: '0 0 15px hsl(217 91% 60% / 0.2)'
-      };
-    case 'green':
-      return {
-        iconBg: 'bg-green-500/10',
-        iconColor: 'text-green-500',
-        glowShadow: '0 0 15px hsl(142 76% 36% / 0.2)'
-      };
-    case 'destructive':
-      return {
-        iconBg: 'bg-destructive/10',
-        iconColor: 'text-destructive',
-        glowShadow: '0 0 15px hsl(var(--destructive) / 0.3)'
-      };
-    default:
-      return {
-        iconBg: 'bg-muted',
-        iconColor: 'text-muted-foreground',
-        glowShadow: 'none'
-      };
-  }
-}
-
 export function HeroProductShot() {
-  const prefersReducedMotion = usePrefersReducedMotion();
-
-  // Single unified version with responsive adjustments for all screen sizes
   return (
     <motion.div
-      initial={prefersReducedMotion ? false : { opacity: 0, y: 40 }}
+      initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.4, ease: "easeOut" }}
-      className="w-full px-4 mt-8 md:mt-12 mb-4 md:mb-6"
+      transition={{ duration: 0.5, delay: 0.5 }}
+      className="w-full mt-12 md:mt-16 mb-0"
     >
-      <div 
-        className="relative mx-auto max-w-4xl"
-        style={{
-          perspective: prefersReducedMotion ? "none" : "1000px"
-        }}
-      >
-        {/* Animated glow orb behind the mockup */}
-        <div className="absolute inset-0 bg-primary/15 blur-3xl rounded-full scale-75 -z-10 translate-y-8 orb-pulse" />
-        
-        {/* Browser Frame with perspective transform and breathing glow */}
-        <motion.div 
-          className="bg-background/80 backdrop-blur-xl rounded-xl border border-border/50 overflow-hidden hero-glow-animate"
-          style={{
-            transform: prefersReducedMotion ? "none" : "rotateX(5deg)",
-            transformOrigin: "center bottom"
-          }}
-          whileHover={prefersReducedMotion ? {} : { 
-            transform: "rotateX(2deg)",
-            transition: { duration: 0.3 }
-          }}
-        >
-          {/* Browser Chrome */}
-          <div className="bg-muted/30 backdrop-blur-sm px-3 md:px-4 py-2 md:py-3 border-b border-border/50 flex items-center gap-2">
-            <div className="flex gap-1 md:gap-1.5">
-              <div className="w-2.5 md:w-3 h-2.5 md:h-3 rounded-full bg-destructive/60" />
-              <div className="w-2.5 md:w-3 h-2.5 md:h-3 rounded-full bg-yellow-500/60" />
-              <div className="w-2.5 md:w-3 h-2.5 md:h-3 rounded-full bg-green-500/60" />
+      <div className="relative mx-auto max-w-5xl">
+        {/* Browser frame */}
+        <div className="rounded-xl border border-zinc-800 overflow-hidden bg-[#0F0F11] shadow-2xl shadow-black/50">
+          {/* Browser chrome */}
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-[#0F0F11]">
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-zinc-700" />
+              <div className="w-3 h-3 rounded-full bg-zinc-700" />
+              <div className="w-3 h-3 rounded-full bg-zinc-700" />
             </div>
             <div className="flex-1 flex justify-center">
-              <div className="bg-background/60 rounded px-3 md:px-4 py-0.5 md:py-1 text-[10px] md:text-xs text-muted-foreground border border-border/50">
+              <div className="bg-zinc-800/80 rounded-md px-4 py-1 text-xs text-zinc-500 font-mono">
                 app.fieldtek.ai/dashboard
               </div>
             </div>
           </div>
-          
-          {/* Dashboard Content */}
-          <div className="p-3 md:p-4 space-y-3 md:space-y-4">
-            {/* Stats Row with glass cards and 3D depth */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
-              {stats.map((stat, i) => {
-                const colorStyles = getStatColorStyles(stat.color);
-                return (
-                  <motion.div 
-                    key={i} 
-                    className="stat-card-3d bg-background/60 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-border/50 relative overflow-hidden group"
-                    initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.5 + i * 0.05 }}
-                  >
-                    {/* Inner gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
-                    <div className="relative">
-                      <div className="flex items-center justify-between mb-0.5 md:mb-1">
-                        <div 
-                          className={cn(
-                            "h-6 md:h-8 w-6 md:w-8 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-300",
-                            colorStyles.iconBg
-                          )}
-                          style={{ boxShadow: colorStyles.glowShadow }}
-                        >
-                          <stat.icon className={cn("h-3 md:h-4 w-3 md:w-4", colorStyles.iconColor)} />
-                        </div>
-                        {stat.trend && (
-                          <span className="text-[10px] md:text-xs text-green-500 font-medium">{stat.trend}</span>
-                        )}
-                      </div>
-                      <div className="text-base md:text-xl font-bold text-foreground">{stat.value}</div>
-                      <div className="text-[10px] md:text-xs text-muted-foreground">{stat.label}</div>
+
+          {/* Dashboard content */}
+          <div className="p-4 md:p-6 space-y-4 bg-[#111113]">
+            {/* Stats row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {stats.map((stat, i) => (
+                <div
+                  key={i}
+                  className="rounded-lg bg-[#18181B] border border-zinc-800 p-3"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="h-7 w-7 rounded-lg bg-zinc-800 flex items-center justify-center">
+                      <stat.icon className="h-3.5 w-3.5 text-zinc-400" />
                     </div>
-                  </motion.div>
-                );
-              })}
+                    {stat.trend && (
+                      <span className="text-xs text-emerald-400 font-medium">{stat.trend}</span>
+                    )}
+                  </div>
+                  <div className="text-lg font-bold text-white">{stat.value}</div>
+                  <div className="text-xs text-zinc-500">{stat.label}</div>
+                </div>
+              ))}
             </div>
 
-            {/* Gradient section divider */}
-            <div className="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+            {/* Divider */}
+            <div className="h-px bg-zinc-800" />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-              {/* Jobs List with priority accents */}
-              <motion.div 
-                className="md:col-span-2 bg-background/60 backdrop-blur-sm rounded-lg border border-border/50 p-2 md:p-3"
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.7 }}
-              >
-                <div className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <div 
-                      className="h-5 md:h-7 w-5 md:w-7 rounded-md md:rounded-lg bg-primary/10 flex items-center justify-center"
-                      style={{ boxShadow: '0 0 12px hsl(var(--primary) / 0.2)' }}
-                    >
-                      <Calendar className="h-3 md:h-4 w-3 md:w-4 text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Jobs list */}
+              <div className="md:col-span-2 rounded-lg bg-[#18181B] border border-zinc-800 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-md bg-orange-500/10 flex items-center justify-center">
+                      <Calendar className="h-3.5 w-3.5 text-orange-500" />
                     </div>
-                    Today's Jobs
-                    <span className="text-[10px] md:text-xs bg-primary/10 text-primary px-1.5 md:px-2 py-0.5 rounded-full font-medium">
+                    <span className="text-sm font-semibold text-white">Today's Jobs</span>
+                    <span className="text-xs bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full font-medium">
                       {jobs.length}
                     </span>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="btn-shimmer text-[10px] md:text-xs h-6 md:h-7 px-2 md:px-3"
-                  >
-                    View All
-                  </Button>
+                  <span className="text-xs text-zinc-500 hover:text-zinc-400 cursor-pointer">View All</span>
                 </div>
-                <div className="space-y-1.5 md:space-y-2">
-                  {jobs.map((job, i) => {
-                    const priorityStyles = getPriorityStyles(job.priority);
-                    return (
-                      <div 
-                        key={i} 
-                        className={cn(
-                          "list-item-native flex items-center justify-between bg-background/80 rounded p-1.5 md:p-2 border border-border/50 transition-all",
-                          priorityStyles.border,
-                          priorityStyles.shadow,
-                          priorityStyles.glow
-                        )}
-                      >
-                        <div>
-                          <div className="text-xs md:text-sm font-medium text-foreground">{job.title}</div>
-                          <div className="text-[10px] md:text-xs text-muted-foreground">{job.client}</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={job.priority === 'urgent' ? 'destructive' : job.priority === 'high' ? 'default' : 'secondary'}
-                            className={cn(
-                              "text-[9px] md:text-xs px-1.5 py-0",
-                              job.priority === 'urgent' && "shadow-[0_0_10px_hsl(var(--destructive)/0.4)]"
-                            )}
-                          >
-                            {job.priority}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-
-              {/* Service Requests with glass styling */}
-              <motion.div 
-                className="bg-background/60 backdrop-blur-sm rounded-lg border border-border/50 p-2 md:p-3"
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.8 }}
-              >
-                <div className="text-xs md:text-sm font-semibold text-foreground mb-2 md:mb-3 flex items-center gap-1.5 md:gap-2">
-                  <div 
-                    className="h-5 md:h-7 w-5 md:w-7 rounded-md md:rounded-lg bg-primary/10 flex items-center justify-center relative"
-                    style={{ boxShadow: '0 0 12px hsl(var(--primary) / 0.2)' }}
-                  >
-                    <Bell className="h-3 md:h-4 w-3 md:w-4 text-primary" />
-                    {/* Notification pulse */}
-                    <span className="absolute -top-0.5 -right-0.5 h-1.5 md:h-2 w-1.5 md:w-2 bg-destructive rounded-full animate-pulse" />
-                  </div>
-                  New Requests
-                </div>
-                <div className="space-y-1.5 md:space-y-2">
-                  {requests.map((req, i) => (
-                    <div 
-                      key={i} 
-                      className="list-item-native bg-background/80 rounded p-1.5 md:p-2 border border-border/50 transition-all"
+                <div className="space-y-2">
+                  {jobs.map((job, i) => (
+                    <div
+                      key={i}
+                      className={`flex items-center justify-between rounded-md p-2.5 border border-zinc-800 ${
+                        job.priority === "urgent"
+                          ? "border-l-2 border-l-red-500 bg-red-500/5"
+                          : job.priority === "high"
+                          ? "border-l-2 border-l-amber-500 bg-[#141416]"
+                          : "bg-[#141416]"
+                      }`}
                     >
-                      <div className="text-xs md:text-sm font-medium text-foreground">{req.title}</div>
-                      <div className="text-[10px] md:text-xs text-muted-foreground">{req.client}</div>
-                      <div className="text-[10px] md:text-xs text-muted-foreground mt-0.5 md:mt-1">{req.time}</div>
+                      <div>
+                        <div className="text-sm font-medium text-zinc-200">{job.title}</div>
+                        <div className="text-xs text-zinc-500">{job.client}</div>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${
+                          job.priority === "urgent"
+                            ? "border-red-500/30 text-red-400"
+                            : job.priority === "high"
+                            ? "border-amber-500/30 text-amber-400"
+                            : "border-zinc-700 text-zinc-400"
+                        }`}
+                      >
+                        {job.status}
+                      </Badge>
                     </div>
                   ))}
                 </div>
-              </motion.div>
+              </div>
+
+              {/* Service requests */}
+              <div className="rounded-lg bg-[#18181B] border border-zinc-800 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-6 w-6 rounded-md bg-orange-500/10 flex items-center justify-center relative">
+                    <Bell className="h-3.5 w-3.5 text-orange-500" />
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-red-500 rounded-full" />
+                  </div>
+                  <span className="text-sm font-semibold text-white">New Requests</span>
+                </div>
+                <div className="space-y-2">
+                  {requests.map((req, i) => (
+                    <div key={i} className="rounded-md bg-[#141416] border border-zinc-800 p-2.5">
+                      <div className="text-sm font-medium text-zinc-200">{req.title}</div>
+                      <div className="text-xs text-zinc-500">{req.client}</div>
+                      <div className="text-xs text-zinc-600 mt-1">{req.time}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </motion.div>
-        
-        {/* Bottom gradient fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none rounded-b-xl" />
-        
-        {/* Animated beam lines below the product shot */}
-        <HeroBeamLines />
+        </div>
+
+        {/* Bottom fade to blend into the dark-to-light gradient below */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#09090B] to-transparent pointer-events-none rounded-b-xl" />
       </div>
     </motion.div>
   );

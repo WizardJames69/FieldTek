@@ -4,65 +4,43 @@ export function Footer() {
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      const headerOffset = 60;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-      
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
+      const offset = element.getBoundingClientRect().top + window.scrollY - 80;
+      window.scrollTo({ top: offset, behavior: "smooth" });
     }
   };
 
   return (
-    <footer className="bg-muted/50 border-t border-border py-12">
-      <div className="container mx-auto px-4">
+    <footer className="bg-[#111113] border-t border-zinc-800 py-12">
+      <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center mb-4">
-              <span className="font-display font-bold text-xl">
-                <span className="text-foreground">Field</span>
-                <span className="text-primary">Tek</span>
-              </span>
+            <div className="font-display font-bold text-xl mb-4">
+              <span className="text-white">Field</span>
+              <span className="text-orange-500">Tek</span>
             </div>
-            <p className="text-muted-foreground text-sm">
-              All-in-one field service management software for modern service companies.
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              AI-powered field service platform for HVAC, electrical, plumbing, and mechanical contractors.
             </p>
           </div>
 
           {/* Product */}
           <div>
-            <h4 className="font-semibold text-foreground mb-4">Product</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h4 className="font-semibold text-zinc-300 mb-4 text-sm">Product</h4>
+            <ul className="space-y-2.5 text-sm text-zinc-500">
               <li>
-                <button 
-                  onClick={() => scrollToSection('features')} 
-                  className="hover:text-foreground transition-colors text-left"
-                >
+                <button onClick={() => scrollToSection("features")} className="hover:text-zinc-300 transition-colors text-left">
                   Features
                 </button>
               </li>
               <li>
-                <button 
-                  onClick={() => scrollToSection('pricing')} 
-                  className="hover:text-foreground transition-colors text-left"
-                >
-                  Pricing
+                <button onClick={() => scrollToSection("ai-platform")} className="hover:text-zinc-300 transition-colors text-left">
+                  AI Platform
                 </button>
               </li>
               <li>
-                <Link to="/demo-sandbox" className="hover:text-foreground transition-colors">
-                  Interactive Demo
-                </Link>
-              </li>
-              <li>
-                <button 
-                  onClick={() => scrollToSection('roi')} 
-                  className="hover:text-foreground transition-colors text-left"
-                >
-                  ROI Calculator
+                <button onClick={() => scrollToSection("how-it-works")} className="hover:text-zinc-300 transition-colors text-left">
+                  How It Works
                 </button>
               </li>
             </ul>
@@ -70,64 +48,42 @@ export function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold text-foreground mb-4">Company</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h4 className="font-semibold text-zinc-300 mb-4 text-sm">Company</h4>
+            <ul className="space-y-2.5 text-sm text-zinc-500">
               <li>
-                <Link to="/contact" className="hover:text-foreground transition-colors">
+                <Link to="/contact" className="hover:text-zinc-300 transition-colors">
                   Contact Us
                 </Link>
               </li>
               <li>
-                <a href="/consultation" className="hover:text-foreground transition-colors">
-                  Schedule Consultation
-                </a>
-              </li>
-              <li>
-                <Link to="/register" className="hover:text-foreground transition-colors">
-                  Join Waitlist
+                <Link to="/blog" className="hover:text-zinc-300 transition-colors">
+                  Blog
                 </Link>
-              </li>
-              <li>
-                <button 
-                  onClick={() => scrollToSection('beta-program')} 
-                  className="hover:text-foreground transition-colors text-left"
-                >
-                  Beta Program
-                </button>
               </li>
             </ul>
           </div>
 
-          {/* Support */}
+          {/* Legal */}
           <div>
-            <h4 className="font-semibold text-foreground mb-4">Support</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h4 className="font-semibold text-zinc-300 mb-4 text-sm">Legal</h4>
+            <ul className="space-y-2.5 text-sm text-zinc-500">
               <li>
-                <a href="/consultation" className="hover:text-foreground transition-colors">
-                  Schedule Consultation
-                </a>
+                <span className="text-zinc-600">Privacy Policy</span>
               </li>
               <li>
-                <button 
-                  onClick={() => scrollToSection('faq')} 
-                  className="hover:text-foreground transition-colors text-left"
-                >
-                  FAQ
-                </button>
+                <span className="text-zinc-600">Terms of Service</span>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground">
+        <div className="pt-8 border-t border-zinc-800 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-sm text-zinc-600">
             © {new Date().getFullYear()} FieldTek. All rights reserved.
           </p>
-          <div className="flex gap-6 text-sm text-muted-foreground items-center">
-            <span className="text-muted-foreground/50">Privacy Policy</span>
-            <span className="text-muted-foreground/50">Terms of Service</span>
-            <Link to="/admin/login" className="text-muted-foreground/30 text-xs hover:text-muted-foreground transition-colors">Admin</Link>
-          </div>
+          <Link to="/admin/login" className="text-xs text-zinc-700 hover:text-zinc-500 transition-colors">
+            Admin
+          </Link>
         </div>
       </div>
     </footer>

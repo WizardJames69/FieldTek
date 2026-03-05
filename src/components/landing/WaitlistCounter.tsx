@@ -18,14 +18,12 @@ export function WaitlistCounter({ className }: WaitlistCounterProps) {
       if (error) throw error;
       return count || 0;
     },
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
   });
 
-  // Don't show if loading or count is very low (less compelling)
   if (isLoading || !count || count < 5) return null;
 
-  // Round to nearest 10 for social proof (avoids exact numbers looking manufactured)
   const displayCount = count >= 10 ? Math.floor(count / 10) * 10 : count;
   const suffix = count >= 10 ? "+" : "";
 
@@ -36,17 +34,16 @@ export function WaitlistCounter({ className }: WaitlistCounterProps) {
       transition={{ delay: 0.4 }}
       className={className}
     >
-      <div className="inline-flex items-center gap-2 bg-muted/50 border border-border/50 px-4 py-2 rounded-full">
+      <div className="inline-flex items-center gap-2 border border-zinc-800 px-4 py-2 rounded-full bg-zinc-900/50">
         <div className="flex -space-x-2">
-          {/* Avatar stack simulation */}
-          <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center">
-            <Users className="h-3 w-3 text-primary" />
+          <div className="w-6 h-6 rounded-full bg-orange-500/20 border-2 border-zinc-900 flex items-center justify-center">
+            <Users className="h-3 w-3 text-orange-500" />
           </div>
-          <div className="w-6 h-6 rounded-full bg-secondary/20 border-2 border-background" />
-          <div className="w-6 h-6 rounded-full bg-accent/20 border-2 border-background" />
+          <div className="w-6 h-6 rounded-full bg-zinc-700/50 border-2 border-zinc-900" />
+          <div className="w-6 h-6 rounded-full bg-zinc-700/50 border-2 border-zinc-900" />
         </div>
-        <span className="text-sm text-muted-foreground">
-          Join <span className="font-semibold text-foreground">{displayCount}{suffix}</span> contractors on the waitlist
+        <span className="text-sm text-zinc-400">
+          Join <span className="font-semibold text-zinc-200">{displayCount}{suffix}</span> contractors on the waitlist
         </span>
       </div>
     </motion.div>
