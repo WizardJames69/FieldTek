@@ -69,6 +69,8 @@ export async function resetAllFlags(): Promise<void> {
       'judge_blocking_mode',
       'judge_full_blocking',
       'workflow_intelligence',
+      'diagnostic_learning',
+      'diagnostic_probability_ranking',
     ]);
   if (error) throw new Error(`Failed to reset feature flags: ${error.message}`);
 }

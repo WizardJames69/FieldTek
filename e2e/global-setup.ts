@@ -16,6 +16,7 @@ import {
   seedComplianceRules,
   seedEquipmentComponents,
   seedWorkflowIntelligence,
+  seedDiagnosticStatistics,
   seedTenantB,
 } from './helpers/ai-seed-helpers';
 
@@ -259,6 +260,11 @@ async function globalSetup(config: FullConfig) {
 
   await seedWorkflowIntelligence(tenantId);
   console.log('[global-setup]   ✓ Seeded workflow intelligence data');
+
+  // ─── Step 13b: Seed diagnostic statistics ──────────────────────────────
+
+  await seedDiagnosticStatistics(tenantId);
+  console.log('[global-setup]   ✓ Seeded diagnostic statistics');
 
   // ─── Step 14: Seed Tenant B for isolation tests ───────────────────────
 

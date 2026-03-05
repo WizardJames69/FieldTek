@@ -74,6 +74,8 @@ export async function seedFeatureFlags(): Promise<void> {
     'judge_blocking_mode',
     'judge_full_blocking',
     'workflow_intelligence',
+    'diagnostic_learning',
+    'diagnostic_probability_ranking',
   ];
 
   for (const key of flags) {
@@ -212,15 +214,103 @@ export async function seedWorkflowIntelligence(tenantId: string): Promise<void> 
     );
   }
 
-  await client.from('workflow_outcomes').upsert(
+  const { data: r1 } = await client
+    .from('workflow_repairs')
+    .upsert(
+      {
+        tenant_id: tenantId,
+        repair_key: 'replaced_capacitor',
+        repair_label: 'Replaced Capacitor',
+        equipment_type: 'Air Handler',
+        occurrence_count: 6,
+      },
+      { onConflict: 'tenant_id,repair_key' },
+    )
+    .select('id')
+    .single();
+
+  const { data: o1 } = await client
+    .from('workflow_outcomes')
+    .upsert(
+      {
+        tenant_id: tenantId,
+        outcome_key: 'resolved_first_visit',
+        outcome_label: 'Resolved First Visit',
+        outcome_type: 'resolved',
+        occurrence_count: 12,
+      },
+      { onConflict: 'tenant_id,outcome_key' },
+    )
+    .select('id')
+    .single();
+
+  // failure → repair edge
+  if (f1 && r1) {
+    await client.from('workflow_intelligence_edges').upsert(
+      {
+        tenant_id: tenantId,
+        source_type: 'failure',
+        source_id: f1.id,
+        target_type: 'repair',
+        target_id: r1.id,
+        edge_type: 'repaired_by',
+        frequency: 6,
+        probability: 0.75,
+      },
+      { onConflict: 'tenant_id,source_type,source_id,target_type,target_id,edge_type' },
+    );
+  }
+
+  // repair → outcome edge
+  if (r1 && o1) {
+    await client.from('workflow_intelligence_edges').upsert(
+      {
+        tenant_id: tenantId,
+        source_type: 'repair',
+        source_id: r1.id,
+        target_type: 'outcome',
+        target_id: o1.id,
+        edge_type: 'resulted_in',
+        frequency: 5,
+        probability: 0.83,
+      },
+      { onConflict: 'tenant_id,source_type,source_id,target_type,target_id,edge_type' },
+    );
+  }
+}
+
+/** Seed pre-computed diagnostic statistics for testing. */
+export async function seedDiagnosticStatistics(tenantId: string): Promise<void> {
+  const client = getAdminClient();
+
+  await client.from('workflow_diagnostic_statistics').upsert(
     {
       tenant_id: tenantId,
-      outcome_key: 'resolved_first_visit',
-      outcome_label: 'Resolved First Visit',
-      outcome_type: 'resolved',
-      occurrence_count: 12,
+      symptom: 'no_cooling',
+      failure_component: 'capacitor_failure',
+      repair_action: 'replaced_capacitor',
+      equipment_type: 'Air Handler',
+      occurrence_count: 8,
+      success_count: 6,
+      success_rate: 0.75,
+      confidence_score: 0.55,
     },
-    { onConflict: 'tenant_id,outcome_key' },
+    { onConflict: 'tenant_id,symptom,failure_component,repair_action' },
+  );
+
+  await client.from('workflow_diagnostic_statistics').upsert(
+    {
+      tenant_id: tenantId,
+      symptom: 'no_cooling',
+      failure_component: 'refrigerant_leak',
+      repair_action: 'recharged_refrigerant',
+      equipment_type: 'Air Handler',
+      occurrence_count: 5,
+      success_count: 3,
+      success_rate: 0.60,
+      confidence_score: 0.39,
+    },
+    { onConflict: 'tenant_id,symptom,failure_component,repair_action' },
   );
 }
 

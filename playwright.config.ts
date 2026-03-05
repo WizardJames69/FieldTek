@@ -139,6 +139,7 @@ export default defineConfig({
         'e2e/specs/ai-regression.spec.ts',
         'e2e/specs/ai-judge.spec.ts',
         'e2e/specs/ai-graph.spec.ts',
+        'e2e/specs/ai-diagnostic-learning.spec.ts',
       ],
     },
   ],

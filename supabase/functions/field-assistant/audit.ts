@@ -65,6 +65,9 @@ export interface AuditLogData {
   judgeBlockingGateway?: string | null;
   graphScoringApplied?: boolean;
   maxGraphScore?: number;
+  diagnosticPatternsUsed?: string[];
+  diagnosticSignalStrength?: number;
+  diagnosticContextInjected?: boolean;
 }
 
 // ── Write Audit Log ─────────────────────────────────────────
@@ -148,6 +151,9 @@ export async function writeAuditLog(
       graph_scoring_applied: data.graphScoringApplied || false,
       max_graph_score: data.maxGraphScore || null,
       workflow_context_injected: data.workflowContextInjected || false,
+      diagnostic_patterns_used: data.diagnosticPatternsUsed?.length ? data.diagnosticPatternsUsed : null,
+      diagnostic_signal_strength: data.diagnosticSignalStrength ?? null,
+      diagnostic_context_injected: data.diagnosticContextInjected || false,
       judge_verdict: data.judgeVerdict || null,
       ...(data.judgeResultSync ? {
         judge_grounded: data.judgeResultSync.grounded,

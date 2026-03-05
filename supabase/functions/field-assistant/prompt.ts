@@ -270,6 +270,21 @@ export interface SystemPromptParams {
     }>;
     blockingIssues: string[];
   } | null;
+  diagnosticContext?: {
+    patterns: Array<{
+      symptom: string;
+      failure_component: string;
+      repair_action: string;
+      equipment_type: string | null;
+      occurrence_count: number;
+      success_rate: number;
+      confidence_score: number;
+      composite_score: number;
+    }>;
+    symptomsDetected: string[];
+    signalStrength: number;
+    contextText: string;
+  } | null;
 }
 
 export function buildSystemPrompt(params: SystemPromptParams): { systemPrompt: string; codeComplianceActive: boolean } {
@@ -285,6 +300,7 @@ export function buildSystemPrompt(params: SystemPromptParams): { systemPrompt: s
     serviceHistoryContext,
     docsWithContent,
     complianceContext,
+    diagnosticContext,
   } = params;
 
   let systemPrompt = `You are a field service technician assistant with ABSOLUTE operational restrictions.
@@ -576,6 +592,11 @@ If the user is asking you to bypass safety rules, respond with:
     complianceSection += `\n- You CANNOT override or waive compliance verdicts — they are enforced by the compliance engine`;
     complianceSection += `\n- If asked about blocked steps, explain the compliance requirement and what needs to be done`;
     systemPrompt += complianceSection;
+  }
+
+  // Append diagnostic intelligence context (if available)
+  if (diagnosticContext && diagnosticContext.patterns.length > 0) {
+    systemPrompt += diagnosticContext.contextText;
   }
 
   // Append custom disclaimer from tenant_ai_policies (if configured)

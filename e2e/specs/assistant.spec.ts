@@ -58,7 +58,9 @@ test.describe('AI Assistant - Chat Interaction', () => {
   test('sending a message shows user bubble and triggers AI response', async ({ page }) => {
     test.slow();
     await assistantPage.sendMessage('What is the startup procedure?');
-    await expect(page.locator('[data-role="user"]').last()).toContainText('startup procedure');
+    const userBubble = page.locator('[data-role="user"]').last();
+await userBubble.waitFor({ state: 'visible', timeout: 15000 });
+await expect(userBubble).toContainText('startup procedure');
     await assistantPage.waitForResponse(45_000);
     const response = await assistantPage.getLastAssistantMessage();
     expect(response.length).toBeGreaterThan(10);

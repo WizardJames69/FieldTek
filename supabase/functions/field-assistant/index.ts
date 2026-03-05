@@ -65,6 +65,8 @@ import { expandQueryWithGraph } from "./graph.ts";
 import type { GraphExpansionResult } from "./graph.ts";
 import { applyGraphScoring } from "./graphScoring.ts";
 import { GRAPH_SCORING_WEIGHT } from "./constants.ts";
+import { fetchDiagnosticPatterns, buildDiagnosticContext } from "./diagnosticSignals.ts";
+import type { DiagnosticContext } from "./diagnosticSignals.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -165,13 +167,14 @@ serve(async (req) => {
     console.log(`[tenant_ai_policies] tenant=${tenantUser.tenant_id} threshold=${policySimThreshold} blocked_topics=${policyBlockedTopics.length}`);
 
     // ── 3. Feature Flags (parallel) ──────────────────────────
-    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled, graphExpansionEnabled, judgeBlockingEnabled, judgeFullBlockingEnabled] = await Promise.all([
+    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled, graphExpansionEnabled, judgeBlockingEnabled, judgeFullBlockingEnabled, diagnosticLearningEnabled] = await Promise.all([
       evaluateFeatureFlag(serviceRoleClient, "rag_judge", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "rag_reranking", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "compliance_engine", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "equipment_graph", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "judge_blocking_mode", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "judge_full_blocking", tenantUser.tenant_id),
+      evaluateFeatureFlag(serviceRoleClient, "diagnostic_learning", tenantUser.tenant_id),
     ]);
     const complianceActive = complianceEngineEnabled && aiPolicy?.compliance_engine_enabled === true;
 
@@ -557,6 +560,28 @@ serve(async (req) => {
       }
     }
 
+    // ── 9c. Diagnostic Learning Loop ─────────────────────────
+    let diagnosticContext: DiagnosticContext | null = null;
+
+    if (diagnosticLearningEnabled) {
+      try {
+        const diagQueryText = extractTextFromMessage(messages.filter((m: ChatMessage) => m.role === "user").pop());
+        const diagSymptoms = detectSymptomsInText(diagQueryText);
+        if (diagSymptoms.length > 0) {
+          const equipType = context?.equipment?.equipment_type || null;
+          const diagPatterns = await fetchDiagnosticPatterns(
+            serviceRoleClient, tenantUser.tenant_id, diagSymptoms, equipType,
+          );
+          diagnosticContext = buildDiagnosticContext(diagPatterns, diagSymptoms);
+          if (diagnosticContext) {
+            console.log(`[diagnostic-learning] Found ${diagnosticContext.patterns.length} patterns, signal_strength=${diagnosticContext.signalStrength.toFixed(3)}`);
+          }
+        }
+      } catch (dlErr) {
+        console.warn("[diagnostic-learning] Error (non-fatal):", dlErr);
+      }
+    }
+
     // ── 10. Enforcement Rules ────────────────────────────────
     const queryText = extractTextFromMessage(messages.filter((m: ChatMessage) => m.role === "user").pop());
     const enforcementRulesTriggered: string[] = [];
@@ -859,6 +884,7 @@ serve(async (req) => {
       semanticSearchResults, insufficientRetrievalCoverage, injectionDetected,
       policyDisclaimer, serviceHistoryContext, docsWithContent,
       complianceContext: promptComplianceContext,
+      diagnosticContext,
     });
 
     const promptHashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(systemPrompt));
@@ -1200,6 +1226,9 @@ serve(async (req) => {
           graphExpansionCount: graphExpansionTerms.length,
           graphScoringApplied,
           maxGraphScore: graphScoringApplied ? maxGraphScore : undefined,
+          diagnosticPatternsUsed: diagnosticContext?.patterns.map(p => `${p.symptom}→${p.failure_component}→${p.repair_action}`) || undefined,
+          diagnosticSignalStrength: diagnosticContext?.signalStrength || undefined,
+          diagnosticContextInjected: diagnosticContext !== null && diagnosticContext.patterns.length > 0,
           judgeVerdict: judgeVerdict !== "none" ? judgeVerdict : undefined,
           judgeResultSync: judgeResultSync || undefined,
           judgeBlockingLatencyMs: judgeBlockingLatencyMs,
