@@ -75,7 +75,7 @@ export default function Landing() {
   const openWaitlist = () => setWaitlistOpen(true);
 
   return (
-    <div className="min-h-screen overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden noise-overlay">
       {/* Dark hero zone */}
       <div className="landing-section-dark">
         <Navbar />
@@ -83,24 +83,24 @@ export default function Landing() {
       </div>
 
       <main>
-        {/* Light content sections */}
+        {/* Content sections (all dark) */}
         <TrustBar />
         <ProblemSection />
         <FeaturesSection />
 
-        {/* Dark AI section */}
+        {/* AI Intelligence section */}
         <Suspense fallback={<SectionSkeleton minHeight="min-h-[500px]" />}>
           <AIIntelligenceSection />
         </Suspense>
 
-        {/* Light content sections */}
+        {/* Feature deep-dives + social proof + steps */}
         <Suspense fallback={<SectionSkeleton minHeight="min-h-[600px]" />}>
           <FeatureShowcase />
           <SocialProofSection />
           <HowItWorksSection />
         </Suspense>
 
-        {/* Dark CTA */}
+        {/* CTA */}
         <Suspense fallback={<SectionSkeleton minHeight="min-h-[300px]" />}>
           <CTASection onJoinWaitlist={openWaitlist} />
         </Suspense>

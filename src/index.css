@@ -738,31 +738,31 @@
   border: 1px solid #27272A;
 }
 
-/* Light sections: Trust, Problem, Features, Showcase, Social Proof, How It Works */
+/* Light sections converted to dark — alternating bg for rhythm */
 .landing-section-light {
-  background-color: #FFFFFF;
-  color: #09090B;
+  background-color: #0C0D0F;
+  color: #FAFAFA;
 }
 
 .landing-section-light-muted {
-  background-color: #F4F4F5;
-  color: #09090B;
+  background-color: #111214;
+  color: #FAFAFA;
 }
 
 .landing-section-light .landing-text-secondary,
 .landing-section-light-muted .landing-text-secondary {
-  color: #71717A;
+  color: #9CA3AF;
 }
 
 .landing-section-light .landing-border,
 .landing-section-light-muted .landing-border {
-  border-color: #E4E4E7;
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .landing-section-light .landing-card,
 .landing-section-light-muted .landing-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E4E4E7;
+  background-color: #161819;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Landing accent colors */
@@ -796,7 +796,7 @@
 
 /* Dark-to-light gradient transition between sections */
 .landing-gradient-dark-to-light {
-  background: linear-gradient(to bottom, #09090B, #FFFFFF);
+  background: linear-gradient(to bottom, #09090B, #0C0D0F);
 }
 
 /* Subtle radial glow for hero background */
@@ -810,6 +810,19 @@
   inset: 0;
   pointer-events: none;
   background: radial-gradient(ellipse 60% 40% at 50% 30%, rgba(249, 115, 22, 0.08), transparent 60%);
+}
+
+/* Subtle cool glow for AI Intelligence section */
+.landing-ai-glow {
+  position: relative;
+}
+
+.landing-ai-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 50% 40% at 50% 50%, rgba(148, 163, 184, 0.04), transparent 60%);
 }
 
 /* ============================================

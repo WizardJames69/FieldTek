@@ -24,17 +24,17 @@ const problems = [
 
 export function ProblemSection() {
   return (
-    <section className="landing-section-light py-16 md:py-24">
+    <section className="bg-[#0C0D0F] py-20 md:py-28 lg:py-32">
       <div className="mx-auto max-w-6xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.4 }}
-          className="text-center max-w-3xl mx-auto mb-16"
+          className="text-center max-w-3xl mx-auto mb-12 md:mb-16"
         >
-          <p className="landing-eyebrow text-zinc-400 mb-4">The Problem</p>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-zinc-900 leading-[1.15]">
+          <p className="landing-eyebrow text-zinc-500 mb-4">The Problem</p>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-[-0.02em] text-white leading-[1.15]">
             Field service runs on paper, memory, and hope
           </h2>
         </motion.div>
@@ -47,13 +47,13 @@ export function ProblemSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: i * 0.1 }}
-              className="rounded-xl border border-zinc-200 bg-white p-8"
+              className="border-l-[3px] border-orange-500 pl-6"
             >
-              <div className="h-12 w-12 rounded-xl bg-zinc-100 flex items-center justify-center mb-5">
-                <problem.icon className="h-6 w-6 text-zinc-600" />
+              <div className="flex items-center gap-3 mb-3">
+                <problem.icon className="h-5 w-5 text-zinc-400" />
+                <h3 className="text-lg font-semibold text-white">{problem.title}</h3>
               </div>
-              <h3 className="text-xl font-semibold text-zinc-900 mb-3">{problem.title}</h3>
-              <p className="text-zinc-500 leading-relaxed">{problem.description}</p>
+              <p className="text-sm text-zinc-400 leading-relaxed">{problem.description}</p>
             </motion.div>
           ))}
         </div>

@@ -47,9 +47,8 @@ const features = [
 ];
 
 function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
-  // Simplified HTML mockups styled for dark screenshots on light background
   return (
-    <div className={`rounded-xl border border-zinc-200 bg-zinc-50 overflow-hidden shadow-sm ${reverse ? "md:order-first" : ""}`}>
+    <div className={`rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden ${reverse ? "md:order-first" : ""}`}>
       <div className="p-1">
         <div className="rounded-lg bg-[#111113] p-4 min-h-[280px] md:min-h-[320px] flex items-center justify-center">
           {type === "ai-assistant" && (
@@ -117,8 +116,8 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
 
 export function FeatureShowcase() {
   return (
-    <section className="landing-section-light py-16 md:py-24">
-      <div className="mx-auto max-w-6xl px-4 space-y-16 md:space-y-24">
+    <section className="bg-[#0C0D0F] py-20 md:py-28">
+      <div className="mx-auto max-w-6xl px-4 space-y-20 md:space-y-28">
         {features.map((feature, i) => {
           const reverse = i % 2 !== 0;
           return (
@@ -132,13 +131,13 @@ export function FeatureShowcase() {
             >
               <div className={reverse ? "md:order-last" : ""}>
                 <p className="landing-eyebrow text-orange-500 mb-3">{feature.eyebrow}</p>
-                <h3 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight mb-4">
+                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                   {feature.title}
                 </h3>
-                <p className="text-zinc-500 leading-relaxed mb-6">{feature.description}</p>
+                <p className="text-zinc-400 leading-relaxed mb-6">{feature.description}</p>
                 <ul className="space-y-2.5">
                   {feature.bullets.map((bullet, j) => (
-                    <li key={j} className="flex items-start gap-2.5 text-sm text-zinc-600">
+                    <li key={j} className="flex items-start gap-2.5 text-sm text-zinc-400">
                       <CheckCircle2 className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
                       {bullet}
                     </li>

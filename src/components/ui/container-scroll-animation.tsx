@@ -64,7 +64,7 @@ function Header({
       style={{
         translateY: translate,
       }}
-      className="div max-w-5xl mx-auto text-center"
+      className="div max-w-5xl mx-auto text-center relative z-10 pb-16"
     >
       {titleComponent}
     </motion.div>
@@ -89,7 +89,7 @@ function Card({
         boxShadow:
           "0 0 #0000004d, 0 9px 20px #0000004a, 0 37px 37px #00000042, 0 84px 50px #00000026, 0 149px 60px #0000000a, 0 233px 65px #00000003",
       }}
-      className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full border-4 border-zinc-800 p-2 md:p-6 bg-[#0F0F11] rounded-[30px] shadow-2xl"
+      className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full border-4 border-zinc-800 p-2 md:p-6 bg-[#0F0F11] rounded-[30px] shadow-2xl relative z-0"
     >
       <div className="h-full w-full overflow-hidden rounded-2xl bg-[#111113] md:rounded-2xl">
         {children}

@@ -60,7 +60,7 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
               <Button
                 asChild
                 size="lg"
-                className="bg-orange-500 hover:bg-orange-600 text-white text-lg px-8 py-6 border-0"
+                className="bg-orange-500 hover:bg-orange-600 text-white text-lg px-8 py-6 border-0 hover:shadow-[0_0_20px_rgba(249,115,22,0.2)] transition-shadow"
               >
                 <Link to="/auth">
                   Get Early Access
@@ -92,7 +92,7 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.3, delay: 0.4 }}
-              className="flex justify-center mt-6"
+              className="flex justify-center mt-6 mb-4"
             >
               <WaitlistCounter />
             </motion.div>
@@ -103,7 +103,7 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
       </ContainerScroll>
 
       {/* Bottom gradient: dark to light transition */}
-      <div className="h-32 bg-gradient-to-b from-[#09090B] to-white" />
+      <div className="h-32 bg-gradient-to-b from-[#09090B] to-[#0C0D0F]" />
     </section>
   );
 });

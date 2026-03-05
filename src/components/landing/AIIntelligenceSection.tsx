@@ -31,7 +31,7 @@ const capabilities = [
 
 export function AIIntelligenceSection() {
   return (
-    <section id="ai-platform" className="landing-section-dark py-16 md:py-24 lg:py-32 overflow-hidden">
+    <section id="ai-platform" className="landing-section-dark landing-ai-glow py-16 md:py-24 lg:py-32 overflow-hidden">
       <div className="mx-auto max-w-6xl px-4">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
           {/* Left: Text content */}
