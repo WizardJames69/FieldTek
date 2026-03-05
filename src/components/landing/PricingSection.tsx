@@ -66,7 +66,7 @@ const faqItems = [
     answer: "Yes. You can upgrade or downgrade your plan at any time. When upgrading, you'll be prorated for the remainder of your billing cycle. When downgrading, the change takes effect at the start of your next billing cycle.",
   },
   {
-    question: "What happens when I exceed the free plan limits?",
+    question: "What happens when I approach my plan limits?",
     answer: "We'll notify you when you're approaching your plan limits. You can upgrade at any time to unlock higher limits. We won't cut off your service mid-job — you'll have a grace period to upgrade or adjust your usage.",
   },
   {
@@ -110,7 +110,7 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
             Simple pricing that scales with your team
           </h2>
           <p className="text-lg text-zinc-400">
-            Start free. Upgrade when you're ready. No contracts.
+            Transparent pricing that scales with your team. No long-term contracts.
           </p>
         </motion.div>
 
@@ -163,7 +163,14 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
               )}
 
               <div className="mb-4">
-                <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                  {plan.popular && (
+                    <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">
+                      30-day free trial
+                    </span>
+                  )}
+                </div>
                 <p className="text-zinc-500 text-sm">{plan.description}</p>
               </div>
 
@@ -243,7 +250,7 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
                   )}
                   onClick={onJoinWaitlist}
                 >
-                  Join Waitlist
+                  {plan.popular ? "Start Free Trial" : "Join Waitlist"}
                 </Button>
               )}
             </motion.div>

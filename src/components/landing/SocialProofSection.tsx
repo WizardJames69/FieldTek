@@ -26,7 +26,7 @@ const testimonials = [
 
 export function SocialProofSection() {
   return (
-    <section className="bg-[#111214] py-16 md:py-28 lg:py-32">
+    <section className="bg-[#111214] py-12 md:py-28 lg:py-32">
       <div className="mx-auto max-w-5xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 15 }}

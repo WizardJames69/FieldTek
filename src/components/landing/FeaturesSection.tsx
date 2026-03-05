@@ -25,7 +25,7 @@ const pillars = [
 
 export const FeaturesSection = memo(function FeaturesSection() {
   return (
-    <section id="features" className="bg-[#111214] py-16 md:py-28 lg:py-32">
+    <section id="features" className="bg-[#111214] py-12 md:py-28 lg:py-32">
       <div className="mx-auto max-w-6xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 15 }}

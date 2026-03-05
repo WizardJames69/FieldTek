@@ -66,6 +66,20 @@ export default function Landing() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      const tryScroll = () => {
+        const el = document.getElementById(hash);
+        if (el) {
+          const offset = el.getBoundingClientRect().top + window.scrollY - 80;
+          window.scrollTo({ top: offset, behavior: "smooth" });
+        }
+      };
+      setTimeout(tryScroll, 300);
+    }
+  }, []);
+
+  useEffect(() => {
     if (authLoading) return;
     if (user && !isRedirecting) {
       setIsRedirecting(true);

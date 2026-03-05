@@ -34,11 +34,11 @@ export function ContainerScroll({
 
   return (
     <div
-      className="h-[50rem] md:h-[80rem] flex items-center justify-center relative p-2 md:p-20"
+      className="h-[40rem] md:h-[80rem] flex items-center justify-center relative p-2 md:p-20"
       ref={containerRef}
     >
       <div
-        className="py-10 md:py-40 w-full relative"
+        className="py-6 md:py-40 w-full relative"
         style={{
           perspective: "1060px",
         }}
@@ -64,7 +64,7 @@ function Header({
       style={{
         translateY: translate,
       }}
-      className="div max-w-5xl mx-auto text-center relative z-10 pb-16"
+      className="div max-w-5xl mx-auto text-center relative z-10 pb-6 md:pb-16"
     >
       {titleComponent}
     </motion.div>

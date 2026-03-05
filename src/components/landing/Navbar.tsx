@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useState, memo, useCallback, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -13,6 +13,7 @@ const navItems = [
 export const Navbar = memo(function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -30,9 +31,11 @@ export const Navbar = memo(function Navbar() {
     if (element) {
       const offset = element.getBoundingClientRect().top + window.scrollY - 80;
       window.scrollTo({ top: offset, behavior: "smooth" });
+    } else {
+      navigate(`/#${sectionId}`);
     }
     setMobileMenuOpen(false);
-  }, []);
+  }, [navigate]);
 
   return (
     <nav

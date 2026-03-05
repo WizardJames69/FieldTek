@@ -32,7 +32,7 @@ const capabilities = [
 
 export function AIIntelligenceSection() {
   return (
-    <section id="ai-platform" className="landing-section-dark landing-ai-glow py-16 md:py-24 lg:py-32 overflow-hidden relative">
+    <section id="ai-platform" className="landing-section-dark landing-ai-glow py-12 md:py-24 lg:py-32 overflow-hidden relative">
       <IsometricLights />
       <div className="mx-auto max-w-6xl px-4 relative z-[1]">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
@@ -81,7 +81,7 @@ export function AIIntelligenceSection() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:w-1/2 flex justify-center"
+            className="lg:w-1/2 flex justify-center scale-[0.85] sm:scale-100 origin-top"
           >
             <DisplayCards />
           </motion.div>

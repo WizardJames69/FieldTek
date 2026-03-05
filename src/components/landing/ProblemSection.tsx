@@ -24,7 +24,7 @@ const problems = [
 
 export function ProblemSection() {
   return (
-    <section className="bg-[#0C0D0F] py-16 md:py-28 lg:py-32">
+    <section className="bg-[#0C0D0F] py-12 md:py-28 lg:py-32">
       <div className="mx-auto max-w-6xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 15 }}

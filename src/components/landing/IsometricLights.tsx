@@ -50,7 +50,7 @@ const dotColors: Record<DotColor, string> = {
 
 export function IsometricLights() {
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-50">
+    <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-50 hidden md:block">
       <svg
         viewBox="0 0 400 260"
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] h-auto aspect-[400/260]"
