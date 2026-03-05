@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import {
   LayoutDashboard,
@@ -29,31 +28,23 @@ const requests = [
 
 export function HeroProductShot() {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.5 }}
-      className="w-full mt-12 md:mt-16 mb-0"
-    >
-      <div className="relative mx-auto max-w-5xl">
-        {/* Browser frame */}
-        <div className="rounded-xl border border-zinc-800 overflow-hidden bg-[#0F0F11] shadow-2xl shadow-black/50">
-          {/* Browser chrome */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-[#0F0F11]">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-zinc-700" />
-              <div className="w-3 h-3 rounded-full bg-zinc-700" />
-              <div className="w-3 h-3 rounded-full bg-zinc-700" />
-            </div>
-            <div className="flex-1 flex justify-center">
-              <div className="bg-zinc-800/80 rounded-md px-4 py-1 text-xs text-zinc-500 font-mono">
-                app.fieldtek.ai/dashboard
-              </div>
-            </div>
+    <div className="h-full w-full">
+      {/* Browser chrome */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-[#0F0F11]">
+        <div className="flex gap-1.5">
+          <div className="w-3 h-3 rounded-full bg-zinc-700" />
+          <div className="w-3 h-3 rounded-full bg-zinc-700" />
+          <div className="w-3 h-3 rounded-full bg-zinc-700" />
+        </div>
+        <div className="flex-1 flex justify-center">
+          <div className="bg-zinc-800/80 rounded-md px-4 py-1 text-xs text-zinc-500 font-mono">
+            app.fieldtek.ai/dashboard
           </div>
+        </div>
+      </div>
 
-          {/* Dashboard content */}
-          <div className="p-4 md:p-6 space-y-4 bg-[#111113]">
+      {/* Dashboard content */}
+      <div className="p-4 md:p-6 space-y-4 bg-[#111113]">
             {/* Stats row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {stats.map((stat, i) => (
@@ -146,12 +137,7 @@ export function HeroProductShot() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Bottom fade to blend into the dark-to-light gradient below */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#09090B] to-transparent pointer-events-none rounded-b-xl" />
       </div>
-    </motion.div>
+    </div>
   );
 }
