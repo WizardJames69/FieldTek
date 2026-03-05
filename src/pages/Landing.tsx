@@ -26,6 +26,9 @@ const SocialProofSection = lazy(() =>
 const HowItWorksSection = lazy(() =>
   import("@/components/landing/HowItWorksSection").then((m) => ({ default: m.HowItWorksSection }))
 );
+const ClientPortalSection = lazy(() =>
+  import("@/components/landing/ClientPortalSection").then((m) => ({ default: m.ClientPortalSection }))
+);
 const CTASection = lazy(() =>
   import("@/components/landing/CTASection").then((m) => ({ default: m.CTASection }))
 );
@@ -96,6 +99,7 @@ export default function Landing() {
         {/* Feature deep-dives + social proof + steps */}
         <Suspense fallback={<SectionSkeleton minHeight="min-h-[600px]" />}>
           <FeatureShowcase />
+          <ClientPortalSection />
           <SocialProofSection />
           <HowItWorksSection />
         </Suspense>

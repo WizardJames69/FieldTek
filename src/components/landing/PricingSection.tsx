@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Check, X, Users, Zap } from "lucide-react";
+import { Check, X, Users, Zap, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
@@ -12,9 +12,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { TIER_CONFIG, FEATURE_COMPARISON, SubscriptionTier } from "@/config/pricing";
-import { FloatingOrbs } from "./FloatingOrbs";
-import { Card3D } from "./Card3D";
+import { motion } from "framer-motion";
 
 // Transform TIER_CONFIG into an array for rendering (exclude trial)
 const plans = (["starter", "growth", "professional", "enterprise"] as SubscriptionTier[]).map(tier => {
@@ -47,13 +52,36 @@ const featureComparison = FEATURE_COMPARISON.map(row => ({
 
 function FeatureValue({ value }: { value: boolean | string }) {
   if (value === true) {
-    return <Check className="h-4 w-4 text-primary mx-auto" />;
+    return <Check className="h-4 w-4 text-orange-500 mx-auto" />;
   }
   if (value === false) {
-    return <X className="h-4 w-4 text-muted-foreground/40 mx-auto" />;
+    return <X className="h-4 w-4 text-zinc-700 mx-auto" />;
   }
-  return <span className="text-xs text-foreground">{value}</span>;
+  return <span className="text-xs text-zinc-300">{value}</span>;
 }
+
+const faqItems = [
+  {
+    question: "Can I change plans at any time?",
+    answer: "Yes. You can upgrade or downgrade your plan at any time. When upgrading, you'll be prorated for the remainder of your billing cycle. When downgrading, the change takes effect at the start of your next billing cycle.",
+  },
+  {
+    question: "What happens when I exceed the free plan limits?",
+    answer: "We'll notify you when you're approaching your plan limits. You can upgrade at any time to unlock higher limits. We won't cut off your service mid-job — you'll have a grace period to upgrade or adjust your usage.",
+  },
+  {
+    question: "Is there a setup fee?",
+    answer: "No. There are no setup fees, onboarding fees, or hidden charges. You only pay for your plan and any additional technician seats you add.",
+  },
+  {
+    question: "Do you offer discounts for annual billing?",
+    answer: "Yes — annual billing saves you 20% compared to monthly billing. Toggle the billing switch above to see annual pricing for each plan.",
+  },
+  {
+    question: "What's included in the free trial?",
+    answer: "The free trial includes full access to all Growth plan features for 30 days with up to 2 technicians. No credit card required to start. At the end of the trial, choose the plan that fits your team.",
+  },
+];
 
 interface PricingSectionProps {
   onJoinWaitlist?: () => void;
@@ -62,77 +90,81 @@ interface PricingSectionProps {
 export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
   const [isYearly, setIsYearly] = useState(false);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
-  
-  const visibleFeatures = showAllFeatures 
-    ? featureComparison 
+
+  const visibleFeatures = showAllFeatures
+    ? featureComparison
     : featureComparison.slice(0, 6);
 
   return (
-    <section id="pricing" className="relative py-16 bg-background layered-bg overflow-hidden">
-      {/* Floating orbs */}
-      <FloatingOrbs variant="primary" count={3} intensity="subtle" />
-      
-      <div className="container mx-auto px-4">
-        <div className="text-center max-w-2xl mx-auto mb-4 header-spotlight">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            Pricing That Scales With You
+    <section id="pricing" className="relative py-16 md:py-24 lg:py-32 bg-[#09090B] overflow-hidden">
+      <div className="mx-auto max-w-7xl px-4">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4 }}
+          className="text-center max-w-2xl mx-auto mb-4"
+        >
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] mb-4">
+            Simple pricing that scales with your team
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Transparent pricing with no hidden fees. Join our waitlist for early access.
+          <p className="text-lg text-zinc-400">
+            Start free. Upgrade when you're ready. No contracts.
           </p>
-          {/* Beta Highlight Banner */}
-          <div className="mt-4 inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-            </span>
-            Beta testers get <span className="font-bold">50% off</span> their first year — <a href="#beta-program" className="underline hover:no-underline">apply now</a>
-          </div>
-        </div>
-        
+        </motion.div>
+
         {/* Billing Toggle */}
         <div className="flex items-center justify-center gap-4 mb-12">
-          <span className={cn("text-sm font-medium", !isYearly ? "text-foreground" : "text-muted-foreground")}>
+          <span className={cn("text-sm font-medium", !isYearly ? "text-white" : "text-zinc-500")}>
             Monthly
           </span>
           <Switch
             checked={isYearly}
             onCheckedChange={setIsYearly}
-            className="data-[state=checked]:bg-primary"
+            className="data-[state=checked]:bg-orange-500"
           />
-          <span className={cn("text-sm font-medium", isYearly ? "text-foreground" : "text-muted-foreground")}>
+          <span className={cn("text-sm font-medium", isYearly ? "text-white" : "text-zinc-500")}>
             Yearly
           </span>
           {isYearly && (
-            <span className="bg-primary/10 text-primary text-xs font-semibold px-2.5 py-1 rounded-full">
+            <span className="bg-orange-500/10 text-orange-500 text-xs font-semibold px-2.5 py-1 rounded-full">
               Save 20%
             </span>
           )}
         </div>
 
-        {/* Pricing Cards with 3D effect */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto mb-12">
-          {plans.map((plan) => (
-            <Card3D key={plan.name} intensity={0.3} glowOnHover={plan.popular}>
-              <div
-                className={cn(
-                  "relative bg-card border rounded-2xl p-5 sm:p-6 flex flex-col h-full",
-                  plan.popular
-                    ? "border-primary shadow-xl shadow-primary/10 xl:scale-105 z-10"
-                    : "border-border hover:border-primary/30 transition-colors"
-                )}
-              >
-                {plan.popular && (
+        {/* Pricing Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto mb-16">
+          {plans.map((plan, i) => (
+            <motion.div
+              key={plan.name}
+              initial={{ opacity: 0, y: 15 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.3, delay: i * 0.08 }}
+              className={cn(
+                "relative rounded-2xl p-5 sm:p-6 flex flex-col h-full border transition-colors duration-300",
+                plan.popular
+                  ? "bg-[#161819] border-orange-500/50 shadow-lg shadow-orange-500/5 xl:scale-105 z-10"
+                  : "bg-[#161819] border-white/[0.06] hover:border-white/[0.12]"
+              )}
+            >
+              {/* Popular badge + orange top accent */}
+              {plan.popular && (
+                <>
+                  <div className="absolute inset-x-0 top-0 h-[3px] bg-orange-500 rounded-t-2xl" />
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
+                    <span className="bg-orange-500 text-white text-xs font-medium px-3 py-1 rounded-full">
                       Most Popular
                     </span>
                   </div>
-                )}
+                </>
+              )}
 
               <div className="mb-4">
-                <h3 className="text-xl font-bold text-foreground mb-1">{plan.name}</h3>
-                <p className="text-muted-foreground text-sm">{plan.description}</p>
+                <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
+                <p className="text-zinc-500 text-sm">{plan.description}</p>
               </div>
 
               {/* Pricing Display */}
@@ -140,19 +172,19 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
                 {plan.monthlyPrice !== null ? (
                   <>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-foreground">
+                      <span className="text-4xl font-bold text-white">
                         ${isYearly ? plan.yearlyPrice : plan.monthlyPrice}
                       </span>
-                      <span className="text-muted-foreground">/mo</span>
+                      <span className="text-zinc-500">/mo</span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-zinc-500 mt-1">
                       + ${plan.additionalTechPrice}/additional technician
                     </p>
                   </>
                 ) : (
                   <div>
-                    <span className="text-3xl font-bold text-foreground">Custom</span>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <span className="text-3xl font-bold text-white">Custom</span>
+                    <p className="text-sm text-zinc-500 mt-1">
                       Tailored to your needs
                     </p>
                   </div>
@@ -160,22 +192,22 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
               </div>
 
               {/* Included Resources */}
-              <div className="flex flex-col gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
+              <div className="flex flex-col gap-2 mb-4 p-3 bg-white/[0.03] rounded-lg">
                 <div className="flex items-center gap-2 text-sm">
-                  <Users className="h-4 w-4 text-primary" />
-                  <span className="text-foreground">
-                    <strong>{plan.includedTechs}</strong> technicians included
+                  <Users className="h-4 w-4 text-orange-500" />
+                  <span className="text-zinc-300">
+                    <strong className="text-white">{plan.includedTechs}</strong> technicians included
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <Zap className="h-4 w-4 text-primary" />
-                  <span className="text-foreground">
-                    <strong>{plan.officeUsers}</strong> office users{" "}
-                    <span className="text-primary font-medium">FREE</span>
+                  <Zap className="h-4 w-4 text-orange-500" />
+                  <span className="text-zinc-300">
+                    <strong className="text-white">{plan.officeUsers}</strong> office users{" "}
+                    <span className="text-orange-500 font-medium">FREE</span>
                   </span>
                 </div>
                 {plan.jobsPerMonth !== "Unlimited" && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-zinc-500">
                     Up to {plan.jobsPerMonth} jobs/month
                   </p>
                 )}
@@ -185,66 +217,69 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
               <ul className="space-y-2.5 mb-6 flex-1">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    <span className="text-foreground text-sm">{feature}</span>
+                    <Check className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                    <span className="text-zinc-300 text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>
 
-                {plan.tier === "enterprise" ? (
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="lg"
-                    className="w-full"
-                  >
-                    <Link to={plan.href}>{plan.cta}</Link>
-                  </Button>
-                ) : (
-                  <Button
-                    variant={plan.popular ? "default" : "outline"}
-                    size="lg"
-                    className={cn("w-full", plan.popular && "btn-3d")}
-                    onClick={onJoinWaitlist}
-                  >
-                    Join Waitlist
-                  </Button>
-                )}
-              </div>
-            </Card3D>
+              {plan.tier === "enterprise" ? (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="w-full bg-transparent border-white/[0.15] text-white hover:border-white/30 hover:bg-white/5"
+                >
+                  <Link to={plan.href}>{plan.cta}</Link>
+                </Button>
+              ) : (
+                <Button
+                  size="lg"
+                  className={cn(
+                    "w-full",
+                    plan.popular
+                      ? "bg-orange-500 hover:bg-orange-600 text-white border-0"
+                      : "bg-transparent border border-white/[0.15] text-white hover:border-white/30 hover:bg-white/5"
+                  )}
+                  onClick={onJoinWaitlist}
+                >
+                  Join Waitlist
+                </Button>
+              )}
+            </motion.div>
           ))}
         </div>
 
-        {/* Feature Comparison Table - Hidden on mobile, shown on tablet+ */}
-        <div className="max-w-6xl mx-auto hidden md:block">
-          <h3 className="text-xl font-bold text-foreground text-center mb-6">
+        {/* Feature Comparison Table - Hidden on mobile */}
+        <div className="max-w-6xl mx-auto hidden md:block mb-16">
+          <h3 className="text-xl font-bold text-white text-center mb-6">
             Compare All Features
           </h3>
-          <div className="backdrop-blur-xl bg-card/80 border border-border/50 rounded-xl overflow-hidden shadow-lg">
+          <div className="bg-[#111214] border border-white/[0.06] rounded-xl overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30 border-b border-border/50">
-                  <TableHead className="w-[180px] lg:w-[220px] font-semibold whitespace-nowrap text-sm py-2.5">Feature</TableHead>
-                  <TableHead className="text-center font-semibold whitespace-nowrap min-w-[80px] text-sm py-2.5">Starter</TableHead>
-                  <TableHead className="text-center font-semibold bg-primary/5 whitespace-nowrap min-w-[80px] text-sm py-2.5">Growth</TableHead>
-                  <TableHead className="text-center font-semibold whitespace-nowrap min-w-[80px] text-sm py-2.5">Professional</TableHead>
-                  <TableHead className="text-center font-semibold whitespace-nowrap min-w-[80px] text-sm py-2.5">Enterprise</TableHead>
+                <TableRow className="bg-[#161819] border-b border-white/[0.06]">
+                  <TableHead className="w-[180px] lg:w-[220px] font-semibold whitespace-nowrap text-sm py-2.5 text-zinc-300">Feature</TableHead>
+                  <TableHead className="text-center font-semibold whitespace-nowrap min-w-[80px] text-sm py-2.5 text-zinc-300">Starter</TableHead>
+                  <TableHead className="text-center font-semibold bg-orange-500/5 whitespace-nowrap min-w-[80px] text-sm py-2.5 text-zinc-300">Growth</TableHead>
+                  <TableHead className="text-center font-semibold whitespace-nowrap min-w-[80px] text-sm py-2.5 text-zinc-300">Professional</TableHead>
+                  <TableHead className="text-center font-semibold whitespace-nowrap min-w-[80px] text-sm py-2.5 text-zinc-300">Enterprise</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleFeatures.map((row, idx) => (
-                  <TableRow 
+                  <TableRow
                     key={row.feature}
                     className={cn(
-                      "transition-colors hover:bg-muted/40",
-                      idx % 2 === 0 && "bg-muted/20"
+                      "transition-colors hover:bg-white/[0.02] border-white/[0.04]",
+                      idx % 2 === 0 && "bg-white/[0.01]"
                     )}
                   >
-                    <TableCell className="font-medium whitespace-nowrap text-sm py-2">{row.feature}</TableCell>
+                    <TableCell className="font-medium whitespace-nowrap text-sm py-2 text-zinc-300">{row.feature}</TableCell>
                     <TableCell className="text-center py-2">
                       <FeatureValue value={row.starter} />
                     </TableCell>
-                    <TableCell className="text-center bg-primary/5 py-2">
+                    <TableCell className="text-center bg-orange-500/5 py-2">
                       <FeatureValue value={row.growth} />
                     </TableCell>
                     <TableCell className="text-center py-2">
@@ -257,57 +292,54 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
                 ))}
               </TableBody>
             </Table>
-            
-            {/* Expand/Collapse Button */}
+
             {featureComparison.length > 6 && (
               <button
                 onClick={() => setShowAllFeatures(!showAllFeatures)}
-                className="w-full py-3 text-sm font-medium text-primary hover:bg-primary/5 border-t border-border/50 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 text-sm font-medium text-orange-500 hover:bg-white/[0.02] border-t border-white/[0.06] transition-colors flex items-center justify-center gap-2"
               >
                 {showAllFeatures ? (
-                  <>Show Less Features <span className="text-xs">↑</span></>
+                  <>Show Less Features <ChevronDown className="h-3.5 w-3.5 rotate-180" /></>
                 ) : (
-                  <>Show All {featureComparison.length} Features <span className="text-xs">↓</span></>
+                  <>Show All {featureComparison.length} Features <ChevronDown className="h-3.5 w-3.5" /></>
                 )}
               </button>
             )}
           </div>
         </div>
 
-        {/* Mobile Feature Comparison - Simplified cards per tier */}
-        <div className="md:hidden max-w-lg mx-auto">
-          <h3 className="text-lg font-bold text-foreground text-center mb-4">
+        {/* Mobile Feature Comparison */}
+        <div className="md:hidden max-w-lg mx-auto mb-16">
+          <h3 className="text-lg font-bold text-white text-center mb-4">
             Compare Features
           </h3>
           <div className="space-y-3">
             {plans.map((plan) => (
-              <details key={plan.name} className="group backdrop-blur-xl bg-card/80 border border-border/50 rounded-xl overflow-hidden shadow-sm">
-                <summary className="flex items-center justify-between p-3 cursor-pointer list-none">
+              <details key={plan.name} className="group bg-[#111214] border border-white/[0.06] rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
                   <div className="flex items-center gap-2">
                     <span className={cn(
                       "font-semibold text-sm",
-                      plan.popular && "text-primary"
+                      plan.popular ? "text-orange-500" : "text-white"
                     )}>{plan.name}</span>
                     {plan.popular && (
-                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full animate-pulse">Popular</span>
+                      <span className="text-[10px] bg-orange-500/10 text-orange-500 px-1.5 py-0.5 rounded-full">Popular</span>
                     )}
                   </div>
-                  <span className="text-muted-foreground group-open:rotate-180 transition-transform duration-200">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
+                  <span className="text-zinc-500 group-open:rotate-180 transition-transform duration-200">
+                    <ChevronDown className="h-4 w-4" />
                   </span>
                 </summary>
-                <div className="px-3 pb-3 pt-2 border-t border-border/50 space-y-1.5">
+                <div className="px-4 pb-4 pt-2 border-t border-white/[0.06] space-y-1.5">
                   {featureComparison.map((row) => {
                     const value = row[plan.tier as keyof typeof row];
                     if (value === false) return null;
                     return (
                       <div key={row.feature} className="flex items-center gap-2 text-xs">
-                        <Check className="h-3 w-3 text-primary shrink-0" />
-                        <span className="text-foreground">{row.feature}</span>
+                        <Check className="h-3 w-3 text-orange-500 shrink-0" />
+                        <span className="text-zinc-300">{row.feature}</span>
                         {typeof value === 'string' && value !== 'true' && (
-                          <span className="text-[10px] text-muted-foreground ml-auto">({value})</span>
+                          <span className="text-[10px] text-zinc-600 ml-auto">({value})</span>
                         )}
                       </div>
                     );
@@ -318,11 +350,34 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
           </div>
         </div>
 
-        <p className="text-center text-muted-foreground text-sm mt-8">
+        {/* FAQ Section */}
+        <div className="max-w-3xl mx-auto">
+          <h3 className="text-2xl md:text-3xl font-bold text-white text-center mb-8">
+            Frequently Asked Questions
+          </h3>
+          <Accordion type="single" collapsible className="space-y-3">
+            {faqItems.map((item, i) => (
+              <AccordionItem
+                key={i}
+                value={`faq-${i}`}
+                className="bg-[#111214] border border-white/[0.06] rounded-xl px-5 data-[state=open]:border-white/[0.12]"
+              >
+                <AccordionTrigger className="text-sm font-medium text-white hover:no-underline py-4">
+                  {item.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-zinc-400 leading-relaxed pb-4">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+
+        <p className="text-center text-zinc-500 text-sm mt-12">
           All prices in USD. Need a custom solution?{" "}
-          <a href="/consultation" className="text-primary hover:underline">
+          <Link to="/consultation" className="text-orange-500 hover:underline">
             Schedule a consultation
-          </a>
+          </Link>
         </p>
       </div>
     </section>

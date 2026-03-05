@@ -53,7 +53,7 @@ export function IsometricLights() {
     <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-50">
       <svg
         viewBox="0 0 400 260"
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[260px]"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[400px] h-auto aspect-[400/260]"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
       >

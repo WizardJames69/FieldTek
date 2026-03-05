@@ -10,7 +10,7 @@ export default function Pricing() {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#09090B]">
       <Helmet>
         <title>Pricing — FieldTek AI | Plans for Every Team Size</title>
         <meta name="description" content="Transparent pricing for FieldTek AI field service management. Choose the plan that fits your team — from solo technicians to enterprise operations." />

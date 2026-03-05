@@ -29,7 +29,7 @@ export function CTASection({ onJoinWaitlist }: CTASectionProps) {
             <Button
               asChild
               size="lg"
-              className="bg-orange-500 hover:bg-orange-600 text-white text-lg px-8 py-6 border-0 hover:shadow-[0_0_20px_rgba(249,115,22,0.2)] transition-shadow"
+              className="w-full sm:w-auto min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white text-lg px-8 py-6 border-0 hover:shadow-[0_0_20px_rgba(249,115,22,0.2)] transition-shadow"
             >
               <Link to="/auth">
                 Get Early Access
@@ -39,7 +39,7 @@ export function CTASection({ onJoinWaitlist }: CTASectionProps) {
             <Button
               variant="outline"
               size="lg"
-              className="text-lg px-8 py-6 bg-transparent border border-white/25 text-white hover:border-white/50 hover:bg-white/5 transition-all duration-300"
+              className="w-full sm:w-auto min-h-[48px] text-lg px-8 py-6 bg-transparent border border-white/25 text-white hover:border-white/50 hover:bg-white/5 transition-all duration-300"
               onClick={onJoinWaitlist}
             >
               Join Waitlist

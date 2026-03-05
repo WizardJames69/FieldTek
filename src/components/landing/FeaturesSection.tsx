@@ -25,7 +25,7 @@ const pillars = [
 
 export const FeaturesSection = memo(function FeaturesSection() {
   return (
-    <section id="features" className="bg-[#111214] py-20 md:py-28 lg:py-32">
+    <section id="features" className="bg-[#111214] py-16 md:py-28 lg:py-32">
       <div className="mx-auto max-w-6xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -48,10 +48,10 @@ export const FeaturesSection = memo(function FeaturesSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: i * 0.1 }}
-              className="rounded-xl border border-white/[0.06] bg-[#161819] p-8 hover:border-white/[0.12] transition-all duration-300"
+              className="rounded-xl border border-white/[0.06] bg-[#161819] p-5 md:p-8 hover:border-white/[0.12] transition-all duration-300"
             >
-              <div className="h-12 w-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-5">
-                <pillar.icon className="h-6 w-6 text-orange-500" />
+              <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-5">
+                <pillar.icon className="h-5 w-5 md:h-6 md:w-6 text-orange-500" />
               </div>
               <h3 className="text-xl font-semibold text-white mb-3">{pillar.title}</h3>
               <p className="text-zinc-400 leading-relaxed">{pillar.description}</p>

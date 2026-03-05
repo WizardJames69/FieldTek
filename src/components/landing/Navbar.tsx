@@ -57,6 +57,9 @@ export const Navbar = memo(function Navbar() {
               {item.label}
             </button>
           ))}
+          <Link to="/pricing" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+            Pricing
+          </Link>
         </div>
 
         {/* Desktop CTAs */}
@@ -75,7 +78,7 @@ export const Navbar = memo(function Navbar() {
 
         {/* Mobile menu button */}
         <button
-          className="md:hidden p-2 rounded-lg text-zinc-400 hover:text-white transition-colors"
+          className="md:hidden p-3 rounded-lg text-zinc-400 hover:text-white transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
         >
@@ -106,11 +109,18 @@ export const Navbar = memo(function Navbar() {
                   <button
                     key={item.id}
                     onClick={() => scrollToSection(item.id)}
-                    className="block w-full text-left py-3 px-3 text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                    className="block w-full text-left py-4 px-4 text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                   >
                     {item.label}
                   </button>
                 ))}
+                <Link
+                  to="/pricing"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full text-left py-4 px-4 text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
+                  Pricing
+                </Link>
                 <div className="pt-3 space-y-2 border-t border-zinc-800 mt-2">
                   <Button asChild variant="ghost" className="w-full justify-center text-zinc-300 hover:text-white hover:bg-white/10">
                     <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>

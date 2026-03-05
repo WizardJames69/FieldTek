@@ -26,7 +26,7 @@ const testimonials = [
 
 export function SocialProofSection() {
   return (
-    <section className="bg-[#111214] py-20 md:py-28 lg:py-32">
+    <section className="bg-[#111214] py-16 md:py-28 lg:py-32">
       <div className="mx-auto max-w-5xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -49,7 +49,7 @@ export function SocialProofSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: i * 0.1 }}
-              className="rounded-xl bg-[#161819] p-8 relative overflow-hidden hover:bg-[#1a1c1d] transition-colors duration-300 flex flex-col"
+              className="rounded-xl bg-[#161819] p-6 md:p-8 relative overflow-hidden hover:bg-[#1a1c1d] transition-colors duration-300 flex flex-col"
             >
               {/* Gradient left accent */}
               <div

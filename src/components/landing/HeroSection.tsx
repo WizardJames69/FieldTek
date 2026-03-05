@@ -15,13 +15,13 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
     <section className="landing-section-dark landing-hero-glow relative overflow-hidden">
       <ContainerScroll
         titleComponent={
-          <div className="max-w-4xl mx-auto pt-24 md:pt-32 lg:pt-40">
+          <div className="max-w-4xl mx-auto pt-20 md:pt-32 lg:pt-40">
             {/* H1 */}
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.08 }}
-              className="text-5xl md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-6"
+              className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-6"
             >
               Guide Every Install.
               <br />
@@ -48,7 +48,7 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
               <Button
                 asChild
                 size="lg"
-                className="bg-orange-500 hover:bg-orange-600 text-white text-lg px-8 py-6 border-0 hover:shadow-[0_0_20px_rgba(249,115,22,0.2)] transition-shadow"
+                className="w-full sm:w-auto min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white text-lg px-8 py-6 border-0 hover:shadow-[0_0_20px_rgba(249,115,22,0.2)] transition-shadow"
               >
                 <Link to="/auth">
                   Get Early Access
@@ -58,7 +58,7 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
               <Button
                 variant="outline"
                 size="lg"
-                className="text-lg px-8 py-6 bg-transparent border border-white/25 text-white hover:border-white/50 hover:bg-white/5 transition-all duration-300"
+                className="w-full sm:w-auto min-h-[48px] text-lg px-8 py-6 bg-transparent border border-white/25 text-white hover:border-white/50 hover:bg-white/5 transition-all duration-300"
                 onClick={onJoinWaitlist}
               >
                 Join Waitlist

@@ -24,7 +24,7 @@ const problems = [
 
 export function ProblemSection() {
   return (
-    <section className="bg-[#0C0D0F] py-20 md:py-28 lg:py-32">
+    <section className="bg-[#0C0D0F] py-16 md:py-28 lg:py-32">
       <div className="mx-auto max-w-6xl px-4">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
@@ -47,7 +47,7 @@ export function ProblemSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: i * 0.1 }}
-              className="border-l-[3px] border-orange-500 pl-6"
+              className="border-l-[3px] border-orange-500 pl-4 md:pl-6"
             >
               <div className="flex items-center gap-3 mb-3">
                 <problem.icon className="h-5 w-5 text-zinc-400" />
