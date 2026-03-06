@@ -97,12 +97,15 @@ export default function FAQ() {
   return (
     <div className="min-h-screen bg-[#08090A]">
       <Helmet>
-        <title>FAQ - FieldTek AI | Frequently Asked Questions</title>
-        <meta name="description" content="Frequently asked questions about FieldTek AI field service management. Learn about features, pricing, AI assistant, and getting started." />
+        <title>FAQ | FieldTek</title>
+        <meta name="description" content="Common questions about FieldTek's AI-powered field service platform." />
         <link rel="canonical" href="https://fieldtek.ai/faq" />
-        <meta property="og:title" content="FAQ - FieldTek AI" />
-        <meta property="og:description" content="Everything you need to know about getting started with FieldTek AI." />
+        <meta property="og:title" content="FAQ | FieldTek" />
+        <meta property="og:description" content="Common questions about FieldTek's AI-powered field service platform." />
         <meta property="og:url" content="https://fieldtek.ai/faq" />
+        <meta property="og:image" content="https://fieldtek.ai/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://fieldtek.ai/og-image.png" />
         <script type="application/ld+json">
           {JSON.stringify(faqSchema)}
         </script>
