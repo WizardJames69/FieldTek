@@ -32,6 +32,14 @@ export function AnimatedCounter({ value, className = "" }: AnimatedCounterProps)
           if (entry.isIntersecting && !hasAnimated.current) {
             hasAnimated.current = true;
             const { prefix, number, suffix, decimals } = parseValue(value);
+
+            // Non-numeric values — display as static text
+            if (number === 0 && !prefix) {
+              setDisplayValue(value);
+              observer.disconnect();
+              return;
+            }
+
             const duration = 1200;
             const startTime = performance.now();
 

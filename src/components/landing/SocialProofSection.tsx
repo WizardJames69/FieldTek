@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Lightbulb, HeadphonesIcon, Tag } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AnimatedEyebrow } from "./AnimatedEyebrow";
@@ -7,17 +7,17 @@ import { ScrollReveal } from "./ScrollReveal";
 
 const valueProps = [
   {
-    icon: Lightbulb,
+    number: "01",
     title: "Shape the product",
     description: "Your feedback directly influences what we build next.",
   },
   {
-    icon: HeadphonesIcon,
+    number: "02",
     title: "Priority support",
     description: "Direct line to our engineering team during beta.",
   },
   {
-    icon: Tag,
+    number: "03",
     title: "Founding member pricing",
     description: "Lock in early pricing that stays with you.",
   },
@@ -68,11 +68,11 @@ export function SocialProofSection() {
               variants={staggerItem}
               className="text-center md:text-left"
             >
-              <div className="inline-flex h-10 w-10 rounded-xl bg-orange-500/10 items-center justify-center mb-4">
-                <prop.icon className="h-5 w-5 text-orange-500" />
-              </div>
+              <span className="text-2xl font-semibold text-orange-500 mb-3 block">
+                {prop.number}
+              </span>
               <h3 className="text-lg font-semibold text-white mb-1.5">{prop.title}</h3>
-              <p className="text-sm text-zinc-500 leading-relaxed">{prop.description}</p>
+              <p className="text-[15px] text-[#9CA3AF] leading-relaxed">{prop.description}</p>
             </motion.div>
           ))}
         </motion.div>

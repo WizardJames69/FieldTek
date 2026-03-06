@@ -85,7 +85,7 @@ function TypingIndicator() {
 
 export function AnimatedChatDemo() {
   const [visibleSteps, setVisibleSteps] = useState<number[]>([]);
-  const [hasPlayed, setHasPlayed] = useState(false);
+  const hasPlayedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const chatAreaRef = useRef<HTMLDivElement>(null);
   const timersRef = useRef<number[]>([]);
@@ -93,14 +93,14 @@ export function AnimatedChatDemo() {
   // Scroll trigger — play once when 30% visible
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || hasPlayed) return;
+    if (!el || hasPlayedRef.current) return;
 
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !hasPlayed) {
-          setHasPlayed(true);
+        if (entry.isIntersecting && !hasPlayedRef.current) {
+          hasPlayedRef.current = true;
           observer.disconnect();
 
           if (prefersReduced) {
@@ -136,7 +136,7 @@ export function AnimatedChatDemo() {
       observer.disconnect();
       timersRef.current.forEach(clearTimeout);
     };
-  }, [hasPlayed]);
+  }, []);
 
   // Auto-scroll chat area as messages appear
   useEffect(() => {

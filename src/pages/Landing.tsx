@@ -29,6 +29,9 @@ const HowItWorksSection = lazy(() =>
 const ClientPortalSection = lazy(() =>
   import("@/components/landing/ClientPortalSection").then((m) => ({ default: m.ClientPortalSection }))
 );
+const FAQSection = lazy(() =>
+  import("@/components/landing/FAQSection").then((m) => ({ default: m.FAQSection }))
+);
 const CTASection = lazy(() =>
   import("@/components/landing/CTASection").then((m) => ({ default: m.CTASection }))
 );
@@ -96,7 +99,7 @@ export default function Landing() {
       {/* Dark hero zone */}
       <div className="landing-section-dark">
         <Navbar />
-        <HeroSection onJoinWaitlist={openWaitlist} />
+        <HeroSection />
       </div>
 
       <main>
@@ -114,8 +117,9 @@ export default function Landing() {
         <Suspense fallback={<SectionSkeleton minHeight="min-h-[600px]" />}>
           <FeatureShowcase />
           <ClientPortalSection />
-          <SocialProofSection />
           <HowItWorksSection />
+          <SocialProofSection />
+          <FAQSection />
         </Suspense>
 
         {/* CTA */}

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthLayout } from '@/components/auth/AuthLayout';
+import { BetaTesterModal } from '@/components/landing/BetaTesterModal';
 
 const passwordSchema = z.string()
   .min(8, 'Password must be at least 8 characters')
@@ -48,6 +49,7 @@ export default function Register() {
   const [isBetaFounder, setIsBetaFounder] = useState(false);
   const [manualAccessCode, setManualAccessCode] = useState('');
   const [accessError, setAccessError] = useState('');
+  const [betaModalOpen, setBetaModalOpen] = useState(false);
 
   const urlAccessCode = searchParams.get('access');
 
@@ -248,7 +250,7 @@ export default function Register() {
                 Don't have an access code?{' '}
                 <button
                   className="text-orange-500 hover:text-orange-400 transition-colors"
-                  onClick={() => navigate('/#beta-program')}
+                  onClick={() => setBetaModalOpen(true)}
                 >
                   Apply for beta access
                 </button>
@@ -374,6 +376,7 @@ export default function Register() {
           </>
         )}
       </div>
+      <BetaTesterModal open={betaModalOpen} onOpenChange={setBetaModalOpen} />
     </AuthLayout>
   );
 }

@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { getPostLoginDestination } from '@/lib/authRouting';
 import { AuthLayout } from '@/components/auth/AuthLayout';
+import { BetaTesterModal } from '@/components/landing/BetaTesterModal';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -22,6 +23,7 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [betaModalOpen, setBetaModalOpen] = useState(false);
 
   const { signIn, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -208,13 +210,14 @@ export default function Auth() {
             Don't have an account?{' '}
             <button
               className="text-orange-500 hover:text-orange-400 transition-colors"
-              onClick={() => navigate('/#beta-program')}
+              onClick={() => setBetaModalOpen(true)}
             >
               Apply for beta access
             </button>
           </p>
         </div>
       </div>
+      <BetaTesterModal open={betaModalOpen} onOpenChange={setBetaModalOpen} />
     </AuthLayout>
   );
 }
