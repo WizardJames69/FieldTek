@@ -1,6 +1,7 @@
 import { MessageSquare, Calendar, FileCheck, CheckCircle2 } from "lucide-react";
 import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
+import { AnimatedChatDemo } from "./AnimatedChatDemo";
 
 const features = [
   {
@@ -48,33 +49,18 @@ const features = [
 ];
 
 function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
+  if (type === "ai-assistant") {
+    return (
+      <div className={reverse ? "md:order-first" : ""}>
+        <AnimatedChatDemo />
+      </div>
+    );
+  }
+
   return (
     <div className={`rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden ${reverse ? "md:order-first" : ""}`}>
       <div className="p-1">
         <div className="rounded-lg bg-[#111113] p-4 min-h-[280px] md:min-h-[320px] flex items-center justify-center">
-          {type === "ai-assistant" && (
-            <div className="w-full max-w-sm space-y-3">
-              <div className="flex justify-end">
-                <div className="bg-orange-500/20 text-orange-300 text-xs rounded-lg rounded-br-sm px-3 py-2 max-w-[80%]">
-                  What's the startup procedure for the Carrier 24ACC636?
-                </div>
-              </div>
-              <div className="flex justify-start">
-                <div className="bg-zinc-800 text-zinc-300 text-xs rounded-lg rounded-bl-sm px-3 py-2 max-w-[85%] space-y-1.5">
-                  <p>Based on the installation manual (p.12-14):</p>
-                  <p>1. Verify all electrical connections match the wiring diagram</p>
-                  <p>2. Check refrigerant charge — factory charge covers 15ft of line set</p>
-                  <p>3. Set thermostat to cooling mode, lower setpoint 3°F below ambient</p>
-                  <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700">
-                    <div className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
-                      High Confidence
-                    </div>
-                    <div className="text-[10px] text-zinc-500">Source: Carrier 24ACC Manual</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
           {type === "job-management" && (
             <div className="w-full space-y-2">
               {[
