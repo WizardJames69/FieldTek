@@ -34,7 +34,7 @@ export function ContainerScroll({
 
   return (
     <div
-      className="h-auto md:h-[80rem] flex items-start md:items-center justify-center relative p-2 md:p-20"
+      className="h-auto md:h-[70rem] flex items-start md:items-center justify-center relative p-2 md:p-20"
       ref={containerRef}
     >
       <div
@@ -92,11 +92,11 @@ function Card({
         boxShadow:
           "0 0 80px rgba(249,115,22,0.04), 0 20px 60px rgba(0,0,0,0.5), 0 37px 37px #00000042, 0 84px 50px #00000026, 0 149px 60px #0000000a, 0 233px 65px #00000003",
       }}
-      className="max-w-5xl -mt-12 mx-auto h-[30rem] md:h-[40rem] w-full border border-white/[0.06] p-3 bg-[#111214] rounded-2xl shadow-lg shadow-black/30 relative z-0"
+      className="max-w-5xl -mt-12 mx-auto h-[26rem] md:h-[32rem] w-full border border-white/[0.06] p-3 bg-[#111214] rounded-2xl shadow-lg shadow-black/30 relative z-0"
     >
       <div className="h-full w-full overflow-hidden rounded-xl bg-[#111113] relative">
         {children}
-        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-b from-transparent from-35% to-[#09090B] pointer-events-none z-10" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-b from-transparent to-[#09090B] pointer-events-none z-10" />
       </div>
     </motion.div>
   );

@@ -63,6 +63,9 @@ export const Navbar = memo(function Navbar() {
           <Link to="/pricing" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
             Pricing
           </Link>
+          <Link to="/faq" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+            FAQ
+          </Link>
         </div>
 
         {/* Desktop CTAs */}
@@ -123,6 +126,13 @@ export const Navbar = memo(function Navbar() {
                   className="block w-full text-left py-4 px-4 text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
                 >
                   Pricing
+                </Link>
+                <Link
+                  to="/faq"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block w-full text-left py-4 px-4 text-sm font-medium text-zinc-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
+                  FAQ
                 </Link>
                 <div className="pt-3 space-y-2 border-t border-zinc-800 mt-2">
                   <Button asChild variant="ghost" className="w-full justify-center text-zinc-300 hover:text-white hover:bg-white/10">

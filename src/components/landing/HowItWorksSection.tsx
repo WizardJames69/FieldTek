@@ -60,13 +60,23 @@ export function HowItWorksSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
         >
           {steps.map((step, i) => (
-            <motion.div key={i} variants={staggerItem}>
-              <div className="text-3xl md:text-4xl font-bold font-mono text-orange-500 mb-4">{step.number}</div>
-              <h3 className="text-lg font-semibold text-white mb-3">{step.title}</h3>
-              <p className="text-sm text-zinc-400 leading-relaxed">{step.description}</p>
+            <motion.div
+              key={i}
+              variants={staggerItem}
+              className="relative rounded-xl bg-[#111214] border border-white/[0.06] p-6 md:p-7"
+              style={{
+                borderLeftWidth: "2px",
+                borderImage: "linear-gradient(to bottom, #F97316, transparent 70%) 1",
+              }}
+            >
+              <div className="text-base font-semibold text-orange-500 font-mono tabular-nums mb-2">
+                {step.number}
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
+              <p className="text-[15px] text-[#9CA3AF] leading-relaxed">{step.description}</p>
             </motion.div>
           ))}
         </motion.div>

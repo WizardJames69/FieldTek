@@ -29,9 +29,6 @@ const HowItWorksSection = lazy(() =>
 const ClientPortalSection = lazy(() =>
   import("@/components/landing/ClientPortalSection").then((m) => ({ default: m.ClientPortalSection }))
 );
-const FAQSection = lazy(() =>
-  import("@/components/landing/FAQSection").then((m) => ({ default: m.FAQSection }))
-);
 const CTASection = lazy(() =>
   import("@/components/landing/CTASection").then((m) => ({ default: m.CTASection }))
 );
@@ -119,7 +116,6 @@ export default function Landing() {
           <ClientPortalSection />
           <HowItWorksSection />
           <SocialProofSection />
-          <FAQSection />
         </Suspense>
 
         {/* CTA */}

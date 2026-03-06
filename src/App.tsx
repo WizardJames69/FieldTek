@@ -104,6 +104,7 @@ const DemoServiceRequests = lazy(() => import("./pages/demo/DemoServiceRequests"
 
 // Standalone pages
 const Pricing = lazy(() => import("./pages/Pricing"));
+const FAQ = lazy(() => import("./pages/FAQ"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogPost = lazy(() => import("./pages/BlogPost"));
 const MediaKit = lazy(() => import("./pages/MediaKit"));
@@ -207,6 +208,7 @@ function App() {
                         {/* Public routes */}
                         <Route path="/" element={<Landing />} />
                         <Route path="/pricing" element={<Pricing />} />
+                        <Route path="/faq" element={<FAQ />} />
                         <Route path="/contact" element={<Contact />} />
                         <Route path="/consultation" element={<BookDemo />} />
                         <Route path="/book-demo" element={<BookDemo />} /> {/* Legacy redirect */}
