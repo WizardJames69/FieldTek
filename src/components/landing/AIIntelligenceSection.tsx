@@ -10,7 +10,7 @@ const capabilities = [
     icon: BookOpen,
     title: "RAG over Documentation",
     description:
-      "Upload manuals — AI retrieves relevant procedures in real-time.",
+      "Upload manuals. AI retrieves relevant procedures in real-time.",
   },
   {
     icon: Network,

@@ -23,7 +23,7 @@ const jobs = [
 ];
 
 const requests = [
-  { title: "HVAC Not Cooling — Unit 4B", client: "Smith Home", time: "10 min ago" },
+  { title: "HVAC Not Cooling - Unit 4B", client: "Smith Home", time: "10 min ago" },
   { title: "Annual Maintenance Due", client: "TechCorp HQ", time: "25 min ago" },
 ];
 

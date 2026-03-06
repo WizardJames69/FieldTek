@@ -67,7 +67,7 @@ const faqItems = [
   },
   {
     question: "What happens when I approach my plan limits?",
-    answer: "We'll notify you when you're approaching your plan limits. You can upgrade at any time to unlock higher limits. We won't cut off your service mid-job — you'll have a grace period to upgrade or adjust your usage.",
+    answer: "We'll notify you when you're approaching your plan limits. You can upgrade at any time to unlock higher limits. We won't cut off your service mid-job. You'll have a grace period to upgrade or adjust your usage.",
   },
   {
     question: "Is there a setup fee?",
@@ -75,7 +75,7 @@ const faqItems = [
   },
   {
     question: "Do you offer discounts for annual billing?",
-    answer: "Yes — annual billing saves you 20% compared to monthly billing. Toggle the billing switch above to see annual pricing for each plan.",
+    answer: "Yes, annual billing saves you 20% compared to monthly billing. Toggle the billing switch above to see annual pricing for each plan.",
   },
   {
     question: "How do I get started?",

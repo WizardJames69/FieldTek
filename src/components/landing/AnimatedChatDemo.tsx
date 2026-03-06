@@ -24,7 +24,7 @@ const steps: ChatStep[] = [
       <div className="space-y-1.5">
         <p className="text-zinc-200 font-medium">Based on the installation manual (p.12-14):</p>
         <p>1. Verify all electrical connections match the wiring diagram</p>
-        <p>2. Check refrigerant charge — factory charge covers 15ft of line set</p>
+        <p>2. Check refrigerant charge. Factory charge covers 15ft of line set</p>
         <p>3. Set thermostat to cooling mode, lower setpoint 3°F below ambient</p>
         <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700/60">
           <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-1.5 py-0.5 rounded font-medium">

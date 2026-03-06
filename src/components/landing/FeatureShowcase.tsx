@@ -8,7 +8,7 @@ const features = [
     eyebrow: "AI Assistant",
     title: "Your technicians' smartest coworker",
     description:
-      "A chat-based AI assistant that answers technical questions using your uploaded manuals and equipment documentation. Technicians get manufacturer-specific answers on the job site — not generic Google results.",
+      "A chat-based AI assistant that answers technical questions using your uploaded manuals and equipment documentation. Technicians get manufacturer-specific answers on the job site, not generic Google results.",
     bullets: [
       "Answers grounded in your actual documentation (RAG)",
       "Equipment-specific troubleshooting steps",
@@ -64,9 +64,9 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
           {type === "job-management" && (
             <div className="w-full space-y-2">
               {[
-                { title: "AC Replacement — Johnson", status: "In Progress", color: "text-blue-400" },
-                { title: "Furnace Commissioning — Martinez", status: "Scheduled", color: "text-zinc-400" },
-                { title: "Quarterly HVAC Maintenance — TechCorp", status: "Auto-Generated", color: "text-orange-400" },
+                { title: "AC Replacement - Johnson", status: "In Progress", color: "text-blue-400" },
+                { title: "Furnace Commissioning - Martinez", status: "Scheduled", color: "text-zinc-400" },
+                { title: "Quarterly HVAC Maintenance - TechCorp", status: "Auto-Generated", color: "text-orange-400" },
               ].map((job, i) => (
                 <div key={i} className="flex items-center justify-between bg-zinc-800/80 rounded-lg px-3 py-2.5 border border-zinc-700/50">
                   <div>

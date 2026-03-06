@@ -260,13 +260,13 @@ const figures = [
   {
     id: "FIG 2",
     title: "Automatic Documentation",
-    description: "Every step captured, timestamped, and stored — without lifting a pen.",
+    description: "Every step captured, timestamped, and stored, without lifting a pen.",
     Illustration: DocumentationIllustration,
   },
   {
     id: "FIG 3",
     title: "Learning from Every Job",
-    description: "Maps equipment, failure modes, and proven fixes — gets smarter with every repair.",
+    description: "Maps equipment, failure modes, and proven fixes. Gets smarter with every repair.",
     Illustration: KnowledgeNetworkIllustration,
   },
 ];

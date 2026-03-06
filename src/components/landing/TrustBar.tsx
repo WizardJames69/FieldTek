@@ -2,10 +2,10 @@ import { motion } from "framer-motion";
 import { AnimatedCounter } from "./AnimatedCounter";
 
 const metrics = [
-  { value: "7", label: "Industries Served" },
-  { value: "500+", label: "Equipment Models" },
-  { value: "50+", label: "Contractors in Early Access" },
-  { value: "99.9%", label: "Uptime" },
+  { value: "7", label: "Trade Industries" },
+  { value: "Offline", label: "Mobile-Ready" },
+  { value: "RAG", label: "AI-Powered Retrieval" },
+  { value: "SOC 2", label: "Compliant" },
 ];
 
 export function TrustBar() {

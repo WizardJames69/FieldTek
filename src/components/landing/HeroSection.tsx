@@ -51,7 +51,7 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
 
               {/* Subtitle */}
               <p className="text-lg md:text-xl text-[#9CA3AF] max-w-2xl mx-auto mb-10 leading-relaxed">
-                AI-guided installs. Automatic documentation. Warranty compliance — built in.
+                AI-guided installs. Automatic documentation. Warranty compliance, built in.
               </p>
 
               {/* CTAs */}

@@ -9,7 +9,7 @@ import {
 const faqs = [
   {
     question: "How is FieldTek different from ServiceTitan?",
-    answer: "FieldTek delivers enterprise-level features without enterprise complexity. You get scheduling, dispatch, invoicing, and a mobile app with same-day setup — no consultants or lengthy implementations required. Our interactive demo lets you explore everything before signing up, and our AI assistant is trained on YOUR uploaded manuals and learns from your service history for brand-specific, model-specific guidance in the field."
+    answer: "FieldTek delivers enterprise-level features without enterprise complexity. You get scheduling, dispatch, invoicing, and a mobile app with same-day setup, no consultants or lengthy implementations required. Our interactive demo lets you explore everything before signing up, and our AI assistant is trained on YOUR uploaded manuals and learns from your service history for brand-specific, model-specific guidance in the field."
   },
   {
     question: "Can I switch from my current FSM software?",
@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     question: "Is FieldTek powerful enough for a growing team?",
-    answer: "Yes. FieldTek scales from 2 to 50+ technicians. You get enterprise features like custom workflows, multi-location support, API access, and advanced analytics — without the enterprise complexity or pricing. Many of our customers switched from 'big name' tools and haven't looked back."
+    answer: "Yes. FieldTek scales from 2 to 50+ technicians. You get enterprise features like custom workflows, multi-location support, API access, and advanced analytics, without the enterprise complexity or pricing. Many of our customers switched from 'big name' tools and haven't looked back."
   },
   {
     question: "How long does it take to get started?",
@@ -25,15 +25,15 @@ const faqs = [
   },
   {
     question: "What is the interactive demo?",
-    answer: "Our demo sandbox lets you explore FieldTek with realistic sample data — no account needed. You'll see a full day of jobs, customer records, equipment history, and even try the AI assistant. It's the fastest way to understand how FieldTek fits your workflow before committing to a trial."
+    answer: "Our demo sandbox lets you explore FieldTek with realistic sample data, no account needed. You'll see a full day of jobs, customer records, equipment history, and even try the AI assistant. It's the fastest way to understand how FieldTek fits your workflow before committing to a trial."
   },
   {
     question: "Does the AI learn from our service history?",
-    answer: "Yes! FieldTek's AI doesn't just reference manuals — it analyzes your complete service history. When a technician opens a job, the AI automatically surfaces previous visits and what was done, recurring issue patterns ('This is the 4th refrigerant issue on this unit'), parts commonly needed for similar repairs, and proactive warranty expiration alerts. This context-aware intelligence helps techs diagnose faster and come prepared with the right parts."
+    answer: "Yes! FieldTek's AI doesn't just reference manuals, it analyzes your complete service history. When a technician opens a job, the AI automatically surfaces previous visits and what was done, recurring issue patterns ('This is the 4th refrigerant issue on this unit'), parts commonly needed for similar repairs, and proactive warranty expiration alerts. This context-aware intelligence helps techs diagnose faster and come prepared with the right parts."
   },
   {
     question: "How does the AI assistant compare to competitors?",
-    answer: "Most FSM tools either have no AI or use generic chatbots. FieldTek's AI is document-grounded and history-aware — it references your uploaded service manuals for brand-specific answers, detects recurring issue patterns across your service history, predicts likely parts based on similar past repairs, and proactively warns about expiring warranties. Plus, incoming service requests are automatically analyzed by AI to suggest priority levels and job types."
+    answer: "Most FSM tools either have no AI or use generic chatbots. FieldTek's AI is document-grounded and history-aware. It references your uploaded service manuals for brand-specific answers, detects recurring issue patterns across your service history, predicts likely parts based on similar past repairs, and proactively warns about expiring warranties. Plus, incoming service requests are automatically analyzed by AI to suggest priority levels and job types."
   },
   {
     question: "Do my customers get their own portal?",
@@ -49,7 +49,7 @@ const faqs = [
   },
   {
     question: "Can I try before I buy?",
-    answer: "Absolutely! Explore our interactive demo sandbox to see the full platform in action — no signup required. We're currently in beta, so join our waitlist to get early access when we launch. You can also book a personalized demo with our team to see how the platform fits your specific workflow."
+    answer: "Absolutely! Explore our interactive demo sandbox to see the full platform in action, no signup required. We're currently in beta, so join our waitlist to get early access when we launch. You can also book a personalized demo with our team to see how the platform fits your specific workflow."
   }
 ];
 

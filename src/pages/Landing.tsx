@@ -32,9 +32,6 @@ const ClientPortalSection = lazy(() =>
 const CTASection = lazy(() =>
   import("@/components/landing/CTASection").then((m) => ({ default: m.CTASection }))
 );
-const DemoWalkthroughSection = lazy(() =>
-  import("@/components/landing/DemoWalkthroughSection").then((m) => ({ default: m.DemoWalkthroughSection }))
-);
 
 function SectionSkeleton({ minHeight = "min-h-[400px]" }: { minHeight?: string }) {
   return (
@@ -116,7 +113,6 @@ export default function Landing() {
         {/* Feature deep-dives */}
         <Suspense fallback={<SectionSkeleton minHeight="min-h-[600px]" />}>
           <FeatureShowcase />
-          <DemoWalkthroughSection />
           <ClientPortalSection />
           <SocialProofSection />
           <HowItWorksSection />

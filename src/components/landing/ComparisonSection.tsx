@@ -25,7 +25,7 @@ const comparisons = [
     icon: Brain,
     beforeText: "Manual calendar reminders",
     afterText: "Auto-generated recurring jobs",
-    supportLine: "PM contracts run themselves—jobs created automatically",
+    supportLine: "PM contracts run themselves. Jobs created automatically",
   },
   {
     title: "Live the Same Day",
@@ -70,7 +70,7 @@ export const ComparisonSection = memo(function ComparisonSection() {
             FieldTek Fixes What Traditional Field Software Misses
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Standardize installs, reduce callbacks, and protect warranties — without months of setup or retraining.
+            Standardize installs, reduce callbacks, and protect warranties, without months of setup or retraining.
           </p>
         </motion.div>
 

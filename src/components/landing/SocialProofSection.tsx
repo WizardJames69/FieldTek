@@ -1,28 +1,25 @@
 import { motion } from "framer-motion";
+import { ArrowRight, Lightbulb, HeadphonesIcon, Tag } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
 
-const testimonials = [
+const valueProps = [
   {
-    quote:
-      "We cut callbacks by 40% in the first month. The AI assistant answers questions that used to require a call back to the office.",
-    name: "Mike Torres",
-    title: "Operations Manager",
-    company: "Precision HVAC Services",
+    icon: Lightbulb,
+    title: "Shape the product",
+    description: "Your feedback directly influences what we build next.",
   },
   {
-    quote:
-      "Our new hires are productive in days instead of weeks. The guided checklists mean they follow the manufacturer spec every time.",
-    name: "Sarah Chen",
-    title: "Service Director",
-    company: "Summit Mechanical",
+    icon: HeadphonesIcon,
+    title: "Priority support",
+    description: "Direct line to our engineering team during beta.",
   },
   {
-    quote:
-      "Finally — documentation that doesn't rely on my techs remembering to fill out paperwork. The compliance reports generate themselves.",
-    name: "David Ruiz",
-    title: "Owner",
-    company: "Elite Plumbing & Heating",
+    icon: Tag,
+    title: "Founding member pricing",
+    description: "Lock in early pricing that stays with you.",
   },
 ];
 
@@ -44,11 +41,17 @@ export function SocialProofSection() {
     <section className="bg-[#111214] py-16 md:py-28 lg:py-32">
       <div className="mx-auto max-w-5xl px-4">
         <div className="text-center mb-12 md:mb-16">
-          <AnimatedEyebrow label="Trusted by Contractors" center />
+          <AnimatedEyebrow label="Early Access" center />
           <ScrollReveal delay={0.05}>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white">
-              What early users are saying
+              Help us build the future of field service
             </h2>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <p className="text-lg text-zinc-400 max-w-2xl mx-auto mt-4">
+              We're partnering with contractors to shape FieldTek before public launch.
+              Early access members get direct input on features, priority support, and founding member pricing.
+            </p>
           </ScrollReveal>
         </div>
 
@@ -57,29 +60,37 @@ export function SocialProofSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-stretch"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-10"
         >
-          {testimonials.map((testimonial, i) => (
+          {valueProps.map((prop) => (
             <motion.div
-              key={i}
+              key={prop.title}
               variants={staggerItem}
-              className="rounded-xl bg-[#161819] p-6 md:p-8 relative overflow-hidden hover:bg-[#1a1c1d] transition-colors duration-300 flex flex-col card-hover-lift"
+              className="text-center md:text-left"
             >
-              {/* Gradient left accent */}
-              <div
-                className="absolute left-0 top-0 bottom-0 w-[2px]"
-                style={{ background: 'linear-gradient(to bottom, #F97316, transparent 70%)' }}
-              />
-              <p className="text-lg md:text-xl text-[#D1D5DB] leading-[1.6] mb-6 flex-1">"{testimonial.quote}"</p>
-              <div>
-                <div className="text-base font-semibold text-white">{testimonial.name}</div>
-                <div className="text-sm text-[#6B7280]">
-                  {testimonial.title}, {testimonial.company}
-                </div>
+              <div className="inline-flex h-10 w-10 rounded-xl bg-orange-500/10 items-center justify-center mb-4">
+                <prop.icon className="h-5 w-5 text-orange-500" />
               </div>
+              <h3 className="text-lg font-semibold text-white mb-1.5">{prop.title}</h3>
+              <p className="text-sm text-zinc-500 leading-relaxed">{prop.description}</p>
             </motion.div>
           ))}
         </motion.div>
+
+        <ScrollReveal delay={0.15}>
+          <div className="text-center">
+            <Button
+              asChild
+              size="lg"
+              className="bg-orange-500 hover:bg-orange-600 text-white border-0"
+            >
+              <Link to="/register">
+                Apply for Early Access
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );

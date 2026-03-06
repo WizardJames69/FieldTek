@@ -48,7 +48,7 @@ export function LaunchBanner({ onJoinWaitlist }: LaunchBannerProps) {
               <Rocket className="h-4 w-4 shrink-0 hidden sm:block" />
               <span className="text-center">
                 <span className="font-semibold">Launching Soon</span>
-                <span className="hidden sm:inline"> — </span>
+                <span className="hidden sm:inline"> · </span>
                 <br className="sm:hidden" />
                 <button 
                   onClick={onJoinWaitlist}

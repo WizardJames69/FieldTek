@@ -19,13 +19,13 @@ const steps = [
     number: "03",
     title: "Share Your Client Portal",
     description:
-      "Give your clients a branded portal to submit service requests, track job status, and approve quotes — no phone calls or emails needed.",
+      "Give your clients a branded portal to submit service requests, track job status, and approve quotes. No phone calls or emails needed.",
   },
   {
     number: "04",
     title: "Deploy to Your Team",
     description:
-      "Your technicians get a mobile app with offline support, AI-guided procedures, and automatic documentation — productive from day one.",
+      "Your technicians get a mobile app with offline support, AI-guided procedures, and automatic documentation. Productive from day one.",
   },
 ];
 

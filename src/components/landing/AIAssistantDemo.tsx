@@ -11,7 +11,7 @@ const chatMessages = [
   },
   {
     role: "assistant" as const,
-    message: "I found the service manual for Carrier 24ACC636. Looking at this unit's history, I see 2 previous refrigerant-related calls in the past 6 months. ⚠️ This pattern suggests a persistent leak. Let's check pressures — what are your high and low side readings?",
+    message: "I found the service manual for Carrier 24ACC636. Looking at this unit's history, I see 2 previous refrigerant-related calls in the past 6 months. ⚠️ This pattern suggests a persistent leak. Let's check pressures. What are your high and low side readings?",
     icon: Bot,
     source: "Carrier Manual + Service History",
   },
@@ -22,7 +22,7 @@ const chatMessages = [
   },
   {
     role: "assistant" as const,
-    message: "Per the Carrier spec sheet, normal readings should be 225-250 PSI (high) and 65-70 PSI (low). Your readings confirm low refrigerant. Based on similar repairs, you'll likely need a TXV valve and refrigerant recharge. ⚠️ Note: Warranty expires in 23 days — document thoroughly.",
+    message: "Per the Carrier spec sheet, normal readings should be 225-250 PSI (high) and 65-70 PSI (low). Your readings confirm low refrigerant. Based on similar repairs, you'll likely need a TXV valve and refrigerant recharge. ⚠️ Note: Warranty expires in 23 days. Document thoroughly.",
     icon: Bot,
     highlight: true,
     source: "Carrier Specs + Parts History + Warranty",
@@ -36,7 +36,7 @@ const chatMessages = [
     role: "assistant" as const,
     message: "Per NEC Section 110.26(A), you need a minimum of 36 inches of clear working space in front of the panel, 30 inches wide, and headroom of 6.5 feet. For a 200A panel (150–600V), the depth must be at least 36 inches.",
     icon: Bot,
-    source: "NEC 110.26(A) — Code Reference",
+    source: "NEC 110.26(A) - Code Reference",
   },
 ];
 
@@ -64,7 +64,7 @@ const trustFeatures = [
   {
     icon: Scale,
     title: "Code Compliance Reference",
-    description: "Instant access to NEC, IPC, IMC, CEC, and CSA building codes — no document uploads required"
+    description: "Instant access to NEC, IPC, IMC, CEC, and CSA building codes, no document uploads required"
   },
 ];
 
@@ -114,7 +114,7 @@ export const AIAssistantDemo = memo(function AIAssistantDemo() {
             <span className="text-primary font-medium"> equipment-specific best practices</span>.
           </p>
           <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-            Responses are manual-verified and warranty-safe — reducing risk and eliminating guesswork on site.
+            Responses are manual-verified and warranty-safe, reducing risk and eliminating guesswork on site.
           </p>
         </motion.div>
 

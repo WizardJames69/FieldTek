@@ -20,7 +20,7 @@ function PortalMockup() {
             <div className="space-y-2">
               <div className="rounded-md bg-zinc-800/80 border border-zinc-700/50 px-3 py-2 flex items-center justify-between">
                 <span className="text-xs text-zinc-400">Issue Type</span>
-                <span className="text-xs text-zinc-300">HVAC — Not Cooling</span>
+                <span className="text-xs text-zinc-300">HVAC - Not Cooling</span>
               </div>
               <div className="rounded-md bg-zinc-800/80 border border-zinc-700/50 px-3 py-2">
                 <span className="text-xs text-zinc-400">Location</span>
@@ -43,7 +43,7 @@ function PortalMockup() {
           {/* Submitted request card */}
           <div className="rounded-md bg-[#141416] border border-zinc-800 p-3 space-y-2.5">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-medium text-zinc-200">HVAC Not Cooling — Unit 4B</div>
+              <div className="text-xs font-medium text-zinc-200">HVAC Not Cooling - Unit 4B</div>
               <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
                 Technician Assigned
               </span>
@@ -104,7 +104,7 @@ export function ClientPortalSection() {
             <ScrollReveal delay={0.1}>
               <p className="text-zinc-400 leading-relaxed mb-6">
                 A branded portal where property managers, building owners, and homeowners
-                submit service requests, track job progress, and approve quotes — without
+                submit service requests, track job progress, and approve quotes, without
                 calling your office.
               </p>
             </ScrollReveal>
