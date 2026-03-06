@@ -38,8 +38,8 @@ const staggerItem = {
 
 export function SocialProofSection() {
   return (
-    <section className="bg-[#111214] py-16 md:py-28 lg:py-32">
-      <div className="mx-auto max-w-5xl px-4">
+    <section className="bg-[#111214] py-16 md:py-20 lg:py-28">
+      <div className="mx-auto max-w-6xl px-4">
         <div className="text-center mb-12 md:mb-16">
           <AnimatedEyebrow label="Early Access" center />
           <ScrollReveal delay={0.05}>
@@ -60,18 +60,22 @@ export function SocialProofSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-10"
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-10"
         >
           {valueProps.map((prop) => (
             <motion.div
               key={prop.title}
               variants={staggerItem}
-              className="text-center md:text-left"
+              className="relative rounded-xl bg-[#111214] border border-white/[0.06] p-6 md:p-7"
+              style={{
+                borderLeftWidth: "2px",
+                borderImage: "linear-gradient(to bottom, #F97316, transparent 70%) 1",
+              }}
             >
-              <span className="text-2xl font-semibold text-orange-500 mb-3 block">
+              <div className="text-base font-semibold text-orange-500 font-mono tabular-nums mb-2">
                 {prop.number}
-              </span>
-              <h3 className="text-lg font-semibold text-white mb-1.5">{prop.title}</h3>
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-2">{prop.title}</h3>
               <p className="text-[15px] text-[#9CA3AF] leading-relaxed">{prop.description}</p>
             </motion.div>
           ))}

@@ -10,7 +10,7 @@ const metrics = [
 
 export function TrustBar() {
   return (
-    <section className="bg-[#0C0D0F] py-12 border-y border-white/[0.06]">
+    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-28 border-y border-white/[0.06]">
       <div className="mx-auto max-w-5xl px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
           {metrics.map((metric, i) => (

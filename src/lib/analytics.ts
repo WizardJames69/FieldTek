@@ -1,28 +1,14 @@
-// Analytics utility for tracking events with cookie consent awareness
+// Analytics utility for tracking events
 
 type EventParams = Record<string, string | number | boolean>;
 
-// Check if analytics cookies are consented
-export function hasAnalyticsConsent(): boolean {
-  try {
-    const consent = localStorage.getItem("cookie-consent");
-    if (!consent) return false;
-    const preferences = JSON.parse(consent);
-    return preferences.analytics === true;
-  } catch {
-    return false;
-  }
-}
-
-// Track a custom event (only if consented)
+// Track a custom event
 export function trackEvent(eventName: string, params?: EventParams): void {
-  if (!hasAnalyticsConsent()) return;
-  
   // GA4 tracking
   if (typeof window !== "undefined" && (window as any).gtag) {
     (window as any).gtag("event", eventName, params);
   }
-  
+
   // Console log in development
   if (import.meta.env.DEV) {
     console.log("[Analytics]", eventName, params);
@@ -31,8 +17,6 @@ export function trackEvent(eventName: string, params?: EventParams): void {
 
 // Track page views
 export function trackPageView(path: string, title?: string): void {
-  if (!hasAnalyticsConsent()) return;
-  
   if (typeof window !== "undefined" && (window as any).gtag) {
     (window as any).gtag("event", "page_view", {
       page_path: path,
@@ -51,9 +35,9 @@ export function getUtmParams(): {
   if (typeof window === "undefined") {
     return { utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null };
   }
-  
+
   const params = new URLSearchParams(window.location.search);
-  
+
   return {
     utm_source: params.get("utm_source"),
     utm_medium: params.get("utm_medium"),
@@ -66,7 +50,7 @@ export function getUtmParams(): {
 export function storeUtmParams(): void {
   const utmParams = getUtmParams();
   const hasAnyUtm = Object.values(utmParams).some(v => v !== null);
-  
+
   if (hasAnyUtm) {
     sessionStorage.setItem("utm_params", JSON.stringify(utmParams));
   }
@@ -82,7 +66,7 @@ export function getStoredUtmParams(): ReturnType<typeof getUtmParams> {
   } catch {
     // Ignore parse errors
   }
-  
+
   // Fall back to current URL params
   return getUtmParams();
 }

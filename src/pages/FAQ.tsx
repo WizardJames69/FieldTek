@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { ChevronDown } from "lucide-react";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
-import { CookieConsent } from "@/components/landing/CookieConsent";
+
 
 const faqs = [
   {
@@ -129,7 +129,6 @@ export default function FAQ() {
         </section>
       </main>
       <Footer />
-      <CookieConsent />
     </div>
   );
 }

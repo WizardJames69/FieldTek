@@ -10,8 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
-import { InstallPrompt } from "@/components/pwa/InstallPrompt";
-import { PwaUpdatePrompt } from "@/components/pwa/PwaUpdatePrompt";
+
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionExpiryWarning } from "@/components/auth/SessionExpiryWarning";
 import { RoleGuard } from "@/components/auth/RoleGuard";
@@ -201,8 +200,6 @@ function App() {
                     <SessionExpiryWarning />
                     <Toaster />
                     <Sonner />
-                    <InstallPrompt />
-                    <PwaUpdatePrompt />
                     <Suspense fallback={<PageLoader />}>
                       <Routes>
                         {/* Public routes */}

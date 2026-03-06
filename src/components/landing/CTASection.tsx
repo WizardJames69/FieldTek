@@ -9,7 +9,7 @@ interface CTASectionProps {
 
 export function CTASection({ onJoinWaitlist }: CTASectionProps) {
   return (
-    <section className="landing-section-dark py-16 md:py-24 lg:py-32">
+    <section className="landing-section-dark py-16 md:py-20 lg:py-28">
       <div className="mx-auto max-w-4xl px-4 text-center">
         <motion.div
           initial={{ opacity: 0, y: 15 }}

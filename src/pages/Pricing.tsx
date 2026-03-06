@@ -4,7 +4,7 @@ import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { WaitlistModal } from "@/components/landing/WaitlistModal";
-import { CookieConsent } from "@/components/landing/CookieConsent";
+
 
 export default function Pricing() {
   const [waitlistOpen, setWaitlistOpen] = useState(false);
@@ -25,7 +25,6 @@ export default function Pricing() {
       </main>
       <Footer />
       <WaitlistModal open={waitlistOpen} onOpenChange={setWaitlistOpen} />
-      <CookieConsent />
     </div>
   );
 }

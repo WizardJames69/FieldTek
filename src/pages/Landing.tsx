@@ -8,7 +8,7 @@ import { TrustBar } from "@/components/landing/TrustBar";
 import { ProblemSection } from "@/components/landing/ProblemSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { Footer } from "@/components/landing/Footer";
-import { CookieConsent } from "@/components/landing/CookieConsent";
+
 import { WaitlistModal } from "@/components/landing/WaitlistModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { initAnalytics } from "@/lib/analytics";
@@ -125,7 +125,6 @@ export default function Landing() {
       </main>
 
       <Footer />
-      <CookieConsent />
       <WaitlistModal open={waitlistOpen} onOpenChange={setWaitlistOpen} />
     </div>
   );

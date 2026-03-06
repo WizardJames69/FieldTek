@@ -39,7 +39,7 @@ const staggerItem = {
 
 export function ProblemSection() {
   return (
-    <section className="bg-[#0C0D0F] py-16 md:py-28 lg:py-32">
+    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-28">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
           <AnimatedEyebrow label="The Problem" center />
