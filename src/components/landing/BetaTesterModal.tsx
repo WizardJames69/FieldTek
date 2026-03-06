@@ -65,9 +65,9 @@ const industries = [
   { value: "hvac", label: "HVAC" },
   { value: "plumbing", label: "Plumbing" },
   { value: "electrical", label: "Electrical" },
-  { value: "appliance", label: "Appliance Repair" },
+  { value: "elevator", label: "Elevator" },
+  { value: "appliance", label: "Appliance Repair/Install" },
   { value: "fire_safety", label: "Fire & Safety" },
-  { value: "general", label: "General Contracting" },
   { value: "other", label: "Other" },
 ];
 

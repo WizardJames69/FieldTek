@@ -78,8 +78,8 @@ const faqItems = [
     answer: "Yes — annual billing saves you 20% compared to monthly billing. Toggle the billing switch above to see annual pricing for each plan.",
   },
   {
-    question: "What's included in the free trial?",
-    answer: "The free trial includes full access to all Growth plan features for 30 days with up to 2 technicians. No credit card required to start. At the end of the trial, choose the plan that fits your team.",
+    question: "How do I get started?",
+    answer: "We're currently in beta. Join our waitlist to get early access and pricing. No credit card will be required to start. You can also explore our interactive demo sandbox to see the full platform in action before signing up.",
   },
 ];
 
@@ -166,8 +166,8 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-xl font-bold text-white">{plan.name}</h3>
                   {plan.popular && (
-                    <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">
-                      30-day free trial
+                    <span className="text-[10px] font-semibold bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full">
+                      Most Popular
                     </span>
                   )}
                 </div>
@@ -250,7 +250,7 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
                   )}
                   onClick={onJoinWaitlist}
                 >
-                  {plan.popular ? "Start Free Trial" : "Join Waitlist"}
+                  {plan.cta}
                 </Button>
               )}
             </motion.div>

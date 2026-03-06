@@ -58,9 +58,9 @@ const industries = [
   { value: "hvac", label: "HVAC" },
   { value: "plumbing", label: "Plumbing" },
   { value: "electrical", label: "Electrical" },
-  { value: "appliance", label: "Appliance Repair" },
+  { value: "elevator", label: "Elevator" },
+  { value: "appliance", label: "Appliance Repair/Install" },
   { value: "fire_safety", label: "Fire & Safety" },
-  { value: "general", label: "General Contracting" },
   { value: "other", label: "Other" },
 ];
 
@@ -99,7 +99,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
     try {
       // Get UTM parameters for attribution tracking
       const utmParams = getStoredUtmParams();
-      
+
       const insertPayload = {
         email: data.email,
         company_name: data.company_name || null,
@@ -112,7 +112,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
         utm_content: utmParams.utm_content,
       };
       console.log('[Waitlist] Insert payload:', insertPayload);
-      
+
       const { error } = await supabase
         .from("waitlist_signups")
         .insert(insertPayload);
@@ -129,9 +129,9 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
           throw error;
         }
       }
-      
+
       console.log('[Waitlist] Insert successful');
-      
+
       // Track the signup event
       trackEvent("waitlist_signup", {
         industry: data.industry || "unknown",
@@ -151,7 +151,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
         .catch((err) => console.error("Waitlist email send failed:", err));
 
       setIsSuccess(true);
-      
+
       // Close modal after showing success (with cleanup tracking)
       autoCloseTimeoutRef.current = window.setTimeout(() => {
         onOpenChange(false);
@@ -185,7 +185,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-[#111214] border-white/[0.06] shadow-[0_24px_48px_rgba(0,0,0,0.4)] dark-page">
         <AnimatePresence mode="wait">
           {isSuccess ? (
             <motion.div
@@ -200,12 +200,12 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", delay: 0.1 }}
-                className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4"
+                className="mx-auto w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-4"
               >
-                <CheckCircle2 className="h-8 w-8 text-primary" />
+                <CheckCircle2 className="h-8 w-8 text-orange-500" />
               </motion.div>
-              <h3 className="text-xl font-semibold mb-2">You're on the list!</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-xl font-semibold mb-2 text-white">You're on the list!</h3>
+              <p className="text-zinc-400">
                 We'll notify you as soon as we launch. Get ready to transform your field operations.
               </p>
             </motion.div>
@@ -217,11 +217,11 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
               exit={{ opacity: 0 }}
             >
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
+                <DialogTitle className="flex items-center gap-2 text-white">
+                  <Sparkles className="h-5 w-5 text-orange-500" />
                   Join the Waitlist
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="text-zinc-400">
                   Be the first to know when FieldTek launches. Get early access and exclusive offers.
                 </DialogDescription>
               </DialogHeader>
@@ -233,15 +233,15 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Work Email *</FormLabel>
+                        <FormLabel className="text-zinc-300">Work Email *</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="you@company.com" 
+                          <Input
+                            placeholder="you@company.com"
                             type="email"
-                            {...field} 
+                            {...field}
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-400" />
                       </FormItem>
                     )}
                   />
@@ -251,11 +251,11 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                     name="company_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Company Name</FormLabel>
+                        <FormLabel className="text-zinc-300">Company Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Your company" {...field} />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-red-400" />
                       </FormItem>
                     )}
                   />
@@ -266,7 +266,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                       name="technician_count"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Team Size</FormLabel>
+                          <FormLabel className="text-zinc-300">Team Size</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || undefined}>
                             <FormControl>
                               <SelectTrigger data-testid="team-size-select">
@@ -275,8 +275,8 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                             </FormControl>
                             <SelectContent>
                               {teamSizes.map((size) => (
-                                <SelectItem 
-                                  key={size.value} 
+                                <SelectItem
+                                  key={size.value}
                                   value={size.value}
                                   data-testid={`team-size-${size.value}`}
                                 >
@@ -285,7 +285,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage />
+                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
@@ -295,7 +295,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                       name="industry"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Industry</FormLabel>
+                          <FormLabel className="text-zinc-300">Industry</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value || undefined}>
                             <FormControl>
                               <SelectTrigger data-testid="industry-select">
@@ -304,8 +304,8 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                             </FormControl>
                             <SelectContent>
                               {industries.map((industry) => (
-                                <SelectItem 
-                                  key={industry.value} 
+                                <SelectItem
+                                  key={industry.value}
                                   value={industry.value}
                                   data-testid={`industry-${industry.value}`}
                                 >
@@ -314,7 +314,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage />
+                          <FormMessage className="text-red-400" />
                         </FormItem>
                       )}
                     />
@@ -323,15 +323,14 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                   <div className="flex gap-3 pt-2">
                     <Button
                       type="button"
-                      variant="outline"
-                      className="flex-1"
+                      className="flex-1 bg-transparent border border-white/[0.12] text-white hover:bg-white/5"
                       onClick={() => onOpenChange(false)}
                     >
                       Maybe Later
                     </Button>
-                    <Button 
-                      type="submit" 
-                      className="flex-1" 
+                    <Button
+                      type="submit"
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
                       disabled={isSubmitting}
                       data-testid="waitlist-submit-button"
                     >

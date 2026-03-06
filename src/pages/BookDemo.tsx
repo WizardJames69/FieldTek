@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -53,7 +53,8 @@ const industries = [
   { value: "plumbing", label: "Plumbing" },
   { value: "electrical", label: "Electrical" },
   { value: "mechanical", label: "Mechanical" },
-  { value: "general", label: "General Contracting" },
+  { value: "elevator", label: "Elevator" },
+  { value: "appliance", label: "Appliance Repair/Install" },
   { value: "other", label: "Other" },
 ];
 
@@ -77,6 +78,11 @@ const timeSlots = [
 
 export default function BookDemo() {
   const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
