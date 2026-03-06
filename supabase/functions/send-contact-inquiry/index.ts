@@ -232,7 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
           
           <p>In the meantime, you might find these helpful:</p>
           <ul style="padding-left: 20px;">
-            <li><a href="https://fieldtek.ai/demo-sandbox" style="color: #f97316;">Try our interactive demo</a></li>
+            <li><a href="https://fieldtek.ai/register" style="color: #f97316;">Apply for early access</a></li>
             <li><a href="https://fieldtek.ai/book-demo" style="color: #f97316;">Schedule a live consultation</a></li>
           </ul>
           

@@ -79,7 +79,7 @@ const faqItems = [
   },
   {
     question: "How do I get started?",
-    answer: "We're currently in beta. Join our waitlist to get early access and pricing. No credit card will be required to start. You can also explore our interactive demo sandbox to see the full platform in action before signing up.",
+    answer: "We're currently in beta. Apply for early access to get hands-on with the full platform. No credit card required to start.",
   },
 ];
 

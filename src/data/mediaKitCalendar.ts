@@ -131,7 +131,7 @@ Real, practical help when your tech is staring at a unit they've never seen befo
 
 FieldTek's AI assistant is document-grounded and history-aware. It doesn't make things up — it references YOUR service manuals and YOUR job history.
 
-Try it: fieldtek.ai/demo-sandbox
+Apply for early access: fieldtek.ai/register
 
 #AI #FieldService #HVAC #TechLife`
   },
@@ -374,7 +374,7 @@ FieldTek's AI Field Assistant:
 
 It's like having a 20-year veteran in every tech's pocket.
 
-Try it free: fieldtek.ai/demo-sandbox
+Apply for early access: fieldtek.ai/register
 
 #AI #FieldService #HVAC #Plumbing #Electrical`
   },
@@ -507,7 +507,7 @@ Built for gloves, not keyboards.
 Built for basements, not boardrooms.
 Built for techs, not admins.
 
-Try it: fieldtek.ai/demo-sandbox
+Apply for early access: fieldtek.ai/register
 
 #FieldService #MobileApp #Contractors`
   },
@@ -821,7 +821,7 @@ FieldTek setup:
 
 Enterprise features without enterprise complexity.
 
-Try the demo: fieldtek.ai/demo-sandbox
+Apply for early access: fieldtek.ai/register
 
 #FSM #FieldService #Software #Contractors`
   }

@@ -146,7 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <p style="font-size: 16px; color: #374151;">
-            In the meantime, feel free to explore our <a href="https://fieldtek.ai/demo-sandbox" style="color: #2563eb;">interactive demo</a> to see FieldTek in action.
+            In the meantime, feel free to <a href="https://fieldtek.ai/register" style="color: #2563eb;">apply for early access</a> to get hands-on with the full platform.
           </p>
           
           <p style="font-size: 16px; color: #374151; margin-top: 24px;">

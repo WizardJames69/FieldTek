@@ -198,8 +198,8 @@ export default function Contact() {
                 <div className="bg-[#111214] border border-white/[0.06] rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-white mb-4">Quick Links</h3>
                   <div className="space-y-3">
-                    <Link to="/demo" className="block text-sm text-zinc-500 hover:text-orange-500 transition-colors">
-                      → Try the Interactive Demo
+                    <Link to="/register" className="block text-sm text-zinc-500 hover:text-orange-500 transition-colors">
+                      → Apply for Early Access
                     </Link>
                     <Link to="/consultation" className="block text-sm text-zinc-500 hover:text-orange-500 transition-colors">
                       → Schedule a Consultation

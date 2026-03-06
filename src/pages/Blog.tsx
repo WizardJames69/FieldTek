@@ -197,7 +197,7 @@ export default function Blog() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg" className="bg-orange-500 hover:bg-orange-600 text-white cta-glow">
-                <Link to="/demo-sandbox">Try Interactive Demo</Link>
+                <Link to="/register">Apply for Early Access</Link>
               </Button>
               <Button asChild size="lg" className="bg-transparent border border-white/[0.1] text-white hover:bg-white/5">
                 <Link to="/register">Apply for Beta Access</Link>

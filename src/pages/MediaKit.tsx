@@ -341,7 +341,7 @@ Sales: sales@fieldtek.ai
 General: info@fieldtek.ai
 Website: fieldtek.ai
 
-Try our interactive demo — no account needed.`;
+Apply for early access: fieldtek.ai/register`;
 
   const launchPost = `🚀 Introducing FieldTek
 
@@ -357,7 +357,7 @@ FieldTek is an AI-powered field service platform that:
 Built for HVAC, electrical, plumbing & mechanical contractors.
 Setup takes 15 minutes. No consultants required.
 
-🔗 Try the interactive demo (no account needed): fieldtek.ai/demo-sandbox
+🔗 Apply for early access: fieldtek.ai/register
 
 #FieldService #HVAC #Contractors #AI #FSM`;
 
@@ -394,7 +394,7 @@ FieldTek's dashboard gives dispatchers a real-time view of:
 
 No more sticky notes. No more spreadsheets. No more "I thought you had that job."
 
-Try our interactive demo: fieldtek.ai/demo-sandbox
+Apply for early access: fieldtek.ai/register
 
 #FieldService #HVAC #ContractorLife #FSM`
     },
@@ -431,7 +431,7 @@ FieldTek mobile was built for the field:
 
 Built for gloves, not keyboards.
 
-Try it: fieldtek.ai/demo-sandbox
+Apply for early access: fieldtek.ai/register
 
 #FieldService #MobileApp #HVAC #Contractors`
     },
@@ -683,7 +683,7 @@ Stop playing Tetris with your technicians' time.
                 <div className="bg-muted/30 rounded-lg p-4 border border-border">
                   <h4 className="font-semibold text-sm mb-3">Featured Section Links</h4>
                   <div className="space-y-2 text-sm text-muted-foreground">
-                    <p><strong>🎯 Interactive Demo:</strong> fieldtek.ai/demo-sandbox</p>
+                    <p><strong>🎯 Early Access:</strong> fieldtek.ai/register</p>
                     <p><strong>📄 Sales One-Pager:</strong> fieldtek.ai/one-pager/sales</p>
                   </div>
                 </div>

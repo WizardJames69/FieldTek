@@ -242,13 +242,13 @@ export function ROICalculator() {
                 </div>
 
                 <Button asChild size="lg" className="w-full mt-4 group btn-3d">
-                  <Link to="/demo-sandbox">
+                  <Link to="/register">
                     Start Saving Today
                     <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
-                  14-day trial with full Professional access
+                  Apply for early access to get started
                 </p>
               </div>
             </div>
