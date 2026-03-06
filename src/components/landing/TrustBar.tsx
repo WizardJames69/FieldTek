@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { AnimatedCounter } from "./AnimatedCounter";
 
 const metrics = [
   { value: "7", label: "Industries Served" },
@@ -21,7 +22,7 @@ export function TrustBar() {
               transition={{ duration: 0.3, delay: i * 0.1 }}
               className="flex flex-col items-center text-center"
             >
-              <div className="text-2xl md:text-4xl font-bold text-white">{metric.value}</div>
+              <AnimatedCounter value={metric.value} className="text-2xl md:text-4xl font-bold text-white" />
               <div className="text-sm text-zinc-500">{metric.label}</div>
             </motion.div>
           ))}

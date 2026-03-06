@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import { ClipboardCheck, FileText, Shield } from "lucide-react";
 import { memo } from "react";
+import { AnimatedEyebrow } from "./AnimatedEyebrow";
+import { ScrollReveal } from "./ScrollReveal";
 
 const pillars = [
   {
@@ -23,32 +25,44 @@ const pillars = [
   },
 ];
 
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+const staggerItem = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
 export const FeaturesSection = memo(function FeaturesSection() {
   return (
-    <section id="features" className="bg-[#111214] py-12 md:py-28 lg:py-32">
+    <section id="features" className="bg-[#111214] py-16 md:py-28 lg:py-32">
       <div className="mx-auto max-w-6xl px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.4 }}
-          className="text-center max-w-3xl mx-auto mb-12 md:mb-16"
-        >
-          <p className="landing-eyebrow text-zinc-500 mb-4">The Solution</p>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15]">
-            Three pillars of reliable field service
-          </h2>
-        </motion.div>
+        <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+          <AnimatedEyebrow label="The Solution" center />
+          <ScrollReveal delay={0.05}>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15]">
+              Three pillars of reliable field service
+            </h2>
+          </ScrollReveal>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+        >
           {pillars.map((pillar, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.3, delay: i * 0.1 }}
-              className="rounded-xl border border-white/[0.06] bg-[#161819] p-5 md:p-8 hover:border-white/[0.12] transition-all duration-300"
+              variants={staggerItem}
+              className="rounded-xl border border-white/[0.04] bg-[#161819] p-5 md:p-8 hover:bg-[#1a1c1d] transition-colors duration-300 card-hover-lift"
             >
               <div className="h-10 w-10 md:h-12 md:w-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-5">
                 <pillar.icon className="h-5 w-5 md:h-6 md:w-6 text-orange-500" />
@@ -57,7 +71,7 @@ export const FeaturesSection = memo(function FeaturesSection() {
               <p className="text-zinc-400 leading-relaxed">{pillar.description}</p>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

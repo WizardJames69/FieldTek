@@ -1,5 +1,6 @@
-import { motion } from "framer-motion";
 import { MessageSquare, Calendar, FileCheck, CheckCircle2 } from "lucide-react";
+import { AnimatedEyebrow } from "./AnimatedEyebrow";
+import { ScrollReveal } from "./ScrollReveal";
 
 const features = [
   {
@@ -116,36 +117,40 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
 
 export function FeatureShowcase() {
   return (
-    <section className="bg-[#0C0D0F] py-12 md:py-28">
+    <section className="bg-[#0C0D0F] py-16 md:py-28">
       <div className="mx-auto max-w-6xl px-4 space-y-16 md:space-y-28">
         {features.map((feature, i) => {
           const reverse = i % 2 !== 0;
           return (
-            <motion.div
+            <div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4 }}
               className={`grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center`}
             >
               <div className={reverse ? "md:order-last" : ""}>
-                <p className="landing-eyebrow text-orange-500 mb-3">{feature.eyebrow}</p>
-                <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
-                  {feature.title}
-                </h3>
-                <p className="text-zinc-400 leading-relaxed mb-6">{feature.description}</p>
-                <ul className="space-y-2.5">
-                  {feature.bullets.map((bullet, j) => (
-                    <li key={j} className="flex items-start gap-2.5 text-sm text-zinc-400">
-                      <CheckCircle2 className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
+                <AnimatedEyebrow label={feature.eyebrow} colorClass="text-orange-500" className="mb-3" />
+                <ScrollReveal delay={0.05}>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
+                    {feature.title}
+                  </h3>
+                </ScrollReveal>
+                <ScrollReveal delay={0.1}>
+                  <p className="text-zinc-400 leading-relaxed mb-6">{feature.description}</p>
+                </ScrollReveal>
+                <ScrollReveal delay={0.15}>
+                  <ul className="space-y-2.5">
+                    {feature.bullets.map((bullet, j) => (
+                      <li key={j} className="flex items-start gap-2.5 text-sm text-zinc-400">
+                        <CheckCircle2 className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                        {bullet}
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollReveal>
               </div>
-              <FeatureMockup type={feature.mockup} reverse={reverse} />
-            </motion.div>
+              <ScrollReveal delay={0.1}>
+                <FeatureMockup type={feature.mockup} reverse={reverse} />
+              </ScrollReveal>
+            </div>
           );
         })}
       </div>

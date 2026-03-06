@@ -18,9 +18,9 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
           <div className="max-w-4xl mx-auto pt-20 md:pt-32 lg:pt-40">
             {/* H1 */}
             <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.08 }}
+              initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
               className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-6"
             >
               Guide Every Install.
@@ -30,9 +30,9 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
 
             {/* Subtitle */}
             <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.16 }}
+              initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
               className="text-lg md:text-xl text-[#9CA3AF] max-w-2xl mx-auto mb-10 leading-relaxed"
             >
               AI-guided installs. Automatic documentation. Warranty compliance — built in.
@@ -40,15 +40,15 @@ export const HeroSection = memo(function HeroSection({ onJoinWaitlist }: HeroSec
 
             {/* CTAs */}
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.24 }}
+              transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-8 md:mb-16"
             >
               <Button
                 asChild
                 size="lg"
-                className="w-full sm:w-auto min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-6 border-0 hover:shadow-[0_0_20px_rgba(249,115,22,0.2)] transition-shadow"
+                className="w-full sm:w-auto min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-6 border-0 cta-glow"
               >
                 <Link to="/auth">
                   Get Early Access

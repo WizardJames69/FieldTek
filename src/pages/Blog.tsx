@@ -76,21 +76,21 @@ export default function Blog() {
         </script>
       </Helmet>
 
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-[#08090A]">
         <Navbar />
-        
+
         {/* Hero Section */}
-        <section className="py-16 md:py-24 bg-muted/30">
+        <section className="pt-24 pb-12 md:pt-32 md:pb-16">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
-              <Badge variant="secondary" className="mb-4">
+              <Badge variant="secondary" className="mb-4 bg-orange-500/10 text-orange-500 border-0">
                 Industry Insights
               </Badge>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">
+              <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">
                 The FieldTek Blog
               </h1>
-              <p className="text-lg text-muted-foreground">
-                Expert tips and best practices for HVAC contractors, warranty management, 
+              <p className="text-lg text-zinc-400">
+                Expert tips and best practices for HVAC contractors, warranty management,
                 and field service operations.
               </p>
             </div>
@@ -98,15 +98,15 @@ export default function Blog() {
         </section>
 
         {/* Category Filter */}
-        <section className="py-8 border-b border-border sticky top-0 bg-background/95 backdrop-blur z-10">
+        <section className="py-8 border-b border-white/[0.06] sticky top-0 bg-[#08090A]/95 backdrop-blur z-10">
           <div className="container mx-auto px-4">
             <div className="flex items-center gap-2 overflow-x-auto pb-2">
-              <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+              <Filter className="h-4 w-4 text-zinc-500 shrink-0" />
               <Button
                 variant={selectedCategory === 'all' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setSelectedCategory('all')}
-                className="shrink-0"
+                className={`shrink-0 ${selectedCategory === 'all' ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
               >
                 All Posts
               </Button>
@@ -116,7 +116,7 @@ export default function Blog() {
                   variant={selectedCategory === category.id ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setSelectedCategory(category.id)}
-                  className="shrink-0"
+                  className={`shrink-0 ${selectedCategory === category.id ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}
                 >
                   {category.label}
                 </Button>
@@ -130,58 +130,56 @@ export default function Blog() {
           <div className="container mx-auto px-4">
             {sortedPosts.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No posts found in this category.</p>
+                <p className="text-zinc-500">No posts found in this category.</p>
               </div>
             ) : (
               <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {sortedPosts.map((post, index) => (
-                  <Card 
-                    key={post.id} 
+                  <div
+                    key={post.id}
                     className={cn(
-                      "group hover:shadow-lg transition-shadow duration-300",
+                      "group bg-[#111214] border border-white/[0.06] rounded-xl p-6 hover:border-white/[0.12] transition-colors duration-300",
                       index === 0 && selectedCategory === 'all' && "md:col-span-2 lg:col-span-2"
                     )}
                   >
-                    <CardHeader>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="text-xs">
+                    <div className="mb-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge variant="outline" className="text-xs border-white/[0.1] text-zinc-400">
                           {post.categoryLabel}
                         </Badge>
                       </div>
-                      <CardTitle className="line-clamp-2 group-hover:text-primary transition-colors">
+                      <h3 className="text-lg font-semibold text-white line-clamp-2 group-hover:text-orange-500 transition-colors mb-2">
                         <Link to={`/blog/${post.slug}`}>
                           {post.title}
                         </Link>
-                      </CardTitle>
-                      <CardDescription className={cn(
-                        "line-clamp-3",
+                      </h3>
+                      <p className={cn(
+                        "text-sm text-zinc-400 line-clamp-3",
                         index === 0 && selectedCategory === 'all' && "line-clamp-4"
                       )}>
                         {post.excerpt}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3.5 w-3.5" />
-                            {format(new Date(post.publishedAt), 'MMM d, yyyy')}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" />
-                            {post.readingTime} min read
-                          </span>
-                        </div>
-                        <Link 
-                          to={`/blog/${post.slug}`}
-                          className="text-primary hover:underline inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          Read more
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </Link>
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-sm text-zinc-500">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {format(new Date(post.publishedAt), 'MMM d, yyyy')}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {post.readingTime} min read
+                        </span>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <Link
+                        to={`/blog/${post.slug}`}
+                        className="text-orange-500 hover:text-orange-400 inline-flex items-center gap-1 text-sm font-medium"
+                      >
+                        Read more
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -189,19 +187,19 @@ export default function Blog() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 bg-primary text-primary-foreground">
+        <section className="py-16 border-t border-white/[0.06]">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">
               Ready to Transform Your Field Service Operations?
             </h2>
-            <p className="text-primary-foreground/80 mb-8 max-w-2xl mx-auto">
+            <p className="text-zinc-400 mb-8 max-w-2xl mx-auto">
               Put these best practices into action with FieldTek's all-in-one field service management platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" variant="secondary">
+              <Button asChild size="lg" className="bg-orange-500 hover:bg-orange-600 text-white cta-glow">
                 <Link to="/demo-sandbox">Try Interactive Demo</Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10">
+              <Button asChild size="lg" className="bg-transparent border border-white/[0.1] text-white hover:bg-white/5">
                 <Link to="/#beta-program">Apply for Beta Access</Link>
               </Button>
             </div>

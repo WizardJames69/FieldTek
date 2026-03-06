@@ -9,13 +9,13 @@ interface CTASectionProps {
 
 export function CTASection({ onJoinWaitlist }: CTASectionProps) {
   return (
-    <section className="landing-section-dark py-12 md:py-24 lg:py-32">
+    <section className="landing-section-dark py-16 md:py-24 lg:py-32">
       <div className="mx-auto max-w-4xl px-4 text-center">
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] mb-4">
             Ready to eliminate callbacks?
@@ -29,7 +29,7 @@ export function CTASection({ onJoinWaitlist }: CTASectionProps) {
             <Button
               asChild
               size="lg"
-              className="w-full sm:w-auto min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-6 border-0 hover:shadow-[0_0_20px_rgba(249,115,22,0.2)] transition-shadow"
+              className="w-full sm:w-auto min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-6 border-0 cta-glow"
             >
               <Link to="/auth">
                 Get Early Access

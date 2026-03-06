@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Shield, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +25,6 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if already signed in as admin on mount
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
@@ -111,7 +109,6 @@ export default function AdminLogin() {
 
     setIsLoading(true);
     try {
-      // Sign in
       console.log('[AdminLogin] Calling signInWithPassword...');
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -129,8 +126,7 @@ export default function AdminLogin() {
       }
 
       console.log('[AdminLogin] Sign-in successful, checking session...');
-      
-      // Ensure we have a session before checking admin status
+
       if (!signInData?.session) {
         console.error('[AdminLogin] No session established');
         toast({
@@ -141,14 +137,12 @@ export default function AdminLogin() {
         return;
       }
 
-      // Check if user is a platform admin with timeout
       console.log('[AdminLogin] Checking platform admin status...');
       const adminResult = await checkIsPlatformAdmin();
       console.log('[AdminLogin] Admin check result:', adminResult);
 
       if (adminResult.error) {
         console.error('[AdminLogin] Admin verification error:', adminResult.error);
-        // Don't sign out - let them retry
         toast({
           variant: 'destructive',
           title: 'Admin verification failed',
@@ -159,7 +153,6 @@ export default function AdminLogin() {
 
       if (!adminResult.isAdmin) {
         console.log('[AdminLogin] User is not an admin, signing out...');
-        // Sign them out if not a platform admin
         await supabase.auth.signOut();
         toast({
           variant: 'destructive',
@@ -169,7 +162,6 @@ export default function AdminLogin() {
         return;
       }
 
-      // Success - navigate directly to admin dashboard
       console.log('[AdminLogin] Admin verified, navigating to /admin');
       navigate('/admin', { replace: true });
     } catch (err) {
@@ -186,8 +178,8 @@ export default function AdminLogin() {
 
   if (isCheckingSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <div className="flex items-center gap-2 text-muted-foreground">
+      <div className="min-h-screen flex items-center justify-center bg-[#08090A]">
+        <div className="flex items-center gap-2 text-zinc-500">
           <Loader2 className="h-5 w-5 animate-spin" />
           <span>Checking session...</span>
         </div>
@@ -196,51 +188,51 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <div className="w-full max-w-md space-y-8 bg-card border border-border rounded-2xl shadow-xl p-8 animate-fade-up">
+    <div className="min-h-screen flex items-center justify-center bg-[#08090A] p-4">
+      <div className="w-full max-w-md space-y-8 bg-[#111214] border border-white/[0.06] rounded-2xl p-8 animate-fade-up">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-            <Shield className="h-8 w-8 text-primary" />
+          <div className="mx-auto w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-4">
+            <Shield className="h-8 w-8 text-orange-500" />
           </div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Platform Admin</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h1 className="font-display text-2xl font-bold text-white">Platform Admin</h1>
+          <p className="mt-2 text-sm text-zinc-500">
             Sign in to access the admin dashboard
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+          <div className="space-y-1.5">
+            <label htmlFor="email" className="text-sm font-medium text-zinc-300">Email address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@company.com"
-                className={cn('pl-10', errors.email && 'border-destructive')}
+                className={cn('pl-10 h-11 rounded-[10px]', errors.email && 'border-red-500')}
                 autoComplete="email"
                 disabled={isLoading}
                 data-testid="admin-login-email"
               />
             </div>
-            {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+            {errors.email && <p className="text-sm text-red-400">{errors.email}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="text-sm font-medium text-zinc-300">Password</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className={cn('pl-10 pr-10', errors.password && 'border-destructive')}
+                className={cn('pl-10 pr-10 h-11 rounded-[10px]', errors.password && 'border-red-500')}
                 autoComplete="current-password"
                 disabled={isLoading}
                 data-testid="admin-login-password"
@@ -248,45 +240,47 @@ export default function AdminLogin() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
                 disabled={isLoading}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+            {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
           </div>
 
-          <Button type="submit" className="w-full gap-2" disabled={isLoading} data-testid="admin-login-submit">
+          <Button
+            type="submit"
+            className="w-full h-11 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-semibold cta-glow"
+            disabled={isLoading}
+            data-testid="admin-login-submit"
+          >
             {isLoading ? 'Signing in...' : 'Sign in to Admin'}
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </form>
 
         {/* Retry button for stuck states */}
         <div className="flex justify-center">
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={handleRetryAdminCheck}
             disabled={isLoading}
-            className="text-xs gap-1.5 text-muted-foreground"
+            className="text-xs flex items-center gap-1.5 text-zinc-600 hover:text-zinc-400 transition-colors"
           >
             <RefreshCw className="h-3 w-3" />
             Already signed in? Retry admin check
-          </Button>
+          </button>
         </div>
 
         <div className="text-center">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-zinc-600">
             Not an admin?{' '}
-            <Button
-              variant="link"
-              className="p-0 h-auto text-xs text-accent"
+            <button
+              className="text-orange-500 hover:text-orange-400 transition-colors"
               onClick={() => navigate('/auth')}
             >
               Go to regular login
-            </Button>
+            </button>
           </p>
         </div>
       </div>
