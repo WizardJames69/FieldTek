@@ -29,7 +29,7 @@ export const demoScript: DemoScriptItem[] = [
     sceneId: 3,
     startTime: 34000,
     duration: 13000,
-    transcript: "Our AI assistant helps on-site. It searches your equipment manuals and past job history to provide troubleshooting steps and parts recommendations. Like having your best tech available 24/7."
+    transcript: "Sentinel AI helps on-site. It searches your equipment manuals and past job history to provide troubleshooting steps and parts recommendations. Like having your best tech available 24/7."
   },
   {
     sceneId: 4,

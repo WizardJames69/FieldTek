@@ -60,7 +60,7 @@ const SAMPLE_QUESTIONS_BY_INDUSTRY: Record<string, string[]> = {
   ],
 };
 const DEMO_RESPONSES: Record<string, string> = {
-  default: "I'm the AI Field Assistant! In the full version, I can answer questions about equipment specifications, troubleshooting procedures, safety protocols, and more. I have access to manufacturer manuals and your company's knowledge base. With Code Reference mode, I can also cite US and Canadian building codes (NEC, CEC, IPC, NPC, IMC). Sign up to try the full experience!",
+  default: "I'm the Sentinel AI! In the full version, I can answer questions about equipment specifications, troubleshooting procedures, safety protocols, and more. I have access to manufacturer manuals and your company's knowledge base. With Code Reference mode, I can also cite US and Canadian building codes (NEC, CEC, IPC, NPC, IMC). Sign up to try the full experience!",
   refrigerant: "**Checking Refrigerant Levels - Step by Step:**\n\n1. Ensure the system has been running for at least 15 minutes\n2. Connect manifold gauges to service ports\n3. Compare readings to manufacturer specs on the data plate\n4. For R-410A systems, typical operating pressures are:\n   - Low side: 118-125 PSI\n   - High side: 375-425 PSI\n\n⚠️ Always wear safety glasses and gloves when handling refrigerants.\n\n*In the full version, I can look up specific specs for any equipment model!*",
   cooling: "**AC Not Cooling - Troubleshooting Checklist:**\n\n1. **Check thermostat settings** - Ensure it's set to cool and below room temp\n2. **Inspect air filter** - Dirty filters restrict airflow\n3. **Check outdoor unit** - Look for debris, ice, or obstructions\n4. **Listen for compressor** - Should hear it running\n5. **Check refrigerant levels** - Low charge indicates a leak\n\n🔧 Most common causes: Dirty coils (40%), Low refrigerant (25%), Capacitor failure (20%)\n\n*Sign up for full diagnostic decision trees and equipment-specific guides!*",
   safety: "**Furnace Repair Safety Checklist:**\n\n1. ⚡ **Turn off power** at breaker and disconnect\n2. 🔥 **Shut off gas** at the manual valve\n3. 👃 **Check for gas smell** before proceeding\n4. 🕐 **Allow cool-down time** (30+ minutes)\n5. 🔦 **Use proper lighting** - never open flames\n6. 🧤 **Wear PPE** - gloves, safety glasses\n\n**Never bypass safety switches or use the unit if you smell gas!**\n\n*Full safety protocols and OSHA guidelines available in the complete version.*",
@@ -78,7 +78,7 @@ export default function DemoAssistant() {
     {
       id: '1',
       role: 'assistant',
-      content: `Hi! I'm your AI Field Assistant. I can help with ${t('equipment').toLowerCase()} troubleshooting, procedures, and technical questions. Try asking me something or click one of the suggested questions below!`,
+      content: `Hi! I'm your Sentinel AI. I can help with ${t('equipment').toLowerCase()} troubleshooting, procedures, and technical questions. Try asking me something or click one of the suggested questions below!`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -147,7 +147,7 @@ export default function DemoAssistant() {
         <div>
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Bot className="h-6 w-6 text-primary" />
-            AI Field Assistant
+            Sentinel AI
           </h1>
           <p className="text-muted-foreground">Ask questions about procedures, troubleshooting, and more</p>
         </div>

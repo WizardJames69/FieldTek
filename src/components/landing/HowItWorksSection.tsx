@@ -25,7 +25,7 @@ const steps = [
     number: "04",
     title: "Deploy to Your Team",
     description:
-      "Your technicians get a mobile app with offline support, AI-guided procedures, and automatic documentation. Productive from day one.",
+      "Your technicians get a mobile app with offline support, Sentinel AI-guided procedures, and automatic documentation. Productive from day one.",
   },
 ];
 

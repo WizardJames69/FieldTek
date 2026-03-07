@@ -40,16 +40,16 @@ export function AIIntelligenceSection() {
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
           {/* Left: Text content */}
           <div className="lg:w-1/2">
-            <AnimatedEyebrow label="Beyond the Basics" />
+            <AnimatedEyebrow label="FieldTek Intelligence" />
             <ScrollReveal delay={0.05}>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] mb-4">
-                An AI platform that learns from every job
+                Real-time diagnostics. Powered by FieldTek Intelligence.
               </h2>
             </ScrollReveal>
             <ScrollReveal delay={0.1}>
               <p className="text-lg text-zinc-400 leading-relaxed mb-10">
-                FieldTek isn't just a checklist tool. It's an intelligence layer that gets smarter
-                with every technician interaction, every repair, and every document you upload.
+                FieldTek is powered by our proprietary AI system, FieldTek Intelligence. At the core is Sentinel AI,
+                a compliance and diagnostic engine trained on technical documentation, equipment data, and field workflows.
               </p>
             </ScrollReveal>
 

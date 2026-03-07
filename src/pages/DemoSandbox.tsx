@@ -15,7 +15,7 @@ const FEATURE_HIGHLIGHTS = [
   { icon: Calendar, label: 'Smart Scheduling', description: 'Drag & drop calendar' },
   { icon: Users, label: 'Team Management', description: 'Track technicians' },
   { icon: FileText, label: 'Invoicing', description: 'One-click billing' },
-  { icon: Bot, label: 'AI Assistant', description: 'Field support' },
+  { icon: Bot, label: 'Sentinel AI', description: 'Field support' },
 ];
 
 const industryIcons: Record<string, typeof Thermometer> = {
@@ -113,7 +113,7 @@ export default function DemoSandbox() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Helmet>
         <title>Interactive Demo — FieldTek AI | Try It Free</title>
-        <meta name="description" content="Experience FieldTek AI's field service management platform with realistic sample data. No signup required — explore scheduling, invoicing, AI assistant, and more." />
+        <meta name="description" content="Experience FieldTek AI's field service management platform with realistic sample data. No signup required — explore scheduling, invoicing, Sentinel AI, and more." />
         <link rel="canonical" href="https://fieldtek.ai/demo-sandbox" />
         <meta property="og:title" content="Interactive Demo — FieldTek AI" />
         <meta property="og:description" content="Try FieldTek AI free — no signup required. Explore scheduling, invoicing, and AI-powered field service tools." />

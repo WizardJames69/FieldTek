@@ -145,7 +145,7 @@ function formatFeatureName(feature: FeatureKey): string {
   const names: Record<FeatureKey, string> = {
     equipment_tracking: "Equipment Tracking",
     invoicing_full: "Full Invoicing",
-    ai_assistant: "AI Field Assistant",
+    ai_assistant: "Sentinel AI",
     advanced_analytics: "Advanced Analytics",
     custom_workflows: "Custom Workflows",
     api_access: "API Access",

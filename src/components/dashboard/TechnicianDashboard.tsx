@@ -313,7 +313,7 @@ export function TechnicianDashboard() {
           onClick={() => navigate('/assistant')}
         >
           <MessageSquare className="h-5 w-5" />
-          <span className="text-xs">AI Assistant</span>
+          <span className="text-xs">Sentinel AI</span>
         </Button>
       </div>
     </div>

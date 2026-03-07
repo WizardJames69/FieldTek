@@ -322,12 +322,12 @@ export default function MyJobs() {
                 <div className="section-divider" />
                 <JobPartsList jobId={selectedJob.id} />
 
-                {/* AI Assistant Link */}
+                {/* Sentinel AI Link */}
                 <div className="section-divider" />
                 <Button variant="outline" className="w-full btn-shimmer touch-native h-14 font-semibold text-base" asChild>
                   <a href={`/assistant?job=${selectedJob.id}`}>
                     <MessageSquare className="h-5 w-5 mr-2" />
-                    Ask AI Assistant
+                    Ask Sentinel AI
                   </a>
                 </Button>
               </div>

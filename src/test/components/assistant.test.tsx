@@ -4,7 +4,7 @@ import { SuggestedQuestions } from "@/components/assistant/SuggestedQuestions";
 import { DocumentCitation, ContextIndicator } from "@/components/assistant/DocumentCitation";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
 
-describe("AI Assistant Components", () => {
+describe("Sentinel AI Components", () => {
   describe("SuggestedQuestions", () => {
     it("renders suggested questions when provided", () => {
       const suggestions = [

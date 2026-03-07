@@ -48,7 +48,7 @@ const scenes = [
   },
   {
     id: 4,
-    title: "AI Assistant On-Site",
+    title: "Sentinel AI On-Site",
     description: "Get instant answers while working",
     points: ["Equipment manuals at fingertips", "Troubleshooting guidance", "Parts recommendations"],
     label: "AI Help",
@@ -400,7 +400,7 @@ function MobileScene({ reducedMotion, isMobile }: SceneProps) {
   );
 }
 
-// AI Assistant Scene - Gradient Header with Glass Effect
+// Sentinel AI Scene - Gradient Header with Glass Effect
 function AIAssistantScene({ reducedMotion, isMobile }: SceneProps) {
   const [messageIndex, setMessageIndex] = useState(0);
   
@@ -433,7 +433,7 @@ function AIAssistantScene({ reducedMotion, isMobile }: SceneProps) {
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
           <div>
-            <span className="font-medium text-sm">AI Field Assistant</span>
+            <span className="font-medium text-sm">Sentinel AI</span>
             <p className="text-xs text-muted-foreground">Powered by equipment manuals</p>
           </div>
         </div>

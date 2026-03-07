@@ -27,8 +27,8 @@ const faqs = [
     answer: "Yes! FieldTek's AI doesn't just reference manuals, it analyzes your complete service history. When a technician opens a job, the AI automatically surfaces previous visits and what was done, recurring issue patterns, parts commonly needed for similar repairs, and proactive warranty expiration alerts. This context-aware intelligence helps techs diagnose faster and come prepared with the right parts."
   },
   {
-    question: "How does the AI assistant work?",
-    answer: "FieldTek's AI is document-grounded and history-aware. It references your uploaded service manuals for brand-specific answers, detects recurring issue patterns across your service history, predicts likely parts based on similar past repairs, and proactively warns about expiring warranties. Plus, incoming service requests are automatically analyzed by AI to suggest priority levels and job types."
+    question: "How does Sentinel AI work?",
+    answer: "Sentinel AI is document-grounded and history-aware. It references your uploaded service manuals for brand-specific answers, detects recurring issue patterns across your service history, predicts likely parts based on similar past repairs, and proactively warns about expiring warranties. Plus, incoming service requests are automatically analyzed by Sentinel AI to suggest priority levels and job types."
   },
   {
     question: "Do my customers get their own portal?",
@@ -44,7 +44,7 @@ const faqs = [
   },
   {
     question: "How do I get access?",
-    answer: "We're currently onboarding contractors through our early access program. Apply for beta access to get hands-on with the full platform, including the AI assistant, guided checklists, and compliance tools. Beta members also lock in founding member pricing."
+    answer: "We're currently onboarding contractors through our early access program. Apply for beta access to get hands-on with the full platform, including Sentinel AI, guided checklists, and compliance tools. Beta members also lock in founding member pricing."
   }
 ];
 

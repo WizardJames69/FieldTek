@@ -174,7 +174,7 @@ export const TUTORIAL_CATEGORIES: Record<string, string> = {
   'getting-started': 'Getting Started',
   'jobs': 'Jobs & Work Orders',
   'scheduling': 'Scheduling',
-  'ai': 'AI Assistant',
+  'ai': 'Sentinel AI',
   'advanced': 'Advanced Features',
   'documents': 'Documents',
   'invoicing': 'Invoicing',

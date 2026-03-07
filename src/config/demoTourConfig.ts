@@ -125,11 +125,11 @@ export const DEMO_TOUR_STEPS: TourStep[] = [
     category: 'core',
   },
   
-  // AI Assistant Tour
+  // Sentinel AI Tour
   {
     id: 'ai-assistant',
     target: '[data-tour="ai-chat"]',
-    title: 'AI Field Assistant',
+    title: 'Sentinel AI',
     description: (industry) => `Your ${t(industry, 'technicians').toLowerCase()} can ask questions about procedures, troubleshooting, and ${t(industry, 'equipment').toLowerCase()} specs. Get instant answers in the field.`,
     position: 'top',
     page: '/demo/assistant',
@@ -292,7 +292,7 @@ export const DEMO_FEATURES_CHECKLIST_EXTENDED: ChecklistItem[] = [
   },
   {
     id: 'try-ai-assistant',
-    label: 'Try the AI Assistant',
+    label: 'Try Sentinel AI',
     description: 'Ask a question about procedures',
     descriptionFn: (industry) => `Ask a question about ${industry === 'hvac' ? 'HVAC' : industry === 'plumbing' ? 'plumbing' : industry === 'electrical' ? 'electrical' : 'service'} procedures`,
     path: '/assistant',

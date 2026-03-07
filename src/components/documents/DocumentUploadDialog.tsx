@@ -368,7 +368,7 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
             {/* AI Processing Notice */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span>Documents are automatically processed for AI Field Assistant use</span>
+              <span>Documents are automatically processed for Sentinel AI use</span>
             </div>
 
             <FormField

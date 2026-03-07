@@ -112,7 +112,7 @@ Give them the data to do it.
     day: 5,
     dayName: "Friday",
     industry: "hvac",
-    theme: "AI assistant",
+    theme: "Sentinel AI",
     postType: "feature",
     bestTime: "9-10 AM",
     content: `What if every HVAC tech had a 20-year veteran in their pocket?
@@ -129,7 +129,7 @@ Not generic chatbots. Not theoretical "insights."
 
 Real, practical help when your tech is staring at a unit they've never seen before.
 
-FieldTek's AI assistant is document-grounded and history-aware. It doesn't make things up — it references YOUR service manuals and YOUR job history.
+Sentinel AI is document-grounded and history-aware. It doesn't make things up — it references YOUR service manuals and YOUR job history.
 
 Apply for early access: fieldtek.ai/register
 
@@ -157,7 +157,7 @@ The fix:
 → Parts suggestions based on equipment at the address
 → Inventory alerts before the tech leaves the shop
 
-FieldTek's AI assistant has seen thousands of plumbing jobs. It knows what you'll probably need.
+Sentinel AI has seen thousands of plumbing jobs. It knows what you'll probably need.
 
 #Plumbing #FieldService #Efficiency #Contractors`
   },
@@ -359,14 +359,14 @@ export const featureSpotlights: FeaturePost[] = [
     week: 1,
     day: 1,
     dayName: "Monday",
-    feature: "AI Field Assistant",
+    feature: "Sentinel AI",
     content: `Your tech is staring at a unit they've never seen before.
 
 Old way: Call the office. Wait on hold. Hope someone knows.
 
 New way: Ask the AI.
 
-FieldTek's AI Field Assistant:
+Sentinel AI:
 → Trained on manufacturer manuals
 → Knows YOUR service history at that address
 → Suggests troubleshooting steps based on symptoms

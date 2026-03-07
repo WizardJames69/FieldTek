@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 const navItems = [
   { id: "features", label: "Features" },
-  { id: "ai-platform", label: "AI Platform" },
+  { id: "ai-platform", label: "Sentinel AI" },
   { id: "how-it-works", label: "How It Works" },
 ];
 

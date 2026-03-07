@@ -40,7 +40,7 @@ We've built FieldTek specifically for HVAC contractors who are tired of:
 • Techs calling the office for model specs
 • Callbacks from installs that weren't documented properly
 
-Our AI assistant cites your actual service manuals and knows the history at every address. No guessing. No callbacks.
+Sentinel AI cites your actual service manuals and knows the history at every address. No guessing. No callbacks.
 
 Worth a 15-minute demo?
 
@@ -231,7 +231,7 @@ IF YES:
 [Listen for pain points]
 
 VALUE PROPOSITION:
-"That's exactly what we're solving. FieldTek gives every tech an AI assistant that knows your service manuals, sees the full history at each address, and guides them through installs step-by-step.
+"That's exactly what we're solving. FieldTek gives every tech Sentinel AI, which knows your service manuals, sees the full history at each address, and guides them through installs step-by-step.
 
 One of our HVAC customers reduced callbacks by 40% in the first month."
 

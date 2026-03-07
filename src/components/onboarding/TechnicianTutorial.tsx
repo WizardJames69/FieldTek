@@ -30,7 +30,7 @@ interface TechnicianTutorialProps {
 
 const steps = [
   { id: 'jobs', title: 'Your Jobs', icon: Clipboard },
-  { id: 'assistant', title: 'AI Assistant', icon: MessageSquare },
+  { id: 'assistant', title: 'Sentinel AI', icon: MessageSquare },
   { id: 'notifications', title: 'Notifications', icon: Bell },
 ] as const;
 
@@ -111,7 +111,7 @@ function AssistantStep() {
         <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <MessageSquare className="h-8 w-8 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold">Your AI Field Assistant</h2>
+        <h2 className="text-2xl font-bold">Sentinel AI</h2>
         <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
           Get instant help while on the job. Ask troubleshooting questions and reference your company's documentation.
         </p>

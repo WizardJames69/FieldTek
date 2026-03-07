@@ -31,7 +31,7 @@ const FEATURES: Feature[] = [
   },
   {
     key: 'enable_ai_assistant',
-    label: 'AI Assistant',
+    label: 'Sentinel AI',
     description: 'AI-powered field support for technicians',
   },
 ];

@@ -106,7 +106,7 @@ export const AIAssistantDemo = memo(function AIAssistantDemo() {
             Manual-Verified & Warranty-Safe
           </div>
           <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-            AI Field Assistant Trained on Your Documentation
+            Sentinel AI — Trained on Your Documentation
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-4">
             Technicians interact with an AI chat assistant trained on manufacturer installation manuals, 

@@ -545,7 +545,7 @@ export default function Assistant() {
 
   if (authLoading || tenantLoading) {
     return (
-      <MainLayout title="AI Assistant">
+      <MainLayout title="Sentinel AI">
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -554,13 +554,13 @@ export default function Assistant() {
   }
 
   return (
-    <MainLayout title="AI Assistant">
+    <MainLayout title="Sentinel AI">
       <div className="h-[calc(100vh-7rem)] md:h-[calc(100vh-8rem)] flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 md:mb-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              AI Field Assistant
+              Sentinel AI
             </h1>
             <p className="text-sm text-muted-foreground hidden sm:block">
               Get help with troubleshooting, procedures, and technical questions

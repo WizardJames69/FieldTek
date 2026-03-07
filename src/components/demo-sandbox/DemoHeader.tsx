@@ -48,7 +48,7 @@ function usePageTitle(): { title: string; subtitle?: string } {
   if (path.includes('/demo/equipment')) return { title: t('equipment') };
   if (path.includes('/demo/invoices')) return { title: 'Invoices' };
   if (path.includes('/demo/requests')) return { title: t('serviceRequests') };
-  if (path.includes('/demo/assistant')) return { title: 'AI Assistant' };
+  if (path.includes('/demo/assistant')) return { title: 'Sentinel AI' };
   return { title: 'Dashboard' };
 }
 

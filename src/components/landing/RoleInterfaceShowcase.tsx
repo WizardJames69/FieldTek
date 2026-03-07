@@ -423,7 +423,7 @@ function TechnicianMobileMockup({ reducedMotion }: { reducedMotion: boolean }) {
                 >
                   <Bot className="h-3 w-3 text-primary" />
                 </div>
-                <span className="text-xs text-foreground">AI Assistant</span>
+                <span className="text-xs text-foreground">Sentinel AI</span>
               </div>
             </motion.div>
 

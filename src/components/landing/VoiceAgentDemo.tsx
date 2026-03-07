@@ -36,10 +36,10 @@ export const VoiceAgentDemo = memo(function VoiceAgentDemo() {
           className="text-center mb-12"
         >
           <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-            Talk to Our AI Field Assistant
+            Talk to Sentinel AI
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Experience real-time voice conversations with our AI assistant trained on HVAC equipment documentation. 
+            Experience real-time voice conversations with Sentinel AI, trained on HVAC equipment documentation.
             Get instant answers about troubleshooting, specifications, and more.
           </p>
         </motion.div>

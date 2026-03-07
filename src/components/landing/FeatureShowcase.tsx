@@ -1,19 +1,19 @@
 import { MessageSquare, Calendar, FileCheck, CheckCircle2 } from "lucide-react";
 import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
-import { AnimatedChatDemo } from "./AnimatedChatDemo";
+import { SentinelCommandPanel } from "./SentinelCommandPanel";
 
 const features = [
   {
-    eyebrow: "AI Assistant",
-    title: "Your technicians' smartest coworker",
+    eyebrow: "Sentinel AI",
+    title: "Real-time diagnostics. Powered by FieldTek Intelligence.",
     description:
-      "A chat-based AI assistant that answers technical questions using your uploaded manuals and equipment documentation. Technicians get manufacturer-specific answers on the job site, not generic Google results.",
+      "FieldTek is powered by our proprietary AI system, FieldTek Intelligence. At the core is Sentinel AI, a compliance and diagnostic engine trained on technical documentation, equipment data, and field workflows.",
     bullets: [
-      "Answers grounded in your actual documentation (RAG)",
-      "Equipment-specific troubleshooting steps",
-      "Confidence scoring on every response",
-      "Works on mobile, including offline mode",
+      "Diagnostic reasoning with failure probability analysis",
+      "Real-time NEC, IPC, and IMC code compliance alerts",
+      "Equipment-specific guidance from uploaded manufacturer documentation",
+      "Step-by-step workflow tracking from symptom to resolution",
     ],
     icon: MessageSquare,
     mockup: "ai-assistant",
@@ -52,7 +52,7 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
   if (type === "ai-assistant") {
     return (
       <div className={reverse ? "md:order-first" : ""}>
-        <AnimatedChatDemo />
+        <SentinelCommandPanel />
       </div>
     );
   }

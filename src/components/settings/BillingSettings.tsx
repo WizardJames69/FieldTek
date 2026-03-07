@@ -565,7 +565,7 @@ export function BillingSettings() {
                       {tier === "growth" && (
                         <li className="flex items-center gap-2">
                           <Check className="h-4 w-4 text-primary" />
-                          <span>AI Field Assistant</span>
+                          <span>Sentinel AI</span>
                         </li>
                       )}
                       {tier === "professional" && (

@@ -31,7 +31,7 @@ export function SaveToJobNotes({ jobId, content, disabled }: SaveToJobNotesProps
 
       // Format the AI insight to append
       const timestamp = new Date().toLocaleString();
-      const formattedInsight = `\n\n--- AI Assistant Note (${timestamp}) ---\n${content.slice(0, 500)}${content.length > 500 ? "..." : ""}`;
+      const formattedInsight = `\n\n--- Sentinel AI Note (${timestamp}) ---\n${content.slice(0, 500)}${content.length > 500 ? "..." : ""}`;
 
       const updatedNotes = (job?.notes || "") + formattedInsight;
 

@@ -80,7 +80,7 @@ const featureComparison = [
   { feature: 'Basic Reporting', starter: true, growth: true, pro: true },
   { feature: 'Equipment Tracking', starter: false, growth: true, pro: true },
   { feature: 'Invoicing & Payments', starter: 'Basic', growth: true, pro: true },
-  { feature: 'AI Field Assistant', starter: false, growth: true, pro: true },
+  { feature: 'Sentinel AI', starter: false, growth: true, pro: true },
   { feature: 'Advanced Analytics', starter: false, growth: true, pro: true },
   { feature: 'Custom Workflows', starter: false, growth: false, pro: true },
   { feature: 'API Access', starter: false, growth: false, pro: true },
@@ -139,14 +139,14 @@ export default function FeaturesOnePager() {
         </div>
       </section>
 
-      {/* AI Field Assistant */}
+      {/* Sentinel AI */}
       <section className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
             <Bot className="h-5 w-5 text-blue-600" />
           </div>
           <div className="flex-1">
-            <h2 className="text-sm font-bold text-gray-800 mb-2">AI Field Assistant</h2>
+            <h2 className="text-sm font-bold text-gray-800 mb-2">Sentinel AI</h2>
             <p className="text-xs text-gray-600 mb-3">
               Your technicians get instant, equipment-specific guidance powered by your own manuals and documentation.
             </p>

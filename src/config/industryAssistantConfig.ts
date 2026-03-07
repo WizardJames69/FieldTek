@@ -1,7 +1,7 @@
 /**
- * Industry-Specific AI Assistant Configuration
- * 
- * This file contains all industry-specific configurations for the AI Field Assistant,
+ * Industry-Specific Sentinel AI Configuration
+ *
+ * This file contains all industry-specific configurations for Sentinel AI,
  * including symptom detection patterns, diagnostic wizard templates, and safety guidance.
  */
 
@@ -20,7 +20,7 @@ export interface SymptomCategory {
 
 /**
  * Industry-specific symptom detection patterns
- * Used by the AI assistant to identify recurring issues and patterns
+ * Used by Sentinel AI to identify recurring issues and patterns
  */
 export const SYMPTOM_CATEGORIES: Record<string, SymptomCategory> = {
   // =============== HVAC (existing) ===============

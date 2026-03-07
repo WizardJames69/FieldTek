@@ -273,7 +273,7 @@ function DemoSidebar({ onNavigate }: { onNavigate?: () => void }) {
     { icon: 'Wrench', label: t('equipment'), href: '/demo/equipment' },
     { icon: 'Receipt', label: 'Invoices', href: '/demo/invoices' },
     { icon: 'Inbox', label: t('serviceRequests'), href: '/demo/requests' },
-    { icon: 'Bot', label: 'AI Assistant', href: '/demo/assistant' },
+    { icon: 'Bot', label: 'Sentinel AI', href: '/demo/assistant' },
   ];
 
   return (

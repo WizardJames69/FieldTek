@@ -401,12 +401,12 @@ Apply for early access: fieldtek.ai/register
     {
       id: "ai-assistant",
       image: "/social/ai-assistant-screenshot.png",
-      title: "AI Field Assistant",
+      title: "Sentinel AI",
       caption: `What if every technician had an expert riding along?
 
 That's exactly what we built.
 
-FieldTek's AI assistant:
+Sentinel AI:
 🔍 Cites YOUR service manuals (no hallucinations)
 📖 Pulls from actual equipment history
 🔧 Suggests parts based on similar past repairs

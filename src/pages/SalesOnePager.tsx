@@ -38,7 +38,7 @@ const rolesBenefits = [
 const differentiators = [
   { icon: Clock, title: '15-Min Setup', desc: 'No consultants needed' },
   { icon: TrendingUp, title: 'Save $15K+', desc: 'Per year vs competitors' },
-  { icon: Smartphone, title: 'AI Assistant', desc: 'Trained on your manuals' },
+  { icon: Smartphone, title: 'Sentinel AI', desc: 'Trained on your manuals' },
   { icon: CreditCard, title: 'No Contracts', desc: 'Cancel anytime' },
 ];
 

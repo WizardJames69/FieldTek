@@ -619,7 +619,7 @@ export const DEMO_FEATURES_CHECKLIST = [
   },
   {
     id: 'try-ai-assistant',
-    label: 'Try the AI Assistant',
+    label: 'Try Sentinel AI',
     description: 'Ask a question about HVAC procedures',
     path: '/assistant',
     icon: 'Bot',
@@ -697,7 +697,7 @@ export const DEMO_TOOLTIPS = [
   {
     id: 'ai-assistant',
     target: '[data-demo-tooltip="ai-assistant"]',
-    title: 'AI Field Assistant',
+    title: 'Sentinel AI',
     description: 'Your technicians can ask questions about procedures, troubleshooting, and equipment specs right from the field.',
     position: 'bottom' as const,
     page: '/assistant',

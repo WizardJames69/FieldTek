@@ -89,7 +89,7 @@ export default function AdminAIAuditLogs() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">AI Audit Logs</h1>
         <p className="text-muted-foreground">
-          Monitor AI Field Assistant interactions and blocked responses
+          Monitor Sentinel AI interactions and blocked responses
         </p>
       </div>
 

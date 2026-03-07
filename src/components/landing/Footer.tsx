@@ -39,7 +39,7 @@ export function Footer() {
               </li>
               <li>
                 <button onClick={() => scrollToSection("ai-platform")} className="hover:text-zinc-300 transition-colors text-left">
-                  AI Platform
+                  Sentinel AI
                 </button>
               </li>
               <li>

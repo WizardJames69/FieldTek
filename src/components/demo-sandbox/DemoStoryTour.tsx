@@ -56,7 +56,7 @@ function getStoryCards(industry: IndustryType): StoryCard[] {
       id: 'assistant',
       icon: BotMessageSquare,
       gradient: 'from-violet-600 via-violet-700 to-purple-800',
-      title: 'AI Field Assistant',
+      title: 'Sentinel AI',
       description: `${t.technicians} get instant answers about procedures and ${t.equipment.toLowerCase()} specs.`,
     },
     {
