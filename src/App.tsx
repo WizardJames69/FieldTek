@@ -10,6 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionExpiryWarning } from "@/components/auth/SessionExpiryWarning";
@@ -200,6 +201,7 @@ function App() {
                     <SessionExpiryWarning />
                     <Toaster />
                     <Sonner />
+                    <SpeedInsights />
                     <Suspense fallback={<PageLoader />}>
                       <Routes>
                         {/* Public routes */}
