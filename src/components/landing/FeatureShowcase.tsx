@@ -6,9 +6,9 @@ import { SentinelCommandPanel } from "./SentinelCommandPanel";
 const features = [
   {
     eyebrow: "Sentinel AI",
-    title: "Real-time diagnostics. Powered by FieldTek Intelligence.",
+    title: "Your documentation, your expert. On every job.",
     description:
-      "FieldTek is powered by our proprietary AI system, FieldTek Intelligence. At the core is Sentinel AI, a compliance and diagnostic engine trained on technical documentation, equipment data, and field workflows.",
+      "Sentinel AI reads your uploaded manuals, wiring diagrams, and spec sheets — then delivers step-by-step guidance, code compliance alerts, and diagnostic reasoning directly to your techs in the field.",
     bullets: [
       "Diagnostic reasoning with failure probability analysis",
       "Real-time NEC, IPC, and IMC code compliance alerts",
