@@ -8,8 +8,8 @@
 
 @layer base {
   :root {
-    /* Clean Light Background */
-    --background: 30 20% 98%;
+    /* Dark background matching landing page */
+    --background: 220 13% 4%;
     --foreground: 20 14% 12%;
     
     --card: 0 0% 100%;

@@ -43,7 +43,7 @@ export const HeroSection = memo(function HeroSection() {
               </h1>
 
               {/* Subtitle */}
-              <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-12 md:mb-14 leading-relaxed">
+              <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-6 md:mb-14 leading-relaxed">
                 AI-guided installs. Automatic documentation. Warranty compliance, built in.
               </p>
             </AnimatedGroup>

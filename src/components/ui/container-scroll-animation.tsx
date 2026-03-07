@@ -30,7 +30,7 @@ export function ContainerScroll({
 
   const rotate = useTransform(scrollYProgress, [0, 1], [20, 0]);
   const scale = useTransform(scrollYProgress, [0, 1], scaleDimensions());
-  const translate = useTransform(scrollYProgress, [0, 1], [0, -100]);
+  const translate = useTransform(scrollYProgress, [0, 1], [0, isMobile ? -40 : -100]);
 
   return (
     <div
@@ -38,7 +38,7 @@ export function ContainerScroll({
       ref={containerRef}
     >
       <div
-        className="py-2 md:py-40 w-full relative"
+        className="py-0 md:py-40 w-full relative"
         style={{
           perspective: "1060px",
         }}
@@ -64,7 +64,7 @@ function Header({
       style={{
         translateY: translate,
       }}
-      className="div max-w-5xl mx-auto relative z-10 pb-2 md:pb-16"
+      className="div max-w-5xl mx-auto relative z-10 pb-0 md:pb-16"
     >
       {titleComponent}
     </motion.div>
