@@ -10,6 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
 import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
+import { Analytics } from "@vercel/analytics/react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SessionExpiryWarning } from "@/components/auth/SessionExpiryWarning";
@@ -310,6 +311,7 @@ function App() {
           </BrowserRouter>
         </QueryClientProvider>
       </ThemeProvider>
+      <Analytics />
     </HelmetProvider>
   );
 }
