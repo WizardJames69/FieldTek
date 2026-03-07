@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Loader2, KeyRound } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MetalButton } from '@/components/ui/metal-button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -226,9 +226,10 @@ export default function Register() {
               {accessError && <p className="text-sm text-red-400">{accessError}</p>}
             </div>
 
-            <Button
+            <MetalButton
               type="submit"
-              className="w-full h-11 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-semibold cta-glow"
+              variant="fieldtek"
+              className="w-full h-11"
               disabled={isValidatingAccess}
               data-testid="verify-access-button"
             >
@@ -243,7 +244,7 @@ export default function Register() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
-            </Button>
+            </MetalButton>
 
             <div className="text-center space-y-3">
               <p className="text-zinc-500 text-sm">
@@ -347,15 +348,16 @@ export default function Register() {
                 {errors.confirmPassword && <p className="text-sm text-red-400">{errors.confirmPassword}</p>}
               </div>
 
-              <Button
+              <MetalButton
                 type="submit"
-                className="w-full h-11 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-semibold cta-glow"
+                variant="fieldtek"
+                className="w-full h-11"
                 disabled={isLoading}
                 data-testid="register-submit-button"
               >
                 {isLoading ? 'Creating account...' : 'Create account'}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              </MetalButton>
             </form>
 
             <div className="text-center">

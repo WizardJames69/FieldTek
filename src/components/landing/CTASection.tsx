@@ -1,7 +1,8 @@
-import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { MetalButton } from "@/components/ui/metal-button";
+import { LiquidButton } from "@/components/ui/liquid-button";
 
 interface CTASectionProps {
   onJoinWaitlist?: () => void;
@@ -26,24 +27,23 @@ export function CTASection({ onJoinWaitlist }: CTASectionProps) {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-6">
-            <Button
-              asChild
-              size="lg"
-              className="w-full sm:w-auto min-h-[48px] bg-orange-500 hover:bg-orange-600 text-white text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-6 border-0 cta-glow"
-            >
-              <Link to="/register">
+            <Link to="/register">
+              <MetalButton
+                variant="fieldtek"
+                size="lg"
+                className="w-full sm:w-auto min-h-[48px] text-base sm:text-lg px-6 sm:px-8"
+              >
                 Get Early Access
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-            <Button
-              variant="outline"
+              </MetalButton>
+            </Link>
+            <LiquidButton
               size="lg"
-              className="w-full sm:w-auto min-h-[48px] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-6 bg-transparent border border-white/25 text-white hover:border-white/50 hover:bg-white/5 transition-all duration-300"
+              className="w-full sm:w-auto min-h-[48px] text-base sm:text-lg px-6 sm:px-8"
               onClick={onJoinWaitlist}
             >
               Join Waitlist
-            </Button>
+            </LiquidButton>
           </div>
 
           <p className="text-sm text-zinc-500">

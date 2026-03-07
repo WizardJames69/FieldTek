@@ -5,7 +5,8 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Loader2, FlaskConical, X } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Button } from "@/components/ui/button";
+import { MetalButton } from "@/components/ui/metal-button";
+import { LiquidButton } from "@/components/ui/liquid-button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -359,16 +360,17 @@ export function BetaTesterModal({ open, onOpenChange }: BetaTesterModalProps) {
                     />
 
                     <div className="flex gap-3 pt-2">
-                      <button
+                      <LiquidButton
                         type="button"
-                        className="flex-1 h-11 rounded-xl bg-transparent border border-white/[0.12] text-white text-sm font-medium hover:bg-white/5 transition-colors"
+                        className="flex-1 h-11"
                         onClick={() => onOpenChange(false)}
                       >
                         Maybe Later
-                      </button>
-                      <Button
+                      </LiquidButton>
+                      <MetalButton
                         type="submit"
-                        className="flex-1 h-11 rounded-xl bg-orange-500 hover:bg-[#EA580C] text-white font-semibold border-0 cta-glow"
+                        variant="fieldtek"
+                        className="flex-1 h-11"
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? (
@@ -379,7 +381,7 @@ export function BetaTesterModal({ open, onOpenChange }: BetaTesterModalProps) {
                         ) : (
                           "Apply Now"
                         )}
-                      </Button>
+                      </MetalButton>
                     </div>
                   </form>
                 </Form>

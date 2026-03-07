@@ -75,8 +75,8 @@ export const Navbar = memo(function Navbar() {
           </Button>
           <Button
             asChild
+            variant="cool"
             size="sm"
-            className="bg-orange-500 hover:bg-orange-600 text-white border-0"
           >
             <Link to="/register">Get Early Access</Link>
           </Button>
@@ -138,7 +138,7 @@ export const Navbar = memo(function Navbar() {
                   <Button asChild variant="ghost" className="w-full justify-center text-zinc-300 hover:text-white hover:bg-white/10">
                     <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
                   </Button>
-                  <Button asChild className="w-full justify-center bg-orange-500 hover:bg-orange-600 text-white">
+                  <Button asChild variant="cool" className="w-full justify-center">
                     <Link to="/register" onClick={() => setMobileMenuOpen(false)}>Get Early Access</Link>
                   </Button>
                 </div>

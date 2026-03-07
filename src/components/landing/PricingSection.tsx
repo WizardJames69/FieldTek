@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Check, X, Users, Zap, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { MetalButton } from "@/components/ui/metal-button";
+import { LiquidButton } from "@/components/ui/liquid-button";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -231,27 +232,28 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
               </ul>
 
               {plan.tier === "enterprise" ? (
-                <Button
-                  asChild
-                  variant="outline"
+                <Link to={plan.href}>
+                  <LiquidButton size="lg" className="w-full">
+                    {plan.cta}
+                  </LiquidButton>
+                </Link>
+              ) : plan.popular ? (
+                <MetalButton
+                  variant="fieldtek"
                   size="lg"
-                  className="w-full bg-transparent border-white/[0.15] text-white hover:border-white/30 hover:bg-white/5"
-                >
-                  <Link to={plan.href}>{plan.cta}</Link>
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  className={cn(
-                    "w-full",
-                    plan.popular
-                      ? "bg-orange-500 hover:bg-orange-600 text-white border-0"
-                      : "bg-transparent border border-white/[0.15] text-white hover:border-white/30 hover:bg-white/5"
-                  )}
+                  className="w-full"
                   onClick={onJoinWaitlist}
                 >
                   {plan.cta}
-                </Button>
+                </MetalButton>
+              ) : (
+                <LiquidButton
+                  size="lg"
+                  className="w-full"
+                  onClick={onJoinWaitlist}
+                >
+                  {plan.cta}
+                </LiquidButton>
               )}
             </motion.div>
           ))}

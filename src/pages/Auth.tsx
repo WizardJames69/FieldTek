@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MetalButton } from '@/components/ui/metal-button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -185,15 +185,16 @@ export default function Auth() {
             </div>
           </div>
 
-          <Button
+          <MetalButton
             type="submit"
-            className="w-full h-11 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-semibold cta-glow"
+            variant="fieldtek"
+            className="w-full h-11"
             disabled={isLoading}
             data-testid="auth-submit-button"
           >
             {isLoading ? 'Signing in...' : 'Sign in'}
             <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          </MetalButton>
         </form>
 
         <div className="text-center space-y-2">

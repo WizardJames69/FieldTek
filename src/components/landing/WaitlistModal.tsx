@@ -11,8 +11,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { MetalButton } from "@/components/ui/metal-button";
+import { LiquidButton } from "@/components/ui/liquid-button";
 import {
   Form,
   FormControl,
@@ -321,16 +322,17 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                   </div>
 
                   <div className="flex gap-3 pt-2">
-                    <Button
+                    <LiquidButton
                       type="button"
-                      className="flex-1 bg-transparent border border-white/[0.12] text-white hover:bg-white/5"
+                      className="flex-1"
                       onClick={() => onOpenChange(false)}
                     >
                       Maybe Later
-                    </Button>
-                    <Button
+                    </LiquidButton>
+                    <MetalButton
                       type="submit"
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                      variant="fieldtek"
+                      className="flex-1"
                       disabled={isSubmitting}
                       data-testid="waitlist-submit-button"
                     >
@@ -342,7 +344,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
                       ) : (
                         "Join Waitlist"
                       )}
-                    </Button>
+                    </MetalButton>
                   </div>
                 </form>
               </Form>

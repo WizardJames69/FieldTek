@@ -1981,6 +1981,11 @@
   }
 }
 
+@keyframes liquid-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ============================================
    Landing Page Interaction Styles
    ============================================ */
