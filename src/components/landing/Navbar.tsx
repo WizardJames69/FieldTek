@@ -10,7 +10,11 @@ const navItems = [
   { id: "how-it-works", label: "How It Works" },
 ];
 
-export const Navbar = memo(function Navbar() {
+interface NavbarProps {
+  onApply?: () => void;
+}
+
+export const Navbar = memo(function Navbar({ onApply }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
@@ -73,13 +77,15 @@ export const Navbar = memo(function Navbar() {
           <Button asChild variant="ghost" size="sm" className="text-zinc-400 hover:text-white hover:bg-white/10">
             <Link to="/auth">Sign In</Link>
           </Button>
-          <Button
-            asChild
-            variant="cool"
-            size="sm"
-          >
-            <Link to="/register">Get Early Access</Link>
-          </Button>
+          {onApply ? (
+            <Button variant="cool" size="sm" onClick={onApply}>
+              Get Early Access
+            </Button>
+          ) : (
+            <Button asChild variant="cool" size="sm">
+              <Link to="/register">Get Early Access</Link>
+            </Button>
+          )}
         </div>
 
         {/* Mobile menu button */}
@@ -138,9 +144,15 @@ export const Navbar = memo(function Navbar() {
                   <Button asChild variant="ghost" className="w-full justify-center text-zinc-300 hover:text-white hover:bg-white/10">
                     <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
                   </Button>
-                  <Button asChild variant="cool" className="w-full justify-center">
-                    <Link to="/register" onClick={() => setMobileMenuOpen(false)}>Get Early Access</Link>
-                  </Button>
+                  {onApply ? (
+                    <Button variant="cool" className="w-full justify-center" onClick={() => { setMobileMenuOpen(false); onApply(); }}>
+                      Get Early Access
+                    </Button>
+                  ) : (
+                    <Button asChild variant="cool" className="w-full justify-center">
+                      <Link to="/register" onClick={() => setMobileMenuOpen(false)}>Get Early Access</Link>
+                    </Button>
+                  )}
                 </div>
               </div>
             </motion.div>

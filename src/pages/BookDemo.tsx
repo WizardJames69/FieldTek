@@ -25,14 +25,12 @@ import {
   ArrowRight,
   CalendarIcon,
   CheckCircle2,
-  User,
-  Building,
-  Calendar as CalendarIconOutline,
   Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
+import { LiquidButton } from "@/components/ui/liquid-button";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -89,6 +87,8 @@ export default function BookDemo() {
   }, []);
 
   const [step, setStep] = useState(1);
+  const [direction, setDirection] = useState<"forward" | "backward">("forward");
+  const [animating, setAnimating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
 
@@ -195,18 +195,28 @@ export default function BookDemo() {
     }
 
     if (isValid) {
-      setStep(step + 1);
+      setDirection("forward");
+      setAnimating(true);
+      setTimeout(() => {
+        setStep(step + 1);
+        setTimeout(() => setAnimating(false), 20);
+      }, 150);
     }
   };
 
   const prevStep = () => {
-    setStep(step - 1);
+    setDirection("backward");
+    setAnimating(true);
+    setTimeout(() => {
+      setStep(step - 1);
+      setTimeout(() => setAnimating(false), 20);
+    }, 150);
   };
 
   const steps = [
-    { number: 1, title: "Contact Info", icon: User },
-    { number: 2, title: "Company Details", icon: Building },
-    { number: 3, title: "Schedule Call", icon: CalendarIconOutline },
+    { number: 1, title: "Contact Info" },
+    { number: 2, title: "Company Details" },
+    { number: 3, title: "Schedule Call" },
   ];
 
   return (
@@ -232,30 +242,32 @@ export default function BookDemo() {
                   <div key={s.number} className="flex flex-col items-center relative z-10">
                     <div
                       className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center transition-colors",
-                        step >= s.number
+                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300",
+                        step > s.number
                           ? "bg-orange-500 text-white"
-                          : "bg-white/[0.06] text-zinc-500"
+                          : step === s.number
+                            ? "border-2 border-orange-500 text-orange-500"
+                            : "border border-zinc-700 text-zinc-600"
                       )}
                     >
                       {step > s.number ? (
-                        <CheckCircle2 className="h-6 w-6" />
+                        <CheckCircle2 className="h-4 w-4" />
                       ) : (
-                        <s.icon className="h-5 w-5" />
+                        s.number
                       )}
                     </div>
                     <span className={cn(
-                      "mt-2 text-sm font-medium",
-                      step >= s.number ? "text-white" : "text-zinc-500"
+                      "mt-2 text-xs font-medium transition-colors duration-300",
+                      step > s.number ? "text-zinc-400" : step === s.number ? "text-white" : "text-zinc-600"
                     )}>
                       {s.title}
                     </span>
                   </div>
                 ))}
                 {/* Progress Line */}
-                <div className="absolute top-6 left-0 right-0 h-0.5 bg-white/[0.06] -z-0">
+                <div className="absolute top-4 left-[16%] right-[16%] h-px bg-white/[0.06] -z-0">
                   <div
-                    className="h-full bg-orange-500 transition-all duration-300"
+                    className="h-full bg-orange-500 transition-all duration-500 ease-out"
                     style={{ width: `${((step - 1) / (steps.length - 1)) * 100}%` }}
                   />
                 </div>
@@ -264,19 +276,28 @@ export default function BookDemo() {
           )}
 
           {/* Form Card */}
-          <div className="bg-[#111214] border border-white/[0.06] rounded-xl p-8">
+          <div className="bg-[#111214] border border-white/[0.06] rounded-xl p-6 md:p-10">
             {step < 4 && (
               <div className="text-center mb-8">
-                <h1 className="text-2xl font-bold text-white mb-2">
+                <h1 className="text-2xl font-semibold text-white mb-2">
                   Schedule a Consultation
                 </h1>
-                <p className="text-zinc-500">
+                <p className="text-[15px] text-zinc-400">
                   Have questions after exploring FieldTek? Talk to our team for personalized guidance.
                 </p>
               </div>
             )}
 
             <form onSubmit={handleSubmit(onSubmit)}>
+              <div
+                className="transition-all duration-300 ease-out"
+                style={{
+                  opacity: animating ? 0 : 1,
+                  transform: animating
+                    ? `translateX(${direction === "forward" ? "20px" : "-20px"})`
+                    : "translateX(0)",
+                }}
+              >
               {/* Step 1: Contact Info */}
               {step === 1 && (
                 <div className="space-y-6" data-testid="demo-step1">
@@ -320,27 +341,26 @@ export default function BookDemo() {
                     />
                   </div>
 
-                  <Button
+                  <LiquidButton
                     type="button"
                     onClick={nextStep}
-                    className="w-full h-11 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-semibold cta-glow"
                     size="lg"
+                    className="w-full bg-orange-500/90 hover:bg-orange-600/90 text-white font-semibold"
                     data-testid="demo-step1-continue"
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  </LiquidButton>
 
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
                     onClick={() => navigate('/')}
-                    className="w-full gap-2 text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                    className="w-full flex items-center justify-center gap-2 text-sm text-zinc-500 hover:text-white transition-colors py-2"
                     data-testid="demo-step1-back"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="h-3.5 w-3.5" />
                     Back to home
-                  </Button>
+                  </button>
                 </div>
               )}
 
@@ -410,16 +430,16 @@ export default function BookDemo() {
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Back
                     </Button>
-                    <Button
+                    <LiquidButton
                       type="button"
                       onClick={nextStep}
-                      className="flex-1 h-11 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-semibold cta-glow"
                       size="lg"
+                      className="flex-1 bg-orange-500/90 hover:bg-orange-600/90 text-white font-semibold"
                       data-testid="demo-step2-continue"
                     >
                       Continue
                       <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    </LiquidButton>
                   </div>
                 </div>
               )}
@@ -501,10 +521,10 @@ export default function BookDemo() {
                       <ArrowLeft className="mr-2 h-4 w-4" />
                       Back
                     </Button>
-                    <Button
+                    <LiquidButton
                       type="submit"
-                      className="flex-1 h-11 rounded-[10px] bg-orange-500 hover:bg-orange-600 text-white font-semibold cta-glow"
                       size="lg"
+                      className="flex-1 bg-orange-500/90 hover:bg-orange-600/90 text-white font-semibold"
                       disabled={isSubmitting}
                       data-testid="demo-submit-button"
                     >
@@ -516,7 +536,7 @@ export default function BookDemo() {
                       ) : (
                         "Schedule Consultation"
                       )}
-                    </Button>
+                    </LiquidButton>
                   </div>
                 </div>
               )}
@@ -527,10 +547,10 @@ export default function BookDemo() {
                   <div className="w-20 h-20 bg-orange-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                     <CheckCircle2 className="h-10 w-10 text-orange-500" />
                   </div>
-                  <h2 className="text-2xl font-bold text-white mb-2">
+                  <h2 className="text-2xl font-semibold text-white mb-2">
                     Consultation Request Received!
                   </h2>
-                  <p className="text-zinc-500 mb-8 max-w-md mx-auto">
+                  <p className="text-zinc-400 mb-8 max-w-md mx-auto">
                     Thank you for your interest in FieldTek. One of our product specialists
                     will reach out within 24 hours to schedule your consultation. Check your email for confirmation.
                   </p>
@@ -552,6 +572,7 @@ export default function BookDemo() {
                   </div>
                 </div>
               )}
+              </div>
             </form>
           </div>
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Check, X, Users, Zap, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { MetalButton } from "@/components/ui/metal-button";
 import { LiquidButton } from "@/components/ui/liquid-button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -238,14 +237,13 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
                   </LiquidButton>
                 </Link>
               ) : plan.popular ? (
-                <MetalButton
-                  variant="fieldtek"
+                <LiquidButton
                   size="lg"
-                  className="w-full"
+                  className="w-full bg-orange-500/90 hover:bg-orange-600/90 text-white"
                   onClick={onJoinWaitlist}
                 >
                   {plan.cta}
-                </MetalButton>
+                </LiquidButton>
               ) : (
                 <LiquidButton
                   size="lg"

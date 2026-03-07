@@ -10,6 +10,7 @@ import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { Footer } from "@/components/landing/Footer";
 
 import { WaitlistModal } from "@/components/landing/WaitlistModal";
+import { BetaTesterModal } from "@/components/landing/BetaTesterModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { initAnalytics } from "@/lib/analytics";
 
@@ -52,6 +53,7 @@ export default function Landing() {
   const { user, loading: authLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [betaModalOpen, setBetaModalOpen] = useState(false);
 
   useEffect(() => {
     initAnalytics();
@@ -87,12 +89,13 @@ export default function Landing() {
   }, [user, authLoading, navigate, isRedirecting]);
 
   const openWaitlist = () => setWaitlistOpen(true);
+  const openBetaModal = () => setBetaModalOpen(true);
 
   return (
     <div className="min-h-screen overflow-x-hidden noise-overlay">
       {/* Dark hero zone */}
       <div className="landing-section-dark">
-        <Navbar />
+        <Navbar onApply={openBetaModal} />
         <HeroSection />
       </div>
 
@@ -112,7 +115,7 @@ export default function Landing() {
           <FeatureShowcase />
           <ClientPortalSection />
           <HowItWorksSection />
-          <SocialProofSection />
+          <SocialProofSection onApply={openBetaModal} />
         </Suspense>
 
       </main>
@@ -120,6 +123,7 @@ export default function Landing() {
       <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
       <Footer />
       <WaitlistModal open={waitlistOpen} onOpenChange={setWaitlistOpen} />
+      <BetaTesterModal open={betaModalOpen} onOpenChange={setBetaModalOpen} />
     </div>
   );
 }

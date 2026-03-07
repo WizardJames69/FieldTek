@@ -1,9 +1,12 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
+
+interface SocialProofSectionProps {
+  onApply?: () => void;
+}
 
 const valueProps = [
   {
@@ -36,7 +39,7 @@ const staggerItem = {
   },
 };
 
-export function SocialProofSection() {
+export function SocialProofSection({ onApply }: SocialProofSectionProps) {
   return (
     <section className="bg-[#111214] py-8 md:py-20 lg:py-[100px]">
       <div className="mx-auto max-w-6xl px-4">
@@ -84,14 +87,12 @@ export function SocialProofSection() {
         <ScrollReveal delay={0.15}>
           <div className="text-center">
             <Button
-              asChild
               size="lg"
               className="bg-orange-500 hover:bg-orange-600 text-white border-0"
+              onClick={onApply}
             >
-              <Link to="/register">
-                Apply for Early Access
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
+              Apply for Early Access
+              <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
         </ScrollReveal>

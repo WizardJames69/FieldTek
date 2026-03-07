@@ -111,9 +111,8 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
       "Everything in Growth",
       "Custom workflows",
       "API access",
-      "Multi-location support",
-      "Advanced AI features",
-      "Dedicated success manager",
+      "AI diagnostic insights",
+      "Priority support",
     ],
     cta: "Join Waitlist",
     href: "/register",
@@ -135,10 +134,8 @@ export const TIER_CONFIG: Record<SubscriptionTier, TierConfig> = {
     features: [
       "Everything in Professional",
       "White-label branding",
-      "Custom integrations",
-      "On-premise deployment",
-      "SLA guarantee",
-      "Custom training & onboarding",
+      "Guided onboarding",
+      "Dedicated account manager",
     ],
     cta: "Contact Sales",
     href: "/consultation",
@@ -161,10 +158,7 @@ export const FEATURE_COMPARISON = [
   { feature: "Advanced Analytics", starter: false, growth: true, professional: true, enterprise: true },
   { feature: "Custom Workflows", starter: false, growth: false, professional: true, enterprise: true },
   { feature: "API Access", starter: false, growth: false, professional: true, enterprise: true },
-  { feature: "Multi-location Support", starter: false, growth: false, professional: true, enterprise: true },
   { feature: "White-label Branding", starter: false, growth: false, professional: false, enterprise: true },
-  { feature: "Custom Integrations", starter: false, growth: false, professional: false, enterprise: true },
-  { feature: "SLA Guarantee", starter: false, growth: false, professional: false, enterprise: true },
 ];
 
 // Helper to get tier by stripeTier
