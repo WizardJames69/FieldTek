@@ -23,7 +23,7 @@ export class AssistantPage {
   }
 
   async waitForPage() {
-    await expect(this.page.getByText('AI Field Assistant')).toBeVisible({ timeout: 20_000 });
+    await expect(this.page.getByText('Sentinel AI')).toBeVisible({ timeout: 20_000 });
   }
 
   async sendMessage(text: string) {

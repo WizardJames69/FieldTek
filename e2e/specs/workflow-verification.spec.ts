@@ -36,7 +36,7 @@ test.beforeAll(async () => {
   tenantId = ctx.tenantId;
 
   supabaseUrl = process.env.VITE_SUPABASE_URL!;
-  supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY!;
+  supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
 
   // Get tech user ID + auth token
   const client = getAdminClient();
