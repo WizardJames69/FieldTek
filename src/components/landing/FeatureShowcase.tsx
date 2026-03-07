@@ -60,7 +60,7 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
   return (
     <div className={`rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden ${reverse ? "md:order-first" : ""}`}>
       <div className="p-1">
-        <div className="rounded-lg bg-[#111113] p-4 min-h-[280px] md:min-h-[320px] flex items-center justify-center">
+        <div className="rounded-lg bg-[#111113] p-4 min-h-0 md:min-h-[320px] flex items-center justify-center">
           {type === "job-management" && (
             <div className="w-full space-y-2">
               {[
@@ -103,8 +103,8 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
 
 export function FeatureShowcase() {
   return (
-    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-[100px]">
-      <div className="mx-auto max-w-6xl px-4 space-y-16 md:space-y-20 lg:space-y-24">
+    <section className="bg-[#0C0D0F] py-8 md:py-20 lg:py-[100px]">
+      <div className="mx-auto max-w-6xl px-4 space-y-12 md:space-y-20 lg:space-y-24">
         {features.map((feature, i) => {
           const reverse = i % 2 !== 0;
           return (

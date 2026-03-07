@@ -13,7 +13,7 @@ function PortalMockup() {
   return (
     <div className="rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden">
       <div className="p-1">
-        <div className="rounded-lg bg-[#111113] p-4 min-h-[280px] md:min-h-[320px] space-y-4">
+        <div className="rounded-lg bg-[#111113] p-4 min-h-0 md:min-h-[320px] space-y-4">
           {/* Form mockup */}
           <div className="space-y-3">
             <div className="text-xs font-medium text-zinc-300 mb-2">New Service Request</div>
@@ -91,7 +91,7 @@ function PortalMockup() {
 
 export function ClientPortalSection() {
   return (
-    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-[100px]">
+    <section className="bg-[#0C0D0F] py-8 md:py-20 lg:py-[100px]">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div>

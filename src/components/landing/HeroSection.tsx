@@ -54,7 +54,7 @@ export const HeroSection = memo(function HeroSection() {
       </ContainerScroll>
 
       {/* Bottom gradient: dark to dark transition */}
-      <div className="h-32 bg-gradient-to-b from-[#09090B] to-[#0C0D0F]" />
+      <div className="h-12 md:h-32 bg-gradient-to-b from-[#09090B] to-[#0C0D0F]" />
     </section>
   );
 });
