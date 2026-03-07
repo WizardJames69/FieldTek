@@ -4,6 +4,11 @@ import { Check, Camera, Loader2, ChevronDown, ChevronUp, FileText } from 'lucide
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useJobEvidence, useRequiredEvidence, getItemEvidence } from '@/hooks/useStepEvidence';
+import type { RequiredEvidenceMap } from '@/hooks/useStepEvidence';
+import { StepEvidenceCapture } from '@/components/mobile/StepEvidenceCapture';
+import { EvidenceStatusBadge } from '@/components/mobile/EvidenceStatusBadge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +35,18 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
   const queryClient = useQueryClient();
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+
+  // Step verification
+  const { isEnabled } = useFeatureFlags();
+  const verificationEnabled = isEnabled('workflow_step_verification');
+  const { data: jobEvidence = [] } = useJobEvidence(verificationEnabled ? jobId : undefined);
+
+  // Get unique stage names from items to load required evidence
+  const stageNames = [...new Set(items.map((i) => i.stage_name))];
+  // Load required evidence for the first stage (simplified — in practice, load per stage)
+  const { data: requiredEvidence = {} as RequiredEvidenceMap } = useRequiredEvidence(
+    verificationEnabled && stageNames.length > 0 ? stageNames[0] : undefined
+  );
 
   const toggleMutation = useMutation({
     mutationFn: async ({ itemId, completed }: { itemId: string; completed: boolean }) => {
@@ -205,6 +222,37 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                                 </Button>
                                 {/* Photo capture - planned for post-beta */}
                               </div>
+
+                              {/* Step verification evidence */}
+                              {verificationEnabled && requiredEvidence[item.checklist_item] && (
+                                <div className="pt-2">
+                                  {getItemEvidence(jobEvidence, item.checklist_item).length > 0 && (
+                                    <div className="mb-2">
+                                      <EvidenceStatusBadge
+                                        status={
+                                          getItemEvidence(jobEvidence, item.checklist_item).every(
+                                            (e) => e.verification_status === 'verified'
+                                          )
+                                            ? 'verified'
+                                            : getItemEvidence(jobEvidence, item.checklist_item).some(
+                                                (e) => e.verification_status === 'failed'
+                                              )
+                                              ? 'failed'
+                                              : 'pending'
+                                        }
+                                      />
+                                    </div>
+                                  )}
+                                  <StepEvidenceCapture
+                                    jobId={jobId}
+                                    checklistItemId={item.checklist_item}
+                                    stageName={item.stage_name}
+                                    requirement={requiredEvidence[item.checklist_item]}
+                                    existingEvidence={getItemEvidence(jobEvidence, item.checklist_item)}
+                                  />
+                                </div>
+                              )}
+
                               {item.photos?.length > 0 && (
                                 <div className="flex gap-2 flex-wrap pt-2" role="list" aria-label="Attached photos">
                                   {item.photos.map((photo: string, i: number) => (

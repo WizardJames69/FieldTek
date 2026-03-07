@@ -15,6 +15,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useJobEvidence, useRequiredEvidence, getItemEvidence } from '@/hooks/useStepEvidence';
+import type { RequiredEvidenceMap } from '@/hooks/useStepEvidence';
+import { StepEvidenceCapture } from '@/components/mobile/StepEvidenceCapture';
+import { EvidenceStatusBadge } from '@/components/mobile/EvidenceStatusBadge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -78,6 +83,14 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
   const queryClient = useQueryClient();
   const [activeStage, setActiveStage] = useState(currentStage || 'Service');
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
+
+  // Step verification
+  const { isEnabled } = useFeatureFlags();
+  const verificationEnabled = isEnabled('workflow_step_verification');
+  const { data: jobEvidence = [] } = useJobEvidence(verificationEnabled ? jobId : undefined);
+  const { data: requiredEvidence = {} as RequiredEvidenceMap } = useRequiredEvidence(
+    verificationEnabled ? activeStage : undefined
+  );
 
   // Fetch stage templates
   const { data: templates, isLoading: templatesLoading } = useQuery({
@@ -552,6 +565,38 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
                             Fail
                           </Button>
                         </div>
+                      )}
+
+                      {/* Step verification evidence */}
+                      {verificationEnabled && requiredEvidence[item.id] && (
+                        <>
+                          {getItemEvidence(jobEvidence, item.id).length > 0 && (
+                            <EvidenceStatusBadge
+                              status={
+                                getItemEvidence(jobEvidence, item.id).every(
+                                  (e) => e.verification_status === 'verified'
+                                )
+                                  ? 'verified'
+                                  : getItemEvidence(jobEvidence, item.id).some(
+                                      (e) => e.verification_status === 'failed'
+                                    )
+                                    ? 'failed'
+                                    : getItemEvidence(jobEvidence, item.id).some(
+                                        (e) => e.verification_status === 'flagged'
+                                      )
+                                      ? 'flagged'
+                                      : 'pending'
+                              }
+                            />
+                          )}
+                          <StepEvidenceCapture
+                            jobId={jobId}
+                            checklistItemId={item.id}
+                            stageName={activeStage}
+                            requirement={requiredEvidence[item.id]}
+                            existingEvidence={getItemEvidence(jobEvidence, item.id)}
+                          />
+                        </>
                       )}
                     </div>
                   </div>

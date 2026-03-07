@@ -68,6 +68,7 @@ export interface AuditLogData {
   diagnosticPatternsUsed?: string[];
   diagnosticSignalStrength?: number;
   diagnosticContextInjected?: boolean;
+  stepEvidenceCount?: number;
 }
 
 // ── Write Audit Log ─────────────────────────────────────────
@@ -154,6 +155,7 @@ export async function writeAuditLog(
       diagnostic_patterns_used: data.diagnosticPatternsUsed?.length ? data.diagnosticPatternsUsed : null,
       diagnostic_signal_strength: data.diagnosticSignalStrength ?? null,
       diagnostic_context_injected: data.diagnosticContextInjected || false,
+      step_evidence_count: data.stepEvidenceCount ?? 0,
       judge_verdict: data.judgeVerdict || null,
       ...(data.judgeResultSync ? {
         judge_grounded: data.judgeResultSync.grounded,

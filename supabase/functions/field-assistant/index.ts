@@ -60,7 +60,7 @@ import { evaluateWithJudge, evaluateWithJudgeBlocking } from "./judge.ts";
 import type { JudgeResult } from "./judge.ts";
 import { fetchWorkflowState } from "./workflow.ts";
 import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
-import type { ComplianceContext, ComplianceVerdict } from "./compliance.ts";
+import type { ComplianceContext, ComplianceVerdict, StepEvidenceRecord } from "./compliance.ts";
 import { expandQueryWithGraph } from "./graph.ts";
 import type { GraphExpansionResult } from "./graph.ts";
 import { applyGraphScoring } from "./graphScoring.ts";
@@ -324,6 +324,7 @@ serve(async (req) => {
     // ── 7b. Deterministic Compliance Engine (runs BEFORE AI) ─
     let complianceVerdicts: ComplianceVerdict[] = [];
     let complianceBlockingVerdicts: ComplianceVerdict[] = [];
+    let stepEvidenceRecords: StepEvidenceRecord[] = [];
 
     if (complianceActive && context?.job?.id) {
       try {
@@ -336,6 +337,13 @@ serve(async (req) => {
           .select("id, job_id, stage_name, checklist_item, completed, notes, completed_at, measurement_value, measurement_unit")
           .eq("job_id", context.job.id);
 
+        // 2b. Fetch step evidence for this job
+        const { data: jobStepEvidence } = await serviceRoleClient
+          .from("workflow_step_evidence")
+          .select("id, checklist_item_id, stage_name, evidence_type, measurement_value, measurement_unit, serial_number, verification_status, created_at")
+          .eq("job_id", context.job.id);
+        stepEvidenceRecords = (jobStepEvidence as StepEvidenceRecord[]) || [];
+
         // 3. Build compliance context
         const complianceCtx: ComplianceContext = {
           jobId: context.job.id,
@@ -346,6 +354,7 @@ serve(async (req) => {
           equipmentType: context.equipment?.equipment_type || null,
           completions: jobCompletions || [],
           workflowState,
+          stepEvidence: stepEvidenceRecords,
         };
 
         // 4. Evaluate deterministic rules (no AI involved)
@@ -879,11 +888,30 @@ serve(async (req) => {
         }
       : null;
 
+    // Build step evidence context for prompt
+    const promptStepEvidenceContext = stepEvidenceRecords.length > 0
+      ? {
+          evidence: stepEvidenceRecords.map((e) => ({
+            stageName: e.stage_name,
+            checklistItem: e.checklist_item_id,
+            evidenceType: e.evidence_type,
+            measurementValue: e.measurement_value,
+            measurementUnit: e.measurement_unit,
+            serialNumber: e.serial_number,
+            verificationStatus: e.verification_status,
+          })),
+          totalCount: stepEvidenceRecords.length,
+          verifiedCount: stepEvidenceRecords.filter((e) => e.verification_status === "verified").length,
+          failedCount: stepEvidenceRecords.filter((e) => e.verification_status === "failed").length,
+        }
+      : null;
+
     const { systemPrompt, codeComplianceActive } = buildSystemPrompt({
       context, messages, documentContext, extractedContentContext,
       semanticSearchResults, insufficientRetrievalCoverage, injectionDetected,
       policyDisclaimer, serviceHistoryContext, docsWithContent,
       complianceContext: promptComplianceContext,
+      stepEvidenceContext: promptStepEvidenceContext,
       diagnosticContext,
     });
 
@@ -1229,6 +1257,7 @@ serve(async (req) => {
           diagnosticPatternsUsed: diagnosticContext?.patterns.map(p => `${p.symptom}→${p.failure_component}→${p.repair_action}`) || undefined,
           diagnosticSignalStrength: diagnosticContext?.signalStrength || undefined,
           diagnosticContextInjected: diagnosticContext !== null && diagnosticContext.patterns.length > 0,
+          stepEvidenceCount: stepEvidenceRecords.length,
           judgeVerdict: judgeVerdict !== "none" ? judgeVerdict : undefined,
           judgeResultSync: judgeResultSync || undefined,
           judgeBlockingLatencyMs: judgeBlockingLatencyMs,

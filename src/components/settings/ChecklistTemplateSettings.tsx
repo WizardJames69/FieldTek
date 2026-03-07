@@ -13,7 +13,10 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { ChecklistItemEditor, type ChecklistItem } from './ChecklistItemEditor';
+import { EvidenceRequirementEditor } from './EvidenceRequirementEditor';
 import { INDUSTRY_PRESETS, type IndustryType } from '@/types/database';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import type { EvidenceRequirement, RequiredEvidenceMap } from '@/hooks/useStepEvidence';
 import { Plus, Copy, Save, Loader2, ClipboardList } from 'lucide-react';
 import type { Json } from '@/integrations/supabase/types';
 
@@ -22,11 +25,14 @@ interface TemplateRow {
   stage_name: string;
   job_type: string | null;
   checklist_items: ChecklistItem[] | null;
+  required_evidence: RequiredEvidenceMap | null;
   order_index: number | null;
 }
 
 export function ChecklistTemplateSettings() {
   const { tenant, settings } = useTenant();
+  const { isEnabled } = useFeatureFlags();
+  const verificationEnabled = isEnabled('workflow_step_verification');
   const [templates, setTemplates] = useState<TemplateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +51,21 @@ export function ChecklistTemplateSettings() {
     (t) => t.stage_name === selectedStage && t.job_type === selectedJobType
   );
   const items: ChecklistItem[] = currentTemplate?.checklist_items ?? [];
+  const evidenceReqs: RequiredEvidenceMap = currentTemplate?.required_evidence ?? {};
+
+  // Handle evidence requirement changes
+  const handleEvidenceChange = (itemId: string, requirement: EvidenceRequirement) => {
+    if (!currentTemplate) return;
+    const updated = { ...evidenceReqs, [itemId]: requirement };
+    // Clean up empty requirements
+    const hasAny = requirement.photo || requirement.gps_required || requirement.serial_scan || requirement.measurement;
+    if (!hasAny) delete updated[itemId];
+    setTemplates((prev) =>
+      prev.map((t) =>
+        t.id === currentTemplate.id ? { ...t, required_evidence: updated } : t
+      )
+    );
+  };
 
   // Initialize defaults
   useEffect(() => {
@@ -161,6 +182,7 @@ export function ChecklistTemplateSettings() {
             stage_name: selectedStage,
             job_type: selectedJobType,
             checklist_items: (template.checklist_items ?? []) as unknown as Json,
+            required_evidence: (template.required_evidence ?? {}) as unknown as Json,
             order_index: template.order_index ?? 0,
           },
           { onConflict: 'id' }
@@ -328,15 +350,23 @@ export function ChecklistTemplateSettings() {
           ) : (
             <>
               {items.map((item, idx) => (
-                <ChecklistItemEditor
-                  key={item.id}
-                  item={item}
-                  index={idx}
-                  total={items.length}
-                  onUpdate={handleUpdateItem}
-                  onDelete={handleDeleteItem}
-                  onMove={handleMoveItem}
-                />
+                <div key={item.id}>
+                  <ChecklistItemEditor
+                    item={item}
+                    index={idx}
+                    total={items.length}
+                    onUpdate={handleUpdateItem}
+                    onDelete={handleDeleteItem}
+                    onMove={handleMoveItem}
+                  />
+                  {verificationEnabled && (
+                    <EvidenceRequirementEditor
+                      itemId={item.id}
+                      requirement={evidenceReqs[item.id] ?? {}}
+                      onChange={handleEvidenceChange}
+                    />
+                  )}
+                </div>
               ))}
               <Button variant="outline" size="sm" onClick={handleAddItem} className="w-full mt-2">
                 <Plus className="h-4 w-4 mr-1" />

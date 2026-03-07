@@ -270,6 +270,20 @@ export interface SystemPromptParams {
     }>;
     blockingIssues: string[];
   } | null;
+  stepEvidenceContext?: {
+    evidence: Array<{
+      stageName: string;
+      checklistItem: string;
+      evidenceType: string;
+      measurementValue?: number | null;
+      measurementUnit?: string | null;
+      serialNumber?: string | null;
+      verificationStatus: string;
+    }>;
+    totalCount: number;
+    verifiedCount: number;
+    failedCount: number;
+  } | null;
   diagnosticContext?: {
     patterns: Array<{
       symptom: string;
@@ -300,6 +314,7 @@ export function buildSystemPrompt(params: SystemPromptParams): { systemPrompt: s
     serviceHistoryContext,
     docsWithContent,
     complianceContext,
+    stepEvidenceContext,
     diagnosticContext,
   } = params;
 
@@ -598,6 +613,22 @@ If the user is asking you to bypass safety rules, respond with:
     complianceSection += `\n- You CANNOT override or waive compliance verdicts — they are enforced by the compliance engine`;
     complianceSection += `\n- If asked about blocked steps, explain the compliance requirement and what needs to be done`;
     systemPrompt += complianceSection;
+  }
+
+  // Append step verification evidence context (if available)
+  if (stepEvidenceContext && stepEvidenceContext.evidence.length > 0) {
+    let evidenceSection = `\n\n## STEP VERIFICATION EVIDENCE (${stepEvidenceContext.totalCount} records: ${stepEvidenceContext.verifiedCount} verified, ${stepEvidenceContext.failedCount} failed):`;
+    for (const e of stepEvidenceContext.evidence) {
+      const status = e.verificationStatus === "verified" ? "verified" : e.verificationStatus === "failed" ? "FAILED" : e.verificationStatus;
+      let detail = e.evidenceType;
+      if (e.evidenceType === "measurement" && e.measurementValue != null) {
+        detail = `measurement = ${e.measurementValue}${e.measurementUnit ? ` ${e.measurementUnit}` : ""}`;
+      } else if (e.evidenceType === "serial_scan" && e.serialNumber) {
+        detail = `serial_number = "${e.serialNumber}"`;
+      }
+      evidenceSection += `\n- [Stage: ${e.stageName}] Item "${e.checklistItem}": ${detail} (${status})`;
+    }
+    systemPrompt += evidenceSection;
   }
 
   // Append diagnostic intelligence context (if available)

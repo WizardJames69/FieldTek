@@ -54,6 +54,18 @@ export interface ChecklistCompletion {
   measurement_unit: string | null;
 }
 
+export interface StepEvidenceRecord {
+  id: string;
+  checklist_item_id: string;
+  stage_name: string;
+  evidence_type: string;
+  measurement_value: number | null;
+  measurement_unit: string | null;
+  serial_number: string | null;
+  verification_status: string;
+  created_at: string;
+}
+
 export interface ComplianceContext {
   jobId: string;
   tenantId: string;
@@ -63,6 +75,7 @@ export interface ComplianceContext {
   equipmentType: string | null;
   completions: ChecklistCompletion[];
   workflowState: WorkflowState;
+  stepEvidence?: StepEvidenceRecord[];
 }
 
 // ── Fetch Applicable Rules ──────────────────────────────────

@@ -1343,6 +1343,7 @@ export type Database = {
           id: string
           job_type: string | null
           order_index: number | null
+          required_evidence: Json | null
           stage_name: string
           tenant_id: string
           updated_at: string
@@ -1353,6 +1354,7 @@ export type Database = {
           id?: string
           job_type?: string | null
           order_index?: number | null
+          required_evidence?: Json | null
           stage_name: string
           tenant_id: string
           updated_at?: string
@@ -1363,6 +1365,7 @@ export type Database = {
           id?: string
           job_type?: string | null
           order_index?: number | null
+          required_evidence?: Json | null
           stage_name?: string
           tenant_id?: string
           updated_at?: string
@@ -2784,6 +2787,81 @@ export type Database = {
           utm_source?: string | null
         }
         Relationships: []
+      }
+      workflow_step_evidence: {
+        Row: {
+          id: string
+          tenant_id: string
+          job_id: string
+          checklist_item_id: string
+          stage_name: string
+          technician_id: string
+          evidence_type: string
+          photo_url: string | null
+          measurement_value: number | null
+          measurement_unit: string | null
+          serial_number: string | null
+          gps_location: Json | null
+          device_timestamp: string | null
+          created_at: string
+          verification_status: string
+          verification_details: Json | null
+          ai_analysis: Json | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          job_id: string
+          checklist_item_id: string
+          stage_name: string
+          technician_id: string
+          evidence_type: string
+          photo_url?: string | null
+          measurement_value?: number | null
+          measurement_unit?: string | null
+          serial_number?: string | null
+          gps_location?: Json | null
+          device_timestamp?: string | null
+          created_at?: string
+          verification_status?: string
+          verification_details?: Json | null
+          ai_analysis?: Json | null
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          job_id?: string
+          checklist_item_id?: string
+          stage_name?: string
+          technician_id?: string
+          evidence_type?: string
+          photo_url?: string | null
+          measurement_value?: number | null
+          measurement_unit?: string | null
+          serial_number?: string | null
+          gps_location?: Json | null
+          device_timestamp?: string | null
+          created_at?: string
+          verification_status?: string
+          verification_details?: Json | null
+          ai_analysis?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_step_evidence_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_step_evidence_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
