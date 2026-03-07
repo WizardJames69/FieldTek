@@ -16,7 +16,7 @@ import {
   Pie,
   Cell
 } from "recharts";
-import { Play, CheckCircle, Clock, UserPlus, Volume2, MousePointerClick, Eye, ArrowRight, Thermometer, Droplet, Zap, Wrench, TrendingUp } from "lucide-react";
+import { Play, CheckCircle, Clock, UserPlus, Volume2, MousePointerClick, Eye, ArrowRight, Thermometer, Droplet, Zap, Wrench, TrendingUp, ArrowUpDown, Wifi, Flame, Snowflake, Cpu, Factory, Plane } from "lucide-react";
 import { format, subDays, eachDayOfInterval } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Json } from "@/integrations/supabase/types";
@@ -26,6 +26,14 @@ const INDUSTRY_CONFIG: Record<string, { label: string; icon: React.ElementType; 
   plumbing: { label: 'Plumbing', icon: Droplet, color: '#3b82f6' },
   electrical: { label: 'Electrical', icon: Zap, color: '#f59e0b' },
   general: { label: 'General', icon: Wrench, color: '#6b7280' },
+  elevator: { label: 'Elevator', icon: ArrowUpDown, color: '#6366f1' },
+  home_automation: { label: 'Home Automation', icon: Wifi, color: '#06b6d4' },
+  fire_safety: { label: 'Fire & Safety', icon: Flame, color: '#dc2626' },
+  refrigeration: { label: 'Refrigeration', icon: Snowflake, color: '#0ea5e9' },
+  building_automation: { label: 'Building Automation', icon: Cpu, color: '#8b5cf6' },
+  appliance: { label: 'Appliance', icon: Wrench, color: '#78716c' },
+  industrial_maintenance: { label: 'Industrial Maintenance', icon: Factory, color: '#65a30d' },
+  aviation_maintenance: { label: 'Aviation Maintenance', icon: Plane, color: '#0284c7' },
 };
 
 interface DemoSession {

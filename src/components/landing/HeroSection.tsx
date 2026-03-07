@@ -34,7 +34,7 @@ export const HeroSection = memo(function HeroSection() {
       <ContainerScroll
         titleComponent={
           <div className="max-w-4xl mx-auto pt-20 md:pt-32 lg:pt-40">
-            <AnimatedGroup variants={heroVariants} className="text-center">
+            <AnimatedGroup variants={heroVariants}>
               {/* H1 */}
               <h1 className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-6 text-balance">
                 Guide Every Install.
@@ -43,7 +43,7 @@ export const HeroSection = memo(function HeroSection() {
               </h1>
 
               {/* Subtitle */}
-              <p className="text-lg md:text-xl text-[#9CA3AF] max-w-2xl mx-auto mb-8 md:mb-16 leading-relaxed">
+              <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-12 md:mb-14 leading-relaxed">
                 AI-guided installs. Automatic documentation. Warranty compliance, built in.
               </p>
             </AnimatedGroup>

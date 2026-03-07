@@ -13,10 +13,10 @@ export default function Pricing() {
     <div className="min-h-screen bg-[#09090B]">
       <Helmet>
         <title>Pricing | FieldTek</title>
-        <meta name="description" content="Transparent pricing that scales with your team. Plans for HVAC, electrical, plumbing, and mechanical contractors." />
+        <meta name="description" content="Transparent pricing that scales with your team. Plans for field service contractors across every trade." />
         <link rel="canonical" href="https://fieldtek.ai/pricing" />
         <meta property="og:title" content="Pricing | FieldTek" />
-        <meta property="og:description" content="Transparent pricing that scales with your team. Plans for HVAC, electrical, plumbing, and mechanical contractors." />
+        <meta property="og:description" content="Transparent pricing that scales with your team. Plans for field service contractors across every trade." />
         <meta property="og:url" content="https://fieldtek.ai/pricing" />
         <meta property="og:image" content="https://fieldtek.ai/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />

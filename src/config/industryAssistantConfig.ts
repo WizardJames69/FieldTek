@@ -5,7 +5,7 @@
  * including symptom detection patterns, diagnostic wizard templates, and safety guidance.
  */
 
-export type IndustryType = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'general';
+export type IndustryType = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'general' | 'fire_safety' | 'refrigeration' | 'building_automation' | 'appliance' | 'industrial_maintenance' | 'aviation_maintenance';
 
 // ============================================================================
 // SYMPTOM DETECTION PATTERNS
@@ -297,6 +297,102 @@ export const SYMPTOM_CATEGORIES: Record<string, SymptomCategory> = {
     label: "Power Supply Issues",
     description: "device power or battery problems",
     industry: 'home_automation'
+  },
+
+  // =============== FIRE SAFETY ===============
+  fire_alarm: {
+    keywords: /\b(fire\s+alarm|smoke\s+detector|heat\s+detector|pull\s+station|annunciator|trouble\s+signal|supervisory)\b/gi,
+    label: "Fire Alarm Issues",
+    description: "fire alarm panel or detector problems",
+    industry: 'fire_safety'
+  },
+  sprinkler: {
+    keywords: /\b(sprinkler|sprinkler\s+head|wet\s+system|dry\s+system|pre-?action|deluge|riser|main\s+drain|tamper)\b/gi,
+    label: "Sprinkler System Issues",
+    description: "fire sprinkler system problems",
+    industry: 'fire_safety'
+  },
+  suppression: {
+    keywords: /\b(suppression|clean\s+agent|fm-?200|novec|halon|hood\s+system|ansul|fire\s+extinguisher|inspection)\b/gi,
+    label: "Suppression System Issues",
+    description: "fire suppression system problems",
+    industry: 'fire_safety'
+  },
+
+  // =============== REFRIGERATION ===============
+  temperature_issue: {
+    keywords: /\b(temperature|temp|too\s+warm|too\s+cold|not\s+cooling|not\s+freezing|thawing|defrost|icing)\b/gi,
+    label: "Temperature Issues",
+    description: "temperature control problems",
+    industry: 'refrigeration'
+  },
+  refrigerant_leak: {
+    keywords: /\b(refrigerant|leak|low\s+charge|r-?404a|r-?134a|r-?290|glycol|oil\s+spot|bubble\s+test)\b/gi,
+    label: "Refrigerant Leaks",
+    description: "refrigerant leak or charge issues",
+    industry: 'refrigeration'
+  },
+  compressor_refrig: {
+    keywords: /\b(compressor|rack|condensing\s+unit|condenser|evaporator|txv|expansion\s+valve|suction|discharge)\b/gi,
+    label: "Compressor/Condensing Issues",
+    description: "compressor or condensing unit problems",
+    industry: 'refrigeration'
+  },
+
+  // =============== BUILDING AUTOMATION ===============
+  bas_communication: {
+    keywords: /\b(bacnet|modbus|lon|communication|network|mstp|ip|polling|offline|controller)\b/gi,
+    label: "BAS Communication Issues",
+    description: "building automation network problems",
+    industry: 'building_automation'
+  },
+  bas_controls: {
+    keywords: /\b(vav|ahu|setpoint|override|schedule|occupancy|damper|actuator|sensor|calibrat)\b/gi,
+    label: "Controls Issues",
+    description: "control loop or setpoint problems",
+    industry: 'building_automation'
+  },
+
+  // =============== APPLIANCE ===============
+  appliance_electrical: {
+    keywords: /\b(not\s+turning\s+on|won'?t\s+start|tripped|blown\s+fuse|error\s+code|display|beeping)\b/gi,
+    label: "Electrical/Startup Issues",
+    description: "appliance electrical or startup problems",
+    industry: 'appliance'
+  },
+  appliance_performance: {
+    keywords: /\b(not\s+heating|not\s+cooling|not\s+spinning|not\s+draining|leaking|vibrating|loud|smell)\b/gi,
+    label: "Performance Issues",
+    description: "appliance performance problems",
+    industry: 'appliance'
+  },
+
+  // =============== INDUSTRIAL MAINTENANCE ===============
+  machine_breakdown: {
+    keywords: /\b(breakdown|failure|seized|jammed|stuck|overheated|shutdown|alarm|fault\s+code|e-?stop)\b/gi,
+    label: "Machine Breakdowns",
+    description: "equipment breakdown or failure",
+    industry: 'industrial_maintenance'
+  },
+  lubrication: {
+    keywords: /\b(lubricat|grease|oil|bearing|friction|wear|dry\s+run|overheating|pm|preventive)\b/gi,
+    label: "Lubrication/Wear",
+    description: "lubrication or wear-related issues",
+    industry: 'industrial_maintenance'
+  },
+
+  // =============== AVIATION MAINTENANCE ===============
+  aircraft_system: {
+    keywords: /\b(engine|apu|hydraulic|pneumatic|avionics|fuel\s+system|landing\s+gear|flight\s+control)\b/gi,
+    label: "Aircraft System Issues",
+    description: "aircraft system malfunction",
+    industry: 'aviation_maintenance'
+  },
+  airworthiness: {
+    keywords: /\b(ad\s+|airworthiness|service\s+bulletin|sb\s+|mel|cdl|deferred|snag|discrepancy|write-?up)\b/gi,
+    label: "Airworthiness/Compliance",
+    description: "regulatory or airworthiness issues",
+    industry: 'aviation_maintenance'
   },
 
   // =============== COMMON (applies to all) ===============

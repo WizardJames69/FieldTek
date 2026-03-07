@@ -551,7 +551,13 @@ IMPORTANT: Only provide specifications and troubleshooting for this equipment if
       mechanical: "This is a mechanical services organization. Only provide mechanical guidance when backed by uploaded documentation.",
       elevator: "This is an elevator/escalator services organization. Only provide elevator guidance when backed by uploaded documentation. ALWAYS emphasize ASME A17.1 compliance.",
       home_automation: "This is a home automation/smart home organization. Only provide smart home guidance when backed by uploaded documentation.",
-      general: "This is a general field service organization. Only provide guidance when backed by uploaded documentation."
+      general: "This is a general field service organization. Only provide guidance when backed by uploaded documentation.",
+      fire_safety: "This is a fire & safety organization. Only provide fire protection guidance when backed by uploaded documentation. ALWAYS emphasize NFPA code compliance.",
+      refrigeration: "This is a refrigeration services organization. Only provide refrigeration guidance when backed by uploaded documentation. ALWAYS emphasize EPA refrigerant handling compliance.",
+      building_automation: "This is a building automation organization. Only provide BAS/controls guidance when backed by uploaded documentation.",
+      appliance: "This is an appliance install & service organization. Only provide appliance guidance when backed by uploaded documentation.",
+      industrial_maintenance: "This is an industrial maintenance organization. Only provide industrial equipment guidance when backed by uploaded documentation. ALWAYS emphasize LOTO procedures.",
+      aviation_maintenance: "This is an aviation maintenance organization. Only provide aviation guidance when backed by uploaded documentation. ALWAYS emphasize FAA regulatory compliance."
     };
     systemPrompt += `\n\n## INDUSTRY CONTEXT:
 ${industryGuidance[context.industry] || industryGuidance.general}`;

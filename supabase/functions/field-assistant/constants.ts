@@ -151,7 +151,7 @@ export interface CodeComplianceDetection {
 
 // ── Industry Types & Symptom Categories ─────────────────────
 
-export type IndustryType = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'general';
+export type IndustryType = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'general' | 'fire_safety' | 'refrigeration' | 'building_automation' | 'appliance' | 'industrial_maintenance' | 'aviation_maintenance';
 
 export interface SymptomCategory {
   keywords: RegExp;
@@ -359,6 +359,66 @@ export const SYMPTOM_CATEGORIES: Record<string, SymptomCategory> = {
     label: "Wear/Deterioration",
     description: "component wear or damage",
     industry: 'mechanical'
+  },
+
+  // =============== FIRE SAFETY ===============
+  fire_alarm: {
+    keywords: /\b(fire\s+alarm|smoke\s+detector|heat\s+detector|pull\s+station|annunciator|trouble\s+signal|supervisory)\b/gi,
+    label: "Fire Alarm Issues",
+    description: "fire alarm panel or detector problems",
+    industry: 'fire_safety'
+  },
+  sprinkler: {
+    keywords: /\b(sprinkler|sprinkler\s+head|wet\s+system|dry\s+system|pre-?action|deluge|riser|main\s+drain|tamper)\b/gi,
+    label: "Sprinkler System Issues",
+    description: "fire sprinkler system problems",
+    industry: 'fire_safety'
+  },
+
+  // =============== REFRIGERATION ===============
+  temperature_issue: {
+    keywords: /\b(temperature|temp|too\s+warm|too\s+cold|not\s+cooling|not\s+freezing|thawing|defrost|icing)\b/gi,
+    label: "Temperature Issues",
+    description: "temperature control problems",
+    industry: 'refrigeration'
+  },
+  refrigerant_leak: {
+    keywords: /\b(refrigerant|leak|low\s+charge|r-?404a|r-?134a|r-?290|glycol|oil\s+spot|bubble\s+test)\b/gi,
+    label: "Refrigerant Leaks",
+    description: "refrigerant leak or charge issues",
+    industry: 'refrigeration'
+  },
+
+  // =============== BUILDING AUTOMATION ===============
+  bas_communication: {
+    keywords: /\b(bacnet|modbus|lon|communication|network|mstp|ip|polling|offline|controller)\b/gi,
+    label: "BAS Communication Issues",
+    description: "building automation network problems",
+    industry: 'building_automation'
+  },
+
+  // =============== APPLIANCE ===============
+  appliance_issue: {
+    keywords: /\b(not\s+turning\s+on|won'?t\s+start|error\s+code|not\s+heating|not\s+cooling|not\s+spinning|not\s+draining|leaking)\b/gi,
+    label: "Appliance Issues",
+    description: "appliance malfunction or failure",
+    industry: 'appliance'
+  },
+
+  // =============== INDUSTRIAL MAINTENANCE ===============
+  machine_breakdown: {
+    keywords: /\b(breakdown|failure|seized|jammed|stuck|overheated|shutdown|alarm|fault\s+code|e-?stop)\b/gi,
+    label: "Machine Breakdowns",
+    description: "equipment breakdown or failure",
+    industry: 'industrial_maintenance'
+  },
+
+  // =============== AVIATION MAINTENANCE ===============
+  aircraft_system: {
+    keywords: /\b(engine|apu|hydraulic|pneumatic|avionics|fuel\s+system|landing\s+gear|flight\s+control)\b/gi,
+    label: "Aircraft System Issues",
+    description: "aircraft system malfunction",
+    industry: 'aviation_maintenance'
   },
 
   // =============== COMMON (applies to all) ===============

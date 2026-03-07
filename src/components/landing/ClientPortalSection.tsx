@@ -91,7 +91,7 @@ function PortalMockup() {
 
 export function ClientPortalSection() {
   return (
-    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-28">
+    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-[100px]">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div>

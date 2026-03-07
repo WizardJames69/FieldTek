@@ -9,7 +9,7 @@ CREATE TYPE public.subscription_tier AS ENUM ('trial', 'starter', 'professional'
 CREATE TYPE public.subscription_status AS ENUM ('trial', 'active', 'cancelled', 'past_due');
 CREATE TYPE public.job_status AS ENUM ('pending', 'scheduled', 'in_progress', 'completed', 'cancelled');
 CREATE TYPE public.job_priority AS ENUM ('low', 'medium', 'high', 'urgent');
-CREATE TYPE public.industry_type AS ENUM ('hvac', 'plumbing', 'electrical', 'mechanical', 'general');
+CREATE TYPE public.industry_type AS ENUM ('hvac', 'plumbing', 'electrical', 'mechanical', 'general', 'elevator', 'home_automation', 'fire_safety', 'refrigeration', 'building_automation', 'appliance', 'industrial_maintenance', 'aviation_maintenance');
 CREATE TYPE public.request_status AS ENUM ('new', 'reviewed', 'approved', 'rejected', 'converted');
 CREATE TYPE public.invoice_status AS ENUM ('draft', 'sent', 'paid', 'overdue', 'cancelled');
 

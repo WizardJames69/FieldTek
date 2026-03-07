@@ -14,7 +14,7 @@ import {
 } from "@/data/mediaKitOutreach";
 import { cn } from "@/lib/utils";
 
-type Industry = 'hvac' | 'plumbing' | 'electrical' | 'mechanical';
+type Industry = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'fire_safety' | 'refrigeration' | 'building_automation' | 'appliance' | 'industrial_maintenance' | 'aviation_maintenance';
 type ContentType = 'emails' | 'scripts';
 type EmailType = 'cold' | 'followup';
 type ScriptType = 'call' | 'voicemail';
@@ -101,7 +101,7 @@ export function OutreachTab() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-muted-foreground">Industry:</span>
               <div className="flex gap-1 flex-wrap">
-                {(['all', 'hvac', 'plumbing', 'electrical', 'mechanical'] as const).map((ind) => (
+                {(['all', 'hvac', 'plumbing', 'electrical', 'mechanical', 'elevator', 'home_automation', 'fire_safety', 'refrigeration', 'building_automation', 'appliance', 'industrial_maintenance', 'aviation_maintenance'] as const).map((ind) => (
                   <Button
                     key={ind}
                     variant={industryFilter === ind ? 'default' : 'outline'}

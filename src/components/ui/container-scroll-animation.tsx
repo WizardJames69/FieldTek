@@ -64,7 +64,7 @@ function Header({
       style={{
         translateY: translate,
       }}
-      className="div max-w-5xl mx-auto text-center relative z-10 pb-2 md:pb-16"
+      className="div max-w-5xl mx-auto relative z-10 pb-2 md:pb-16"
     >
       {titleComponent}
     </motion.div>

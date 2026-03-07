@@ -3087,6 +3087,12 @@ export function getDemoDataForIndustry(industry: IndustryType): DemoDataSet {
     case 'home_automation':
       return createHomeAutomationDemoData();
     case 'mechanical':
+    case 'fire_safety':
+    case 'refrigeration':
+    case 'building_automation':
+    case 'appliance':
+    case 'industrial_maintenance':
+    case 'aviation_maintenance':
     case 'general':
     default:
       return createGeneralDemoData();
@@ -3120,6 +3126,14 @@ export const INDUSTRY_OPTIONS: IndustryOption[] = [
     color: '#fbbf24',
   },
   {
+    id: 'mechanical' as IndustryType,
+    name: 'Mechanical',
+    description: 'Industrial & mechanical equipment',
+    icon: 'Wrench',
+    companyName: 'Atlas Mechanical Services',
+    color: '#f59e0b',
+  },
+  {
     id: 'elevator' as IndustryType,
     name: 'Elevator',
     description: 'Elevators, escalators & vertical transport',
@@ -3134,6 +3148,54 @@ export const INDUSTRY_OPTIONS: IndustryOption[] = [
     icon: 'Wifi',
     companyName: 'SmartNest Integrators',
     color: '#06b6d4',
+  },
+  {
+    id: 'fire_safety' as IndustryType,
+    name: 'Fire & Safety',
+    description: 'Fire alarm, sprinkler & suppression systems',
+    icon: 'Flame',
+    companyName: 'Shield Fire Protection',
+    color: '#dc2626',
+  },
+  {
+    id: 'refrigeration' as IndustryType,
+    name: 'Refrigeration',
+    description: 'Commercial & industrial refrigeration',
+    icon: 'Snowflake',
+    companyName: 'Arctic Refrigeration Co.',
+    color: '#0ea5e9',
+  },
+  {
+    id: 'building_automation' as IndustryType,
+    name: 'Building Automation',
+    description: 'BAS, DDC & controls systems',
+    icon: 'Cpu',
+    companyName: 'SmartBuilding Controls',
+    color: '#8b5cf6',
+  },
+  {
+    id: 'appliance' as IndustryType,
+    name: 'Appliance',
+    description: 'Appliance installation & repair',
+    icon: 'Wrench',
+    companyName: 'QuickFix Appliance Service',
+    color: '#78716c',
+  },
+  {
+    id: 'industrial_maintenance' as IndustryType,
+    name: 'Industrial Maintenance',
+    description: 'Industrial equipment maintenance & repair',
+    icon: 'Factory',
+    companyName: 'Ironworks Industrial Services',
+    color: '#65a30d',
+  },
+  {
+    id: 'aviation_maintenance' as IndustryType,
+    name: 'Aviation Maintenance',
+    description: 'Aircraft maintenance & repair',
+    icon: 'Plane',
+    companyName: 'SkyTech Aviation MRO',
+    color: '#0284c7',
   },
   {
     id: 'general' as IndustryType,

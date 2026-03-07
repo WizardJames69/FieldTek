@@ -1,7 +1,7 @@
 // Types for outreach templates
 export interface EmailTemplate {
   id: string;
-  industry: 'hvac' | 'plumbing' | 'electrical' | 'mechanical';
+  industry: 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'fire_safety' | 'refrigeration' | 'building_automation' | 'appliance' | 'industrial_maintenance' | 'aviation_maintenance';
   type: 'cold' | 'followup';
   subject: string;
   body: string;
@@ -9,7 +9,7 @@ export interface EmailTemplate {
 
 export interface PhoneScript {
   id: string;
-  industry: 'hvac' | 'plumbing' | 'electrical' | 'mechanical';
+  industry: 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'fire_safety' | 'refrigeration' | 'building_automation' | 'appliance' | 'industrial_maintenance' | 'aviation_maintenance';
   type: 'call' | 'voicemail';
   title: string;
   content: string;
@@ -20,6 +20,14 @@ export const industryOutreachConfig = {
   plumbing: { label: 'Plumbing', color: 'text-blue-600 border-blue-300' },
   electrical: { label: 'Electrical', color: 'text-yellow-600 border-yellow-300' },
   mechanical: { label: 'Mechanical', color: 'text-slate-600 border-slate-300' },
+  elevator: { label: 'Elevator', color: 'text-indigo-600 border-indigo-300' },
+  home_automation: { label: 'Home Automation', color: 'text-cyan-600 border-cyan-300' },
+  fire_safety: { label: 'Fire & Safety', color: 'text-red-600 border-red-300' },
+  refrigeration: { label: 'Refrigeration', color: 'text-sky-600 border-sky-300' },
+  building_automation: { label: 'Building Automation', color: 'text-violet-600 border-violet-300' },
+  appliance: { label: 'Appliance', color: 'text-stone-600 border-stone-300' },
+  industrial_maintenance: { label: 'Industrial Maintenance', color: 'text-lime-700 border-lime-300' },
+  aviation_maintenance: { label: 'Aviation Maintenance', color: 'text-blue-700 border-blue-400' },
 } as const;
 
 export const emailTemplates: EmailTemplate[] = [

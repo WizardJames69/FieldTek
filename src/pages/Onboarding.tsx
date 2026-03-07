@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { 
-  Building2, 
-  ArrowRight, 
-  ArrowLeft, 
-  Check, 
-  Palette, 
-  Settings2, 
-  Users, 
+import {
+  Building2,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Palette,
+  Settings2,
+  Users,
   Zap,
   Snowflake,
   Droplets,
@@ -17,7 +17,12 @@ import {
   Layers,
   ArrowUpDown,
   Wifi,
-  LogOut
+  LogOut,
+  Flame,
+  Thermometer,
+  Cpu,
+  Factory,
+  Plane
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +41,12 @@ const industries = [
   { id: 'mechanical', label: 'Mechanical', icon: Wrench, description: 'Industrial & mechanical equipment' },
   { id: 'elevator', label: 'Elevator', icon: ArrowUpDown, description: 'Elevators, escalators & vertical transport' },
   { id: 'home_automation', label: 'Home Automation', icon: Wifi, description: 'Smart home installation & integration' },
+  { id: 'fire_safety', label: 'Fire & Safety', icon: Flame, description: 'Fire alarm, sprinkler & suppression systems' },
+  { id: 'refrigeration', label: 'Refrigeration', icon: Thermometer, description: 'Commercial & industrial refrigeration' },
+  { id: 'building_automation', label: 'Building Automation', icon: Cpu, description: 'BAS, DDC & controls systems' },
+  { id: 'appliance', label: 'Appliance', icon: Wrench, description: 'Appliance installation & repair' },
+  { id: 'industrial_maintenance', label: 'Industrial Maintenance', icon: Factory, description: 'Industrial equipment maintenance & repair' },
+  { id: 'aviation_maintenance', label: 'Aviation Maintenance', icon: Plane, description: 'Aircraft maintenance & repair' },
   { id: 'general', label: 'General', icon: Layers, description: 'Multi-trade or other services' },
 ] as const;
 

@@ -31,16 +31,16 @@ export function HeroProductShot() {
   return (
     <div className="h-full w-full">
       {/* Browser chrome */}
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-[#0F0F11]">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/[0.04] bg-[#0F0F11]">
         <div className="flex gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-[#FF5F57]/60" />
-          <div className="w-2 h-2 rounded-full bg-[#FEBC2E]/60" />
-          <div className="w-2 h-2 rounded-full bg-[#28C840]/60" />
+          <div className="w-[6px] h-[6px] rounded-full bg-[#FF5F57]/40" />
+          <div className="w-[6px] h-[6px] rounded-full bg-[#FEBC2E]/40" />
+          <div className="w-[6px] h-[6px] rounded-full bg-[#28C840]/40" />
         </div>
         <div className="flex-1 flex justify-center">
           <div className="bg-[#1A1B1E] rounded-md px-3 py-1 flex items-center gap-1.5">
-            <Lock className="h-2.5 w-2.5 text-zinc-600" />
-            <span className="text-[11px] text-zinc-600 font-mono">app.fieldtek.ai/dashboard</span>
+            <Lock className="h-2.5 w-2.5 text-[#4B5563]" />
+            <span className="text-[11px] text-[#4B5563] font-mono">app.fieldtek.ai/dashboard</span>
           </div>
         </div>
       </div>
@@ -52,7 +52,7 @@ export function HeroProductShot() {
           {stats.map((stat, i) => (
             <div
               key={i}
-              className="rounded-lg bg-[#18181B] border border-white/[0.06] p-3 animate-in fade-in-0 duration-500"
+              className="rounded-lg bg-[#18181B] border border-white/[0.04] p-3 animate-in fade-in-0 duration-500"
               style={{ animationDelay: `${i * 100}ms`, animationFillMode: "backwards" }}
             >
               <div className="flex items-center justify-between mb-1">
@@ -74,7 +74,7 @@ export function HeroProductShot() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Jobs list */}
-          <div className="md:col-span-2 rounded-lg bg-[#141516] border border-white/[0.06] p-4">
+          <div className="md:col-span-2 rounded-lg bg-[#141516] border border-white/[0.04] p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-md bg-orange-500/10 flex items-center justify-center">
@@ -91,7 +91,7 @@ export function HeroProductShot() {
               {jobs.map((job, i) => (
                 <div
                   key={i}
-                  className={`flex items-center justify-between rounded-md p-2.5 border border-white/[0.06] ${
+                  className={`flex items-center justify-between rounded-md p-2.5 border border-white/[0.04] ${
                     job.priority === "urgent"
                       ? "border-l-2 border-l-red-500 bg-red-500/5"
                       : job.priority === "high"
@@ -106,10 +106,12 @@ export function HeroProductShot() {
                   <Badge
                     variant="outline"
                     className={`text-xs ${
-                      job.priority === "urgent"
-                        ? "border-red-500/30 text-red-400"
-                        : job.priority === "high"
-                        ? "border-amber-500/30 text-amber-400"
+                      job.status === "In Progress"
+                        ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/[0.08]"
+                        : job.status === "Scheduled"
+                        ? "border-blue-500/30 text-blue-400 bg-blue-500/[0.08]"
+                        : job.status === "Pending"
+                        ? "border-amber-500/30 text-amber-400 bg-amber-500/[0.08]"
                         : "border-zinc-700 text-zinc-400"
                     }`}
                   >
@@ -121,7 +123,7 @@ export function HeroProductShot() {
           </div>
 
           {/* Service requests */}
-          <div className="rounded-lg bg-[#161819] border border-white/[0.06] p-4">
+          <div className="rounded-lg bg-[#161819] border border-white/[0.04] p-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="h-6 w-6 rounded-md bg-orange-500/10 flex items-center justify-center relative">
                 <Bell className="h-3.5 w-3.5 text-orange-500" />
@@ -131,7 +133,7 @@ export function HeroProductShot() {
             </div>
             <div className="space-y-2">
               {requests.map((req, i) => (
-                <div key={i} className="rounded-md bg-[#141416] border border-white/[0.06] p-2.5">
+                <div key={i} className="rounded-md bg-[#141416] border border-white/[0.04] p-2.5">
                   <div className="text-sm font-medium text-zinc-200">{req.title}</div>
                   <div className="text-xs text-zinc-500">{req.client}</div>
                   <div className="text-xs text-zinc-600 mt-1">{req.time}</div>

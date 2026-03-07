@@ -97,7 +97,7 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
     : featureComparison.slice(0, 6);
 
   return (
-    <section id="pricing" className="relative py-16 md:py-24 lg:py-32 bg-[#09090B] overflow-hidden">
+    <section id="pricing" className="relative py-16 md:py-20 lg:py-[100px] bg-[#09090B] overflow-hidden">
       <div className="mx-auto max-w-7xl px-4">
         {/* Header */}
         <motion.div

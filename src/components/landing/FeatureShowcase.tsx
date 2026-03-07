@@ -103,7 +103,7 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
 
 export function FeatureShowcase() {
   return (
-    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-28">
+    <section className="bg-[#0C0D0F] py-16 md:py-20 lg:py-[100px]">
       <div className="mx-auto max-w-6xl px-4 space-y-16 md:space-y-20 lg:space-y-24">
         {features.map((feature, i) => {
           const reverse = i % 2 !== 0;

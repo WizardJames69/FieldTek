@@ -29,7 +29,7 @@ interface Campaign {
 }
 
 const SUBSCRIPTION_TIERS = ["trial", "starter", "growth", "professional", "enterprise"];
-const INDUSTRIES = ["hvac", "plumbing", "electrical", "mechanical", "general"];
+const INDUSTRIES = ["hvac", "plumbing", "electrical", "mechanical", "elevator", "home_automation", "general", "fire_safety", "refrigeration", "building_automation", "appliance", "industrial_maintenance", "aviation_maintenance"];
 
 export default function AdminCommunications() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);

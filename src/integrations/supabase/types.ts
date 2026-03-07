@@ -3012,6 +3012,12 @@ export type Database = {
         | "general"
         | "elevator"
         | "home_automation"
+        | "fire_safety"
+        | "refrigeration"
+        | "building_automation"
+        | "appliance"
+        | "industrial_maintenance"
+        | "aviation_maintenance"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       job_priority: "low" | "medium" | "high" | "urgent"
       job_status:

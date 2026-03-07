@@ -10,14 +10,13 @@ const trades = [
   { id: "plumbing", name: "Plumbing" },
   { id: "electrical", name: "Electrical" },
   { id: "mechanical", name: "Mechanical" },
-  { id: "fire-protection", name: "Fire Protection" },
+  { id: "fire-safety", name: "Fire & Safety" },
   { id: "refrigeration", name: "Refrigeration" },
   { id: "building-automation", name: "Building Automation" },
   { id: "appliance", name: "Appliance Install & Service" },
   { id: "elevators", name: "Elevators" },
-  { id: "solar", name: "Solar & Renewables" },
-  { id: "commercial-kitchen", name: "Commercial Kitchen" },
   { id: "industrial", name: "Industrial Maintenance" },
+  { id: "aviation", name: "Aviation Maintenance" },
 ];
 
 export function TrustBar() {
@@ -25,7 +24,7 @@ export function TrustBar() {
     <section className="bg-[#0C0D0F] py-10 md:py-12 border-y border-white/[0.06]">
       <div className="mx-auto max-w-5xl px-4">
         <p className="text-sm uppercase tracking-widest text-[#6B7280] mb-8 text-center">
-          Built for every trade
+          Purpose-built for field service
         </p>
 
         <div className="relative">

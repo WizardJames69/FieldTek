@@ -96,7 +96,7 @@ test.describe('Onboarding Flow', () => {
     await expect(page.getByTestId('onboarding-continue')).toBeEnabled();
   });
 
-  test('industry selection step shows all 7 industries', async ({ page }) => {
+  test('industry selection step shows all 13 industries', async ({ page }) => {
     const authPage = new AuthPage(page);
     await authPage.goto();
     await authPage.login(ONBOARDING_TEST_EMAIL, ONBOARDING_TEST_PASSWORD);
@@ -107,7 +107,7 @@ test.describe('Onboarding Flow', () => {
     await onboardingPage.clickContinue();
 
     // All 7 industries should be visible
-    const industries = ['hvac', 'plumbing', 'electrical', 'mechanical', 'elevator', 'home_automation', 'general'];
+    const industries = ['hvac', 'plumbing', 'electrical', 'mechanical', 'elevator', 'home_automation', 'fire_safety', 'refrigeration', 'building_automation', 'appliance', 'industrial_maintenance', 'aviation_maintenance', 'general'];
     for (const id of industries) {
       await expect(page.getByTestId(`onboarding-industry-${id}`)).toBeVisible();
     }

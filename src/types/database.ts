@@ -5,7 +5,7 @@ export type SubscriptionTier = 'trial' | 'starter' | 'growth' | 'professional' |
 export type SubscriptionStatus = 'trial' | 'active' | 'trialing' | 'canceled' | 'cancelled' | 'past_due';
 export type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 export type JobPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type IndustryType = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'general';
+export type IndustryType = 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'elevator' | 'home_automation' | 'general' | 'fire_safety' | 'refrigeration' | 'building_automation' | 'appliance' | 'industrial_maintenance' | 'aviation_maintenance';
 export type RequestStatus = 'new' | 'reviewed' | 'approved' | 'rejected' | 'converted';
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
 
@@ -279,6 +279,42 @@ export const INDUSTRY_PRESETS: Record<IndustryType, {
     job_types: ['Installation', 'Programming', 'Troubleshooting', 'Network Setup', 'System Integration', 'Maintenance', 'Consultation'],
     workflow_stages: ['Site Survey', 'Installation', 'Programming', 'Testing', 'Client Training'],
     document_categories: ['System Diagrams', 'Network Maps', 'Device Manuals', 'Programming Guides', 'Client Handoffs'],
+  },
+  fire_safety: {
+    equipment_types: ['Fire Alarm Panel', 'Sprinkler System', 'Fire Extinguisher', 'Smoke Detector', 'Fire Suppression System', 'Emergency Light', 'Fire Pump', 'Standpipe'],
+    job_types: ['Inspection', 'Installation', 'Testing', 'Maintenance', 'Code Compliance', 'Emergency'],
+    workflow_stages: ['Inspection', 'Testing', 'Repair', 'Certification', 'Documentation'],
+    document_categories: ['Inspection Reports', 'Code References', 'System Diagrams', 'Safety Certificates', 'Test Records'],
+  },
+  refrigeration: {
+    equipment_types: ['Walk-In Cooler', 'Walk-In Freezer', 'Reach-In Refrigerator', 'Ice Machine', 'Condensing Unit', 'Evaporator', 'Compressor Rack', 'Display Case'],
+    job_types: ['Installation', 'Repair', 'Preventive Maintenance', 'Leak Detection', 'Refrigerant Recovery', 'Emergency', 'Inspection'],
+    workflow_stages: ['Diagnosis', 'Repair', 'Leak Test', 'Charge', 'Verification'],
+    document_categories: ['Service Manuals', 'Refrigerant Logs', 'EPA Records', 'Temperature Logs', 'Parts Lists'],
+  },
+  building_automation: {
+    equipment_types: ['BAS Controller', 'DDC Panel', 'VAV Box', 'Sensor', 'Actuator', 'BACnet Device', 'Energy Meter', 'Weather Station'],
+    job_types: ['Programming', 'Installation', 'Troubleshooting', 'Commissioning', 'Integration', 'Maintenance', 'Energy Audit'],
+    workflow_stages: ['Survey', 'Installation', 'Programming', 'Commissioning', 'Verification'],
+    document_categories: ['Points Lists', 'Sequence of Operations', 'Network Diagrams', 'Programming Guides', 'As-Built Drawings'],
+  },
+  appliance: {
+    equipment_types: ['Refrigerator', 'Dishwasher', 'Washing Machine', 'Dryer', 'Oven', 'Range', 'Microwave', 'Garbage Disposal', 'Water Heater'],
+    job_types: ['Installation', 'Repair', 'Warranty Service', 'Maintenance', 'Replacement', 'Diagnostic'],
+    workflow_stages: ['Diagnosis', 'Parts Order', 'Repair', 'Testing', 'Cleanup'],
+    document_categories: ['Service Manuals', 'Parts Diagrams', 'Warranty Info', 'Installation Guides', 'Tech Bulletins'],
+  },
+  industrial_maintenance: {
+    equipment_types: ['CNC Machine', 'Conveyor System', 'Hydraulic Press', 'Boiler', 'Air Compressor', 'Crane', 'Packaging Machine', 'Generator'],
+    job_types: ['Preventive Maintenance', 'Breakdown Repair', 'Installation', 'Overhaul', 'Calibration', 'Inspection', 'Lubrication'],
+    workflow_stages: ['Assessment', 'Lockout/Tagout', 'Repair', 'Testing', 'Documentation'],
+    document_categories: ['Maintenance Schedules', 'Service Manuals', 'Safety Procedures', 'Parts Inventories', 'Inspection Reports'],
+  },
+  aviation_maintenance: {
+    equipment_types: ['Turbine Engine', 'APU', 'Landing Gear', 'Avionics System', 'Hydraulic System', 'Pneumatic System', 'Fuel System', 'Environmental Control System'],
+    job_types: ['Line Maintenance', 'Heavy Check', 'Component Repair', 'Inspection', 'Modification', 'Troubleshooting', 'AOG'],
+    workflow_stages: ['Inspection', 'Documentation', 'Repair', 'Testing', 'Return to Service'],
+    document_categories: ['AMM References', 'Service Bulletins', 'Airworthiness Directives', 'Work Cards', 'MEL/CDL'],
   },
   general: {
     equipment_types: ['Equipment 1', 'Equipment 2', 'Equipment 3'],

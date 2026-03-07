@@ -29,9 +29,6 @@ const HowItWorksSection = lazy(() =>
 const ClientPortalSection = lazy(() =>
   import("@/components/landing/ClientPortalSection").then((m) => ({ default: m.ClientPortalSection }))
 );
-const CTASection = lazy(() =>
-  import("@/components/landing/CTASection").then((m) => ({ default: m.CTASection }))
-);
 
 function SectionSkeleton({ minHeight = "min-h-[400px]" }: { minHeight?: string }) {
   return (
@@ -118,12 +115,9 @@ export default function Landing() {
           <SocialProofSection />
         </Suspense>
 
-        {/* CTA */}
-        <Suspense fallback={<SectionSkeleton minHeight="min-h-[300px]" />}>
-          <CTASection onJoinWaitlist={openWaitlist} />
-        </Suspense>
       </main>
 
+      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
       <Footer />
       <WaitlistModal open={waitlistOpen} onOpenChange={setWaitlistOpen} />
     </div>

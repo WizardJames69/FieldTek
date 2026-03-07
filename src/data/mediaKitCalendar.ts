@@ -2,7 +2,7 @@
 export interface CalendarPost {
   day: number;
   dayName: string;
-  industry: 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'general';
+  industry: 'hvac' | 'plumbing' | 'electrical' | 'mechanical' | 'general' | 'elevator' | 'home_automation' | 'fire_safety' | 'refrigeration' | 'building_automation' | 'appliance' | 'industrial_maintenance' | 'aviation_maintenance';
   theme: string;
   postType: 'pain-point' | 'tips' | 'feature' | 'engagement' | 'trend';
   content: string;
@@ -832,7 +832,15 @@ export const industryConfig = {
   plumbing: { label: "Plumbing", color: "bg-blue-500/10 text-blue-600 border-blue-500/30", icon: "Droplet" },
   electrical: { label: "Electrical", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/30", icon: "Zap" },
   mechanical: { label: "Mechanical", color: "bg-slate-500/10 text-slate-600 border-slate-500/30", icon: "Wrench" },
-  general: { label: "General", color: "bg-purple-500/10 text-purple-600 border-purple-500/30", icon: "Users" }
+  general: { label: "General", color: "bg-purple-500/10 text-purple-600 border-purple-500/30", icon: "Users" },
+  elevator: { label: "Elevator", color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/30", icon: "ArrowUpDown" },
+  home_automation: { label: "Home Automation", color: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30", icon: "Wifi" },
+  fire_safety: { label: "Fire & Safety", color: "bg-red-500/10 text-red-600 border-red-500/30", icon: "Flame" },
+  refrigeration: { label: "Refrigeration", color: "bg-sky-500/10 text-sky-600 border-sky-500/30", icon: "Snowflake" },
+  building_automation: { label: "Building Automation", color: "bg-violet-500/10 text-violet-600 border-violet-500/30", icon: "Cpu" },
+  appliance: { label: "Appliance", color: "bg-stone-500/10 text-stone-600 border-stone-500/30", icon: "Wrench" },
+  industrial_maintenance: { label: "Industrial Maintenance", color: "bg-lime-500/10 text-lime-600 border-lime-500/30", icon: "Factory" },
+  aviation_maintenance: { label: "Aviation Maintenance", color: "bg-blue-500/10 text-blue-700 border-blue-500/30", icon: "Plane" },
 } as const;
 
 export const postTypeConfig = {

@@ -24,7 +24,7 @@ export function Footer() {
               <span className="text-orange-500">Tek</span>
             </div>
             <p className="text-sm text-zinc-500 leading-relaxed">
-              AI-powered field service platform for HVAC, electrical, plumbing, and mechanical contractors.
+              AI-powered field service platform for contractors across every trade.
             </p>
           </div>
 

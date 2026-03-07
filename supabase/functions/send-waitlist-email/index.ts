@@ -122,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <td style="background: #FAFAFA; padding: 20px 24px; border-radius: 12px;">
                     <p style="margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #1a1a2e;">What's FieldTek all about?</p>
                     <p style="margin: 0; font-size: 13px; color: #52525b; line-height: 1.6;">
-                      FieldTek is the AI-powered field service platform that helps HVAC, plumbing, and electrical contractors manage their operations — from smart scheduling to invoicing to an AI assistant that helps your techs in the field.
+                      FieldTek is the AI-powered field service platform that helps field service contractors across every trade manage their operations — from smart scheduling to invoicing to an AI assistant that helps your techs in the field.
                     </p>
                   </td>
                 </tr>

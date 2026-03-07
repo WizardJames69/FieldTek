@@ -47,6 +47,7 @@ const IndustryIcon = ({ industry }: { industry: CalendarPost['industry'] }) => {
     case 'electrical': return <Zap className="h-4 w-4" />;
     case 'mechanical': return <Wrench className="h-4 w-4" />;
     case 'general': return <Users className="h-4 w-4" />;
+    default: return <Wrench className="h-4 w-4" />;
   }
 };
 
@@ -136,7 +137,7 @@ function ContentCalendarTab() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-muted-foreground">Filter:</span>
                   <div className="flex gap-1 flex-wrap">
-                    {(['all', 'hvac', 'plumbing', 'electrical', 'mechanical', 'general'] as const).map((ind) => (
+                    {(['all', 'hvac', 'plumbing', 'electrical', 'mechanical', 'general', 'elevator', 'home_automation', 'fire_safety', 'refrigeration', 'building_automation', 'appliance', 'industrial_maintenance', 'aviation_maintenance'] as const).map((ind) => (
                       <Button
                         key={ind}
                         variant={industryFilter === ind ? 'default' : 'outline'}
