@@ -183,7 +183,7 @@ serve(async (req) => {
     let rateLimitUsed = 0;
     let rateLimitMax = 0;
     try {
-      const { data: tenantData } = await supabaseClient
+      const { data: tenantData } = await serviceRoleClient
         .from("tenants")
         .select("subscription_tier")
         .eq("id", tenantUser.tenant_id)
@@ -299,8 +299,9 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const AI_CHAT_MODEL = Deno.env.get("AI_CHAT_MODEL") || "gpt-4.1-mini";
 
     // Block injection attempts (log + 400)
     if (injectionDetected) {
@@ -308,11 +309,13 @@ serve(async (req) => {
       try {
         await serviceRoleClient.from("ai_audit_logs").insert({
           tenant_id: tenantUser.tenant_id, user_id: user.id,
+          correlation_id: correlationId,
           user_message: blockedMsgText.slice(0, 10000), ai_response: null,
           response_blocked: true, block_reason: `Prompt injection blocked: ${injectionPatterns.join(", ")}`,
           documents_available: 0, documents_with_content: 0,
           validation_patterns_matched: ["PROMPT_INJECTION_BLOCKED", ...injectionPatterns],
-          had_citations: false, response_time_ms: 0, model_used: "google/gemini-2.5-flash",
+          had_citations: false, response_time_ms: 0, model_used: AI_CHAT_MODEL,
+          injection_detected: true,
         });
       } catch (auditErr) { console.error("Failed to log injection block:", auditErr); }
 
@@ -483,7 +486,7 @@ serve(async (req) => {
         let embGatewayUsed = "primary";
 
         if (!queryEmbedding) {
-          const embeddingResult = await generateQueryEmbedding(searchQuery, LOVABLE_API_KEY, correlationId);
+          const embeddingResult = await generateQueryEmbedding(searchQuery, OPENAI_API_KEY, correlationId);
           embGatewayUsed = embeddingResult.gatewayUsed;
           queryEmbedding = embeddingResult.embedding;
           if (queryEmbedding) setCachedEmbedding(searchQuery, queryEmbedding);
@@ -943,7 +946,7 @@ serve(async (req) => {
           response_blocked: true, block_reason: `Human review required: ${enforcementRulesTriggered.join(", ")}`,
           documents_available: tenantDocs?.length || 0, documents_with_content: docsWithContent.length,
           document_names: docNames, validation_patterns_matched: enforcementRulesTriggered,
-          had_citations: false, response_time_ms: 0, model_used: "google/gemini-2.5-flash",
+          had_citations: false, response_time_ms: 0, model_used: AI_CHAT_MODEL,
           chunk_ids: semanticSearchResults.map(r => r.id),
           similarity_scores: semanticSearchResults.map(r => r.similarity),
           system_prompt_hash: systemPromptHash, retrieval_quality_score: 0,
@@ -964,11 +967,11 @@ serve(async (req) => {
     const chatResult: AIFetchResult = await fetchWithFallback(
       "/chat/completions",
       {
-        model: "google/gemini-2.5-flash",
+        model: AI_CHAT_MODEL,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true, temperature: 0, top_p: 0.1, max_tokens: 4096,
       },
-      LOVABLE_API_KEY,
+      OPENAI_API_KEY,
       correlationId,
     );
     const response = chatResult.response;
@@ -1136,7 +1139,7 @@ serve(async (req) => {
               semanticSearchResults.map((r) => r.chunk_text),
               accumulatedContent,
               correlationId,
-              LOVABLE_API_KEY,
+              OPENAI_API_KEY,
             );
 
             if (judgeBlockingResult) {
@@ -1269,7 +1272,7 @@ serve(async (req) => {
           evaluateWithJudge(
             serviceRoleClient, auditLogId, userMessageText,
             semanticSearchResults.map(r => r.chunk_text), accumulatedContent,
-            correlationId, LOVABLE_API_KEY,
+            correlationId, OPENAI_API_KEY,
           ).catch(err => console.warn(`[judge] [correlation_id=${correlationId}] Unexpected error:`, err));
         }
 

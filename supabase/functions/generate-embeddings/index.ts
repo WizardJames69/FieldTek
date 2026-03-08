@@ -333,9 +333,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     // Use service role for database operations
@@ -416,7 +416,7 @@ serve(async (req) => {
 
         // Generate embeddings for this batch
         const embeddings = await Promise.all(
-          batch.map(chunk => generateEmbedding(chunk.text, LOVABLE_API_KEY, correlationId))
+          batch.map(chunk => generateEmbedding(chunk.text, OPENAI_API_KEY, correlationId))
         );
 
         // Extract equipment type from parent document (first entry if array)

@@ -18,21 +18,21 @@ export async function seedTestDocuments(tenantId: string): Promise<string[]> {
   const docIds: string[] = [];
 
   for (const doc of TEST_DOCUMENTS) {
-    const { data } = await client
+    const { data, error } = await client
       .from('documents')
-      .upsert(
-        {
-          tenant_id: tenantId,
-          name: doc.name,
-          category: doc.category,
-          extraction_status: 'completed',
-          embedding_status: 'completed',
-          extracted_text: doc.chunks.map((c) => c.text).join('\n\n'),
-        },
-        { onConflict: 'tenant_id,name' },
-      )
+      .insert({
+        tenant_id: tenantId,
+        name: doc.name,
+        category: doc.category,
+        file_url: `https://e2e-test.local/${encodeURIComponent(doc.name)}.pdf`,
+        extraction_status: 'completed',
+        embedding_status: 'completed',
+        is_public: true,
+        extracted_text: doc.chunks.map((c) => c.text).join('\n\n'),
+      })
       .select('id')
       .single();
+    if (error) console.warn(`[seed] Document insert failed for "${doc.name}": ${error.message}`);
     if (data) docIds.push(data.id);
   }
 
@@ -129,11 +129,12 @@ export async function seedEquipmentComponents(tenantId: string): Promise<void> {
   const componentIds: Record<string, string> = {};
 
   for (const comp of SAMPLE_EQUIPMENT_COMPONENTS) {
+    // Use tenantId (not null) so ON CONFLICT works reliably for upserts
     const { data } = await client
       .from('equipment_components')
       .upsert(
         {
-          tenant_id: null, // global defaults
+          tenant_id: tenantId,
           component_name: comp.component_name,
           component_category: 'core',
           equipment_type: comp.equipment_type,
@@ -172,8 +173,8 @@ export async function seedWorkflowIntelligence(tenantId: string): Promise<void> 
     .upsert(
       {
         tenant_id: tenantId,
-        symptom_key: 'no_cooling',
-        symptom_label: 'No Cooling',
+        symptom_key: 'not_cooling',
+        symptom_label: 'Not Cooling',
         equipment_type: 'Air Handler',
         category: 'temperature',
         occurrence_count: 15,
@@ -286,7 +287,7 @@ export async function seedDiagnosticStatistics(tenantId: string): Promise<void> 
   await client.from('workflow_diagnostic_statistics').upsert(
     {
       tenant_id: tenantId,
-      symptom: 'no_cooling',
+      symptom: 'not_cooling',
       failure_component: 'capacitor_failure',
       repair_action: 'replaced_capacitor',
       equipment_type: 'Air Handler',
@@ -301,7 +302,7 @@ export async function seedDiagnosticStatistics(tenantId: string): Promise<void> 
   await client.from('workflow_diagnostic_statistics').upsert(
     {
       tenant_id: tenantId,
-      symptom: 'no_cooling',
+      symptom: 'not_cooling',
       failure_component: 'refrigerant_leak',
       repair_action: 'recharged_refrigerant',
       equipment_type: 'Air Handler',

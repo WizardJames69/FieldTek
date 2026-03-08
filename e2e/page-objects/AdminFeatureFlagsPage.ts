@@ -10,7 +10,7 @@ export class AdminFeatureFlagsPage {
   }
 
   async waitForPage() {
-    await expect(this.page.getByText('Feature Flags')).toBeVisible({ timeout: 20_000 });
+    await expect(this.page.getByRole('heading', { name: 'Feature Flags' })).toBeVisible({ timeout: 20_000 });
   }
 
   async searchFlags(query: string) {
@@ -28,9 +28,9 @@ export class AdminFeatureFlagsPage {
   }
 
   async getStatCardValue(label: string): Promise<string> {
-    const card = this.page.locator('.card').filter({ hasText: label });
+    const card = this.page.locator('div[class*="rounded"]').filter({ hasText: label }).first();
     const value = card.locator('.text-2xl, .text-xl').first();
-    return (await value.textContent()) ?? '';
+    return (await value.textContent({ timeout: 10_000 })) ?? '';
   }
 
   async getFlagCount(): Promise<number> {

@@ -20,18 +20,15 @@ test.describe('AI Assistant - Page Rendering', () => {
 
   test('no documentation warning shows when no docs uploaded', async ({ page }) => {
     // This test may show the warning OR the docs-available indicator depending on seed data.
-    // We verify at least one state is rendered.
-    const noDocsVisible = await assistantPage.isNoDocsWarningVisible();
-    const docsVisible = await assistantPage.isDocsAvailableVisible();
-    expect(noDocsVisible || docsVisible).toBe(true);
+    // We verify at least one state is rendered (wait for async document fetch).
+    const noDocs = page.getByText('No Documentation Uploaded');
+    const hasDocs = page.getByText(/Documents? Available/);
+    await expect(noDocs.or(hasDocs)).toBeVisible({ timeout: 10_000 });
   });
 
   test('documents available indicator shows count when docs exist', async ({ page }) => {
-    // With seed data, documents should be available
-    const docsVisible = await assistantPage.isDocsAvailableVisible();
-    if (docsVisible) {
-      await expect(page.getByText(/Document\(s\) Available/)).toBeVisible();
-    }
+    // With seed data, documents should be available — wait for async fetch
+    await expect(page.getByText(/Documents? Available/)).toBeVisible({ timeout: 10_000 });
   });
 
   test('code reference toggle switches between modes', async ({ page }) => {

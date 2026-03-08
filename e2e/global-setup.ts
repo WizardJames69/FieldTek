@@ -92,6 +92,8 @@ async function globalSetup(config: FullConfig) {
 
   if (existingTenant) {
     tenantId = existingTenant.id;
+    // Ensure enterprise tier for unlimited rate limits during tests
+    await adminClient.from('tenants').update({ subscription_tier: 'enterprise' }).eq('id', tenantId);
     console.log(`[global-setup]   ✓ Reused tenant: ${tenantId}`);
   } else {
     const { data: tenant, error } = await adminClient
@@ -101,7 +103,7 @@ async function globalSetup(config: FullConfig) {
         slug: `e2e-test-company-${Date.now()}`,
         industry: TEST_TENANT.industry,
         owner_id: userIds.admin,
-        subscription_tier: 'professional',
+        subscription_tier: 'enterprise',
         subscription_status: 'active',
       })
       .select()

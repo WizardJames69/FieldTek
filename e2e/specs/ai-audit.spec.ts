@@ -54,13 +54,17 @@ test.describe('AI Audit Log Viewer', () => {
     await auditPage.waitForPage();
     await auditPage.filterByStatus('blocked');
     await page.waitForTimeout(500);
-    // All visible rows should have Blocked badge (or none if no blocked logs)
+    // All visible data rows should have Blocked badge (or empty state if no blocked logs)
+    const emptyState = page.getByText('No audit logs found');
+    if (await emptyState.isVisible().catch(() => false)) {
+      return; // no blocked rows — that's OK
+    }
     const rows = page.locator('tbody tr');
     const count = await rows.count();
     for (let i = 0; i < count; i++) {
       const row = rows.nth(i);
       const text = await row.textContent();
-      if (text) {
+      if (text && !text.includes('No audit logs found')) {
         expect(text).toContain('Blocked');
       }
     }
@@ -95,8 +99,8 @@ test.describe('AI Audit Log Viewer', () => {
     const rowCount = await auditPage.getLogRowCount();
     if (rowCount > 0) {
       await auditPage.openLogDetail(0);
-      await expect(page.getByText('User Message')).toBeVisible();
-      await expect(page.getByText('AI Response')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'User Message' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'AI Response' })).toBeVisible();
     }
   });
 
@@ -105,6 +109,10 @@ test.describe('AI Audit Log Viewer', () => {
     // Filter to blocked only, then open detail
     await auditPage.filterByStatus('blocked');
     await page.waitForTimeout(500);
+    const emptyState = page.getByText('No audit logs found');
+    if (await emptyState.isVisible().catch(() => false)) {
+      return; // no blocked rows to inspect
+    }
     const rowCount = await auditPage.getLogRowCount();
     if (rowCount > 0) {
       await auditPage.openLogDetail(0);

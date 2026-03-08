@@ -23,7 +23,7 @@ export class AssistantPage {
   }
 
   async waitForPage() {
-    await expect(this.page.getByText('Sentinel AI')).toBeVisible({ timeout: 20_000 });
+    await expect(this.page.getByRole('heading', { name: 'Sentinel AI' }).first()).toBeVisible({ timeout: 20_000 });
   }
 
   async sendMessage(text: string) {
@@ -57,8 +57,9 @@ export class AssistantPage {
     const apiResponse = await apiResponsePromise;
     const status = apiResponse.status();
     if (status !== 200) {
+      const body = await apiResponse.text().catch(() => 'no body');
       throw new Error(
-        `Assistant API returned ${status} — expected 200. The edge function call failed.`,
+        `Assistant API returned ${status} — expected 200. Body: ${body.slice(0, 200)}`,
       );
     }
 
@@ -162,7 +163,7 @@ export class AssistantPage {
   }
 
   async isDocsAvailableVisible(): Promise<boolean> {
-    return this.page.getByText(/Document\(s\) Available/).isVisible();
+    return this.page.getByText(/Documents? Available/).isVisible();
   }
 
   async isRateLimitWarningVisible(): Promise<boolean> {

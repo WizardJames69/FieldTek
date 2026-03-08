@@ -153,7 +153,7 @@ export default function AdminLogin() {
 
       if (!adminResult.isAdmin) {
         console.log('[AdminLogin] User is not an admin, signing out...');
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
         toast({
           variant: 'destructive',
           title: 'Access denied',

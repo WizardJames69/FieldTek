@@ -5,6 +5,7 @@ import { TENANT_B } from '../helpers/ai-test-data';
 import { waitForAuditLog } from '../helpers/audit-log-helpers';
 import { withFeatureFlag, setFeatureFlag, getFeatureFlag } from '../helpers/feature-flag-helpers';
 import { getAdminClient } from '../helpers/supabase-admin';
+import { seedDiagnosticStatistics } from '../helpers/ai-seed-helpers';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -55,12 +56,14 @@ test.describe('Diagnostic Learning Loop', () => {
   });
 
   test('DB: seeded diagnostic statistics exist with expected values', async () => {
+    // Re-seed because the aggregate_diagnostic_patterns RPC (previous test) overwrites values
+    await seedDiagnosticStatistics(tenantId);
     const adminClient = getAdminClient();
     const { data, error } = await adminClient
       .from('workflow_diagnostic_statistics')
       .select('*')
       .eq('tenant_id', tenantId)
-      .eq('symptom', 'no_cooling')
+      .eq('symptom', 'not_cooling')
       .order('success_rate', { ascending: false });
 
     expect(error).toBeNull();

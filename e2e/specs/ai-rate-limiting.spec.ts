@@ -29,7 +29,7 @@ test.describe('Daily Limits', () => {
     const adminClient = getAdminClient();
     await adminClient
       .from('tenants')
-      .update({ subscription_tier: 'professional' })
+      .update({ subscription_tier: 'enterprise' })
       .eq('id', tenantId);
   });
 
@@ -163,7 +163,7 @@ test.describe('UI Display', () => {
       await cleanupAuditLogs(tenantId);
       await adminClient
         .from('tenants')
-        .update({ subscription_tier: 'professional' })
+        .update({ subscription_tier: 'enterprise' })
         .eq('id', tenantId);
     }
   });

@@ -93,9 +93,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY is not configured");
     }
 
     console.log("Analyzing service request:", requestId, "Title:", title);
@@ -136,14 +136,14 @@ Provide your analysis as a JSON object.`;
     const { response, gatewayUsed } = await fetchWithFallback(
       "/chat/completions",
       {
-        model: "google/gemini-2.5-flash",
+        model: Deno.env.get("AI_CHAT_MODEL") || "gpt-4.1-mini",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.3,
       },
-      LOVABLE_API_KEY,
+      OPENAI_API_KEY,
     );
 
     if (!response.ok) {

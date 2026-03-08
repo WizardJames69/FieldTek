@@ -10,7 +10,7 @@ export class AdminAIAuditLogsPage {
   }
 
   async waitForPage() {
-    await expect(this.page.getByText('AI Audit Logs')).toBeVisible({ timeout: 20_000 });
+    await expect(this.page.getByRole('heading', { name: 'AI Audit Logs' })).toBeVisible({ timeout: 20_000 });
   }
 
   async searchLogs(query: string) {
@@ -19,9 +19,11 @@ export class AdminAIAuditLogsPage {
   }
 
   async filterByStatus(status: 'all' | 'blocked' | 'passed') {
-    const select = this.page.locator('select').first();
     const valueMap = { all: 'All Interactions', blocked: 'Blocked Only', passed: 'Passed Only' };
-    await select.selectOption({ label: valueMap[status] });
+    // shadcn Select renders as a custom button trigger, not native <select>
+    const trigger = this.page.locator('button[role="combobox"]').first();
+    await trigger.click();
+    await this.page.getByRole('option', { name: valueMap[status] }).click();
     await waitForDataLoad(this.page);
   }
 
@@ -36,9 +38,9 @@ export class AdminAIAuditLogsPage {
   }
 
   async getStatCardValue(label: string): Promise<string> {
-    const card = this.page.locator('.card').filter({ hasText: label });
+    const card = this.page.locator('div[class*="rounded"]').filter({ hasText: label }).first();
     const value = card.locator('.text-2xl, .text-xl').first();
-    return (await value.textContent()) ?? '';
+    return (await value.textContent({ timeout: 10_000 })) ?? '';
   }
 
   async isDetailSheetOpen(): Promise<boolean> {

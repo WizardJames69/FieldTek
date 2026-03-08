@@ -25,10 +25,10 @@ test.describe('No Documents', () => {
     const assistantPage = new AssistantPage(page);
     await assistantPage.goto();
     await assistantPage.waitForPage();
-    // With seed data, documents should be available
-    const noDocsVisible = await assistantPage.isNoDocsWarningVisible();
-    const docsVisible = await assistantPage.isDocsAvailableVisible();
-    expect(noDocsVisible || docsVisible).toBe(true);
+    // Wait for async document fetch to complete and show either indicator
+    const noDocs = page.getByText('No Documentation Uploaded');
+    const hasDocs = page.getByText(/Documents? Available/);
+    await expect(noDocs.or(hasDocs)).toBeVisible({ timeout: 10_000 });
   });
 
   test('query without documents returns response or abstain flag', async () => {

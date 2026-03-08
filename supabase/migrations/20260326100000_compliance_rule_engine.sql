@@ -99,9 +99,10 @@ CREATE POLICY "Tenant admins can override"
 
 -- ── Feature Flag ────────────────────────────────────────────
 
-INSERT INTO public.feature_flags (key, description, is_enabled, rollout_percentage, metadata)
+INSERT INTO public.feature_flags (key, name, description, is_enabled, rollout_percentage, metadata)
 VALUES (
   'compliance_engine',
+  'Compliance Engine',
   'Deterministic compliance rule evaluation engine for workflow stages',
   false,
   10,

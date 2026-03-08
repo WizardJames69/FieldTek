@@ -114,7 +114,7 @@ export async function writeAuditLog(
         : (data.matchedPatterns.length > 0 ? data.matchedPatterns : null),
       had_citations: hasCitations,
       response_time_ms: responseTimeMs,
-      model_used: "google/gemini-2.5-flash",
+      model_used: Deno.env.get("AI_CHAT_MODEL") || "gpt-4.1-mini",
       correlation_id: data.correlationId,
       chunk_ids: data.semanticSearchResults.map(r => r.id),
       similarity_scores: data.semanticSearchResults.map(r => r.similarity),

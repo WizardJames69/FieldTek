@@ -24,9 +24,9 @@ export class AdminRAGQualityPage {
   }
 
   async getStatCardValue(title: string): Promise<string> {
-    const card = this.page.locator('.card').filter({ hasText: title });
+    const card = this.page.locator('div[class*="rounded"]').filter({ hasText: title }).first();
     const value = card.locator('.text-2xl, .text-xl').first();
-    return (await value.textContent()) ?? '';
+    return (await value.textContent({ timeout: 10_000 })) ?? '';
   }
 
   async isChartVisible(): Promise<boolean> {

@@ -85,7 +85,7 @@ export const PROMPT_INJECTION_PATTERNS = [
   /pretend\s+(you\s+)?(are|to\s+be)\s+(a|an|unrestricted|jailbroken)/gi,
   /act\s+as\s+(if|though)\s+you\s+(don't|do\s+not)\s+have\s+(any\s+)?restrictions/gi,
   /system\s*prompt\s*(is|:|shows?|says?|reveals?)/gi,
-  /reveal\s+(your|the|system)\s+(prompt|instructions?|rules?)/gi,
+  /reveal\s+(your|the)\s+(system\s+)?(prompt|instructions?|rules?)/gi,
   /what\s+(are|were)\s+your\s+(initial|original|system)\s+(instructions?|prompts?)/gi,
   /tell\s+me\s+(your|the)\s+(system\s+)?(prompt|instructions?)/gi,
   /output\s+(your|the)\s+(system\s+)?(prompt|instructions?)/gi,

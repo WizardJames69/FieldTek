@@ -7,9 +7,9 @@ config({ path: '.env.test' });
 export default defineConfig({
   testDir: './e2e',
 
-  // Prevent parallel runs to avoid Supabase rate-limiting
+  // Sequential execution to avoid feature-flag race conditions and auth token conflicts
   fullyParallel: false,
-  workers: 2,
+  workers: 1,
 
   // Fail CI on test.only leaks
   forbidOnly: !!process.env.CI,
@@ -95,7 +95,7 @@ export default defineConfig({
       testMatch: ['e2e/specs/admin.spec.ts'],
     },
 
-    // AI chat interface tests (admin auth, many test.slow)
+    // AI chat interface tests (admin auth)
     {
       name: 'chromium-ai-chat',
       use: {

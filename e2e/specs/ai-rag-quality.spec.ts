@@ -47,7 +47,7 @@ test.describe('RAG Quality Dashboard', () => {
     await ragPage.switchTab('Judge');
     // Judge tab: either shows stats or empty state message
     const emptyMsg = page.getByText('No judge evaluations found');
-    const evalCard = page.locator('.card').filter({ hasText: 'Evaluated' });
+    const evalCard = page.locator('div[class*="rounded"]').filter({ hasText: 'Evaluated' });
     const isEmpty = await emptyMsg.isVisible().catch(() => false);
     const hasEval = await evalCard.isVisible().catch(() => false);
     expect(isEmpty || hasEval).toBe(true);
@@ -66,7 +66,7 @@ test.describe('RAG Quality Dashboard', () => {
     await ragPage.waitForPage();
     await ragPage.switchTab('Workflow');
     // With seeded workflow data, should show stats
-    const symptomsCard = page.locator('.card').filter({ hasText: 'Symptoms Tracked' });
+    const symptomsCard = page.locator('div[class*="rounded"]').filter({ hasText: 'Symptoms Tracked' });
     const emptyMsg = page.getByText('No workflow intelligence data');
     const hasSymptoms = await symptomsCard.isVisible().catch(() => false);
     const isEmpty = await emptyMsg.isVisible().catch(() => false);

@@ -23,9 +23,10 @@ ALTER TABLE public.job_checklist_completions
   ADD COLUMN IF NOT EXISTS measurement_unit TEXT;
 
 -- Insert feature flag (disabled by default, 100% rollout when enabled)
-INSERT INTO public.feature_flags (key, description, is_enabled, rollout_percentage, metadata)
+INSERT INTO public.feature_flags (key, name, description, is_enabled, rollout_percentage, metadata)
 VALUES (
   'workflow_state_tracking',
+  'Workflow State Tracking',
   'Track workflow state transitions and measurement evidence on scheduled jobs',
   true,
   100,
