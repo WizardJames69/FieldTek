@@ -1,0 +1,35 @@
+{
+  "cookies": [
+    {
+      "name": "_ga",
+      "value": "GA1.1.1356944438.1773005418",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1807565418.260887,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_REGV1LE08E",
+      "value": "GS2.1.s1773005418$o1$g0$t1773005418$j60$l0$h0",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1807565418.679371,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:8080",
+      "localStorage": [
+        {
+          "name": "sb-fgemfxhwushaiiguqxfe-auth-token",
+          "value": "{\"access_token\":\"eyJhbGciOiJFUzI1NiIsImtpZCI6IjU1YmQwMTJlLTI0NGYtNGM3Ny1iYzkxLTg2Yzk4ZTBhZGQ4NyIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2ZnZW1meGh3dXNoYWlpZ3VxeGZlLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJiMTFhYzkwNS0yMjgyLTQ0ZmEtYWJlNy0yN2ZjZDU5ZjI3MzMiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzczMDA5MDE5LCJpYXQiOjE3NzMwMDU0MTksImVtYWlsIjoiZTJlLXBvcnRhbEBmaWVsZHRlay10ZXN0LmRldiIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZTJlX3Rlc3RfZGF0YSI6dHJ1ZSwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZ1bGxfbmFtZSI6IkUyRSBQb3J0YWwgQ2xpZW50In0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NzMwMDU0MTl9XSwic2Vzc2lvbl9pZCI6Ijc2MjliYzMzLWFhMTEtNDI1Mi05MDEzLTFhMDg5ZmRmNDU4ZCIsImlzX2Fub255bW91cyI6ZmFsc2V9.UK_fdh4jntSOdUdMAtDZ2xlLUhaJQ-6LVc6B-QlYAdt1_e4-Z18syUOGZbjZO4vvT8c2qqh5L__gTLuEndNcgQ\",\"token_type\":\"bearer\",\"expires_in\":3600,\"expires_at\":1773009019,\"refresh_token\":\"hfqcjgkso5ku\",\"user\":{\"id\":\"b11ac905-2282-44fa-abe7-27fcd59f2733\",\"aud\":\"authenticated\",\"role\":\"authenticated\",\"email\":\"e2e-portal@fieldtek-test.dev\",\"email_confirmed_at\":\"2026-03-08T21:30:05.637885Z\",\"phone\":\"\",\"confirmed_at\":\"2026-03-08T21:30:05.637885Z\",\"last_sign_in_at\":\"2026-03-08T21:30:19.116684762Z\",\"app_metadata\":{\"provider\":\"email\",\"providers\":[\"email\"]},\"user_metadata\":{\"e2e_test_data\":true,\"email_verified\":true,\"full_name\":\"E2E Portal Client\"},\"identities\":[{\"identity_id\":\"a6206ee5-2e28-4fae-902e-7f0cc5ccbcec\",\"id\":\"b11ac905-2282-44fa-abe7-27fcd59f2733\",\"user_id\":\"b11ac905-2282-44fa-abe7-27fcd59f2733\",\"identity_data\":{\"email\":\"e2e-portal@fieldtek-test.dev\",\"email_verified\":false,\"phone_verified\":false,\"sub\":\"b11ac905-2282-44fa-abe7-27fcd59f2733\"},\"provider\":\"email\",\"last_sign_in_at\":\"2026-03-08T21:30:05.636442Z\",\"created_at\":\"2026-03-08T21:30:05.636494Z\",\"updated_at\":\"2026-03-08T21:30:05.636494Z\",\"email\":\"e2e-portal@fieldtek-test.dev\"}],\"created_at\":\"2026-03-08T21:30:05.635099Z\",\"updated_at\":\"2026-03-08T21:30:19.120028Z\",\"is_anonymous\":false},\"weak_password\":null}"
+        }
+      ]
+    }
+  ]
+}
