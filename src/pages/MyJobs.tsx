@@ -10,6 +10,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { MobileJobCard } from '@/components/mobile/MobileJobCard';
 import { JobStatusUpdater } from '@/components/mobile/JobStatusUpdater';
 import { JobChecklist } from '@/components/mobile/JobChecklist';
+import { WorkflowExecutionView } from '@/components/jobs/workflows/WorkflowExecutionView';
 import { JobPartsList } from '@/components/jobs/JobPartsList';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -307,8 +308,20 @@ export default function MyJobs() {
                   </div>
                 )}
 
-                {/* Checklist - works offline */}
-                {offlineChecklistItems && offlineChecklistItems.length > 0 && (
+                {/* Workflow Execution or Checklist */}
+                {selectedJob.workflow_execution_id ? (
+                  <>
+                    <div className="section-divider" />
+                    <div>
+                      <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-4">Workflow</h4>
+                      <WorkflowExecutionView
+                        jobId={selectedJob.id}
+                        executionId={selectedJob.workflow_execution_id}
+                        variant="mobile"
+                      />
+                    </div>
+                  </>
+                ) : offlineChecklistItems && offlineChecklistItems.length > 0 ? (
                   <>
                     <div className="section-divider" />
                     <div>
@@ -316,7 +329,7 @@ export default function MyJobs() {
                       <JobChecklist jobId={selectedJob.id} items={offlineChecklistItems} />
                     </div>
                   </>
-                )}
+                ) : null}
 
                 {/* Parts List */}
                 <div className="section-divider" />

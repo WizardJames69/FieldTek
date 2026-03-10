@@ -58,7 +58,8 @@ import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
 import { evaluateWithJudge, evaluateWithJudgeBlocking } from "./judge.ts";
 import type { JudgeResult } from "./judge.ts";
-import { fetchWorkflowState } from "./workflow.ts";
+import { fetchWorkflowState, fetchWorkflowExecutionContext } from "./workflow.ts";
+import type { WorkflowExecutionContext } from "./types.ts";
 import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
 import type { ComplianceContext, ComplianceVerdict, StepEvidenceRecord } from "./compliance.ts";
 import { expandQueryWithGraph } from "./graph.ts";
@@ -67,6 +68,10 @@ import { applyGraphScoring } from "./graphScoring.ts";
 import { GRAPH_SCORING_WEIGHT } from "./constants.ts";
 import { fetchDiagnosticPatterns, buildDiagnosticContext } from "./diagnosticSignals.ts";
 import type { DiagnosticContext } from "./diagnosticSignals.ts";
+import { fetchPatternAdvisory } from "./patternAdvisory.ts";
+import type { PatternAdvisoryContext } from "./patternAdvisory.ts";
+import { fuseContextSignals } from "./contextFusion.ts";
+import type { DiagnosticHypothesis } from "./contextFusion.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -418,6 +423,20 @@ serve(async (req) => {
       }
     }
 
+    // ── 7c. Workflow Execution Context (Phase 4) ────────────
+    let workflowExecutionContext: WorkflowExecutionContext | null = null;
+    if (context?.job?.workflow_execution_id) {
+      try {
+        workflowExecutionContext = await fetchWorkflowExecutionContext(
+          serviceRoleClient,
+          context.job.id,
+          context.equipment?.equipment_type || null,
+        );
+      } catch (wfErr) {
+        console.error("[workflow] Execution context fetch error (non-fatal):", wfErr);
+      }
+    }
+
     // ── 8. Document Retrieval ────────────────────────────────
     const { data: tenantDocs } = await supabaseClient
       .from("documents")
@@ -592,6 +611,58 @@ serve(async (req) => {
       } catch (dlErr) {
         console.warn("[diagnostic-learning] Error (non-fatal):", dlErr);
       }
+    }
+
+    // ── 9d. Workflow Pattern Advisory ─────────────────────────
+    let patternAdvisoryContext: PatternAdvisoryContext | null = null;
+
+    if (await evaluateFeatureFlag(serviceRoleClient, "workflow_pattern_discovery", tenantUser.tenant_id)) {
+      try {
+        const patQueryText = extractTextFromMessage(messages.filter((m: ChatMessage) => m.role === "user").pop());
+        const patSymptoms = detectSymptomsInText(patQueryText);
+        if (patSymptoms.length > 0) {
+          const equipType = context?.equipment?.equipment_type || null;
+          patternAdvisoryContext = await fetchPatternAdvisory(
+            serviceRoleClient, tenantUser.tenant_id, patSymptoms, equipType,
+          );
+          if (patternAdvisoryContext) {
+            console.log(`[pattern-advisory] Found ${patternAdvisoryContext.patterns.length} patterns`);
+          }
+        }
+      } catch (paErr) {
+        console.warn("[pattern-advisory] Error (non-fatal):", paErr);
+      }
+    }
+
+    // ── 9e. Context Fusion ─────────────────────────────────
+    let diagnosticHypotheses: DiagnosticHypothesis[] = [];
+    try {
+      const diagnosticSignalCount = diagnosticContext?.patterns?.length ?? 0;
+      const workflowStatCount = workflowExecutionContext?.stepStatistics?.length ?? 0;
+      const patternAdvisoryCount = patternAdvisoryContext?.patterns?.length ?? 0;
+
+      console.log(
+        `[context-fusion] input signals: diagnostic=${diagnosticSignalCount} workflow=${workflowStatCount} patterns=${patternAdvisoryCount}`
+      );
+
+      diagnosticHypotheses = fuseContextSignals({
+        diagnosticSignals: diagnosticContext?.patterns,
+        stepStatistics: workflowExecutionContext?.stepStatistics,
+        patternAdvisory: patternAdvisoryContext?.patterns,
+      });
+
+      console.log(
+        `[context-fusion] hypotheses generated: ${diagnosticHypotheses.length}`
+      );
+
+      if (diagnosticHypotheses.length > 0) {
+        const top = diagnosticHypotheses[0];
+        console.log(
+          `[context-fusion] top hypothesis: ${top.repairAction} (${top.confidence.toFixed(3)})`
+        );
+      }
+    } catch (cfErr) {
+      console.warn("[context-fusion] Error (non-fatal):", cfErr);
     }
 
     // ── 10. Enforcement Rules ────────────────────────────────
@@ -916,6 +987,9 @@ serve(async (req) => {
       complianceContext: promptComplianceContext,
       stepEvidenceContext: promptStepEvidenceContext,
       diagnosticContext,
+      workflowExecutionContext,
+      patternAdvisoryContext,
+      diagnosticHypotheses,
     });
 
     const promptHashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(systemPrompt));
@@ -1260,6 +1334,8 @@ serve(async (req) => {
           diagnosticPatternsUsed: diagnosticContext?.patterns.map(p => `${p.symptom}→${p.failure_component}→${p.repair_action}`) || undefined,
           diagnosticSignalStrength: diagnosticContext?.signalStrength || undefined,
           diagnosticContextInjected: diagnosticContext !== null && diagnosticContext.patterns.length > 0,
+          patternAdvisoryInjected: patternAdvisoryContext !== null,
+          diagnosticFusionInjected: diagnosticHypotheses.length > 0,
           stepEvidenceCount: stepEvidenceRecords.length,
           judgeVerdict: judgeVerdict !== "none" ? judgeVerdict : undefined,
           judgeResultSync: judgeResultSync || undefined,

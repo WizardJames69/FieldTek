@@ -38,6 +38,7 @@ export interface SubmitEvidenceParams {
   job_id: string;
   checklist_item_id: string;
   stage_name: string;
+  step_execution_id?: string;
   evidence: {
     photo_url?: string;
     measurement_value?: number;
@@ -120,16 +121,19 @@ export function useUploadEvidencePhoto() {
     mutationFn: async ({
       jobId,
       checklistItemId,
+      stepExecutionId,
       file,
     }: {
       jobId: string;
       checklistItemId: string;
+      stepExecutionId?: string;
       file: File;
     }): Promise<string> => {
       if (!tenant?.id) throw new Error("No tenant context");
 
       const ext = file.name.split(".").pop() || "jpg";
-      const path = `${tenant.id}/${jobId}/${checklistItemId}/${Date.now()}.${ext}`;
+      const keySegment = stepExecutionId || checklistItemId;
+      const path = `${tenant.id}/${jobId}/${keySegment}/${Date.now()}.${ext}`;
 
       const { error } = await supabase.storage
         .from("job-evidence")

@@ -10,14 +10,18 @@ import { BillingSettings } from '@/components/settings/BillingSettings';
 import { PartsCatalogSettings } from '@/components/settings/PartsCatalogSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { ChecklistTemplateSettings } from '@/components/settings/ChecklistTemplateSettings';
+import { WorkflowTemplateList } from '@/components/settings/workflows/WorkflowTemplateList';
 import { APISettings } from '@/components/settings/APISettings';
 import { CalendarSettings } from '@/components/settings/CalendarSettings';
 import { useUserRole } from '@/contexts/TenantContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 export default function Settings() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'general';
   const { isOwner } = useUserRole();
+  const { isEnabled } = useFeatureFlags();
+  const showWorkflows = isEnabled('workflow_templates');
   return (
     <MainLayout title="Settings" subtitle="Configure your organization">
       <Tabs defaultValue={defaultTab} className="space-y-4 md:space-y-6">
@@ -31,6 +35,7 @@ export default function Settings() {
           <TabsTrigger value="parts" className="text-xs md:text-sm touch-native">Parts</TabsTrigger>
           <TabsTrigger value="features" className="text-xs md:text-sm touch-native">Features</TabsTrigger>
           <TabsTrigger value="checklists" className="text-xs md:text-sm touch-native">Checklists</TabsTrigger>
+          {showWorkflows && <TabsTrigger value="workflows" className="text-xs md:text-sm touch-native">Workflows</TabsTrigger>}
           <TabsTrigger value="calendar" className="text-xs md:text-sm touch-native">Calendar</TabsTrigger>
           <TabsTrigger value="api" className="text-xs md:text-sm touch-native">API</TabsTrigger>
         </TabsList>
@@ -72,6 +77,12 @@ export default function Settings() {
         <TabsContent value="checklists" className="max-w-4xl">
           <ChecklistTemplateSettings />
         </TabsContent>
+
+        {showWorkflows && (
+          <TabsContent value="workflows" className="max-w-4xl">
+            <WorkflowTemplateList />
+          </TabsContent>
+        )}
 
         <TabsContent value="calendar" className="max-w-2xl">
           <CalendarSettings />

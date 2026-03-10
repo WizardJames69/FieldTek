@@ -68,6 +68,8 @@ export interface AuditLogData {
   diagnosticPatternsUsed?: string[];
   diagnosticSignalStrength?: number;
   diagnosticContextInjected?: boolean;
+  patternAdvisoryInjected?: boolean;
+  diagnosticFusionInjected?: boolean;
   stepEvidenceCount?: number;
 }
 

@@ -2011,6 +2011,7 @@ export type Database = {
           title: string
           updated_at: string
           workflow_stage: string | null
+          workflow_execution_id: string | null
         }
         Insert: {
           actual_end?: string | null
@@ -2039,6 +2040,7 @@ export type Database = {
           title: string
           updated_at?: string
           workflow_stage?: string | null
+          workflow_execution_id?: string | null
         }
         Update: {
           actual_end?: string | null
@@ -2067,6 +2069,7 @@ export type Database = {
           title?: string
           updated_at?: string
           workflow_stage?: string | null
+          workflow_execution_id?: string | null
         }
         Relationships: [
           {
@@ -2788,6 +2791,266 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_templates: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          description: string | null
+          category: string
+          equipment_type: string | null
+          equipment_model: string | null
+          source: string
+          source_document_id: string | null
+          is_active: boolean
+          is_published: boolean
+          estimated_duration_minutes: number | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          name: string
+          description?: string | null
+          category: string
+          equipment_type?: string | null
+          equipment_model?: string | null
+          source?: string
+          source_document_id?: string | null
+          is_active?: boolean
+          is_published?: boolean
+          estimated_duration_minutes?: number | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          name?: string
+          description?: string | null
+          category?: string
+          equipment_type?: string | null
+          equipment_model?: string | null
+          source?: string
+          source_document_id?: string | null
+          is_active?: boolean
+          is_published?: boolean
+          estimated_duration_minutes?: number | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_template_steps: {
+        Row: {
+          id: string
+          workflow_id: string
+          step_number: number
+          stage_name: string
+          title: string
+          instruction: string
+          instruction_detail: string | null
+          media_urls: string[] | null
+          step_type: string
+          required_inputs: Json
+          evidence_requirements: Json
+          validation_rules: Json
+          estimated_minutes: number | null
+          safety_warning: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          workflow_id: string
+          step_number: number
+          stage_name: string
+          title: string
+          instruction: string
+          instruction_detail?: string | null
+          media_urls?: string[] | null
+          step_type?: string
+          required_inputs?: Json
+          evidence_requirements?: Json
+          validation_rules?: Json
+          estimated_minutes?: number | null
+          safety_warning?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          workflow_id?: string
+          step_number?: number
+          stage_name?: string
+          title?: string
+          instruction?: string
+          instruction_detail?: string | null
+          media_urls?: string[] | null
+          step_type?: string
+          required_inputs?: Json
+          evidence_requirements?: Json
+          validation_rules?: Json
+          estimated_minutes?: number | null
+          safety_warning?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_template_steps_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_executions: {
+        Row: {
+          id: string
+          tenant_id: string
+          workflow_id: string
+          job_id: string
+          technician_id: string
+          status: string
+          current_step_number: number
+          started_at: string | null
+          completed_at: string | null
+          abort_reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          workflow_id: string
+          job_id: string
+          technician_id: string
+          status?: string
+          current_step_number?: number
+          started_at?: string | null
+          completed_at?: string | null
+          abort_reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          workflow_id?: string
+          job_id?: string
+          technician_id?: string
+          status?: string
+          current_step_number?: number
+          started_at?: string | null
+          completed_at?: string | null
+          abort_reason?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_executions_workflow_id_fkey"
+            columns: ["workflow_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_executions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_step_executions: {
+        Row: {
+          id: string
+          execution_id: string
+          step_id: string
+          step_number: number
+          status: string
+          technician_notes: string | null
+          measurement_value: number | null
+          measurement_unit: string | null
+          serial_number: string | null
+          photos: string[] | null
+          gps_location: Json | null
+          custom_inputs: Json
+          started_at: string | null
+          completed_at: string | null
+          skipped_reason: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          execution_id: string
+          step_id: string
+          step_number: number
+          status?: string
+          technician_notes?: string | null
+          measurement_value?: number | null
+          measurement_unit?: string | null
+          serial_number?: string | null
+          photos?: string[] | null
+          gps_location?: Json | null
+          custom_inputs?: Json
+          started_at?: string | null
+          completed_at?: string | null
+          skipped_reason?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          execution_id?: string
+          step_id?: string
+          step_number?: number
+          status?: string
+          technician_notes?: string | null
+          measurement_value?: number | null
+          measurement_unit?: string | null
+          serial_number?: string | null
+          photos?: string[] | null
+          gps_location?: Json | null
+          custom_inputs?: Json
+          started_at?: string | null
+          completed_at?: string | null
+          skipped_reason?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_step_executions_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_executions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_step_executions_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_template_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workflow_step_evidence: {
         Row: {
           id: string
@@ -2807,6 +3070,7 @@ export type Database = {
           verification_status: string
           verification_details: Json | null
           ai_analysis: Json | null
+          step_execution_id: string | null
         }
         Insert: {
           id?: string
@@ -2826,6 +3090,7 @@ export type Database = {
           verification_status?: string
           verification_details?: Json | null
           ai_analysis?: Json | null
+          step_execution_id?: string | null
         }
         Update: {
           id?: string
@@ -2845,6 +3110,7 @@ export type Database = {
           verification_status?: string
           verification_details?: Json | null
           ai_analysis?: string | null
+          step_execution_id?: string | null
         }
         Relationships: [
           {

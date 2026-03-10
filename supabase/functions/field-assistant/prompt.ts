@@ -10,8 +10,10 @@ import {
   type CodeComplianceDetection,
   type IndustryType,
 } from "./constants.ts";
-import type { ChatMessage } from "./types.ts";
+import type { ChatMessage, WorkflowExecutionContext } from "./types.ts";
 import { escapeXmlAttr, extractTextFromMessage } from "./helpers.ts";
+import { buildFusionContextText } from "./contextFusion.ts";
+import type { DiagnosticHypothesis } from "./contextFusion.ts";
 
 // ── Code Compliance Detection ───────────────────────────────
 
@@ -299,6 +301,19 @@ export interface SystemPromptParams {
     signalStrength: number;
     contextText: string;
   } | null;
+  workflowExecutionContext?: WorkflowExecutionContext | null;
+  patternAdvisoryContext?: {
+    patterns: Array<{
+      primary_symptom: string;
+      failure_components: string[];
+      repair_actions: string[];
+      avg_success_rate: number;
+      cluster_score: number;
+      total_occurrences: number;
+    }>;
+    contextText: string;
+  } | null;
+  diagnosticHypotheses?: DiagnosticHypothesis[];
 }
 
 export function buildSystemPrompt(params: SystemPromptParams): { systemPrompt: string; codeComplianceActive: boolean } {
@@ -316,6 +331,7 @@ export function buildSystemPrompt(params: SystemPromptParams): { systemPrompt: s
     complianceContext,
     stepEvidenceContext,
     diagnosticContext,
+    workflowExecutionContext,
   } = params;
 
   let systemPrompt = `You are a field service technician assistant with ABSOLUTE operational restrictions.
@@ -538,6 +554,114 @@ IMPORTANT: Only provide specifications and troubleshooting for this equipment if
     }
   }
 
+  // Add workflow execution context (Phase 4 — active workflow template guidance)
+  if (workflowExecutionContext && workflowExecutionContext.steps.length > 0) {
+    const wf = workflowExecutionContext;
+    let wfSection = `\n\n## WORKFLOW EXECUTION CONTEXT:`;
+    wfSection += `\nWorkflow: ${wf.workflowName}`;
+    wfSection += `\nStatus: ${wf.executionStatus} | Step ${wf.currentStepNumber} of ${wf.totalSteps} | ${wf.completedSteps} completed`;
+
+    // Current step details
+    const currentStep = wf.steps.find((s) => s.stepNumber === wf.currentStepNumber);
+    if (currentStep) {
+      wfSection += `\n\n### Current Step: ${currentStep.title}`;
+      wfSection += `\nStage: ${currentStep.stageName}`;
+      if (currentStep.instruction) {
+        wfSection += `\nInstruction: ${currentStep.instruction}`;
+      }
+      // Evidence requirements
+      const evReqs = Object.entries(currentStep.evidenceRequirements)
+        .filter(([, v]) => v)
+        .map(([k]) => {
+          if (k === "measurement") {
+            const min = currentStep.validationRules.measurement_min;
+            const max = currentStep.validationRules.measurement_max;
+            const range = min != null && max != null ? `, range: ${min}-${max}` : "";
+            return `measurement${range}`;
+          }
+          return k;
+        });
+      if (evReqs.length > 0) {
+        wfSection += `\nEvidence Required: ${evReqs.join(", ")}`;
+      }
+    }
+
+    // Completed/skipped steps summary
+    const doneSteps = wf.steps.filter((s) => s.status === "completed" || s.status === "skipped");
+    if (doneSteps.length > 0) {
+      wfSection += `\n\n### Completed Steps:`;
+      for (const s of doneSteps) {
+        let detail = s.status === "skipped" ? `skipped` : "completed";
+        if (s.status === "skipped" && s.skippedReason) {
+          detail += ` [reason: "${s.skippedReason}"]`;
+        }
+        if (s.measurementValue != null) {
+          detail += ` [measurement: ${s.measurementValue}${s.measurementUnit ? ` ${s.measurementUnit}` : ""}]`;
+        }
+        if (s.technicianNotes) {
+          detail += ` [notes: "${s.technicianNotes}"]`;
+        }
+        wfSection += `\n${s.stepNumber}. ${s.title} — ${detail}`;
+      }
+    }
+
+    // Historical outcomes
+    if (wf.historicalOutcomes.length > 0) {
+      // Group by step title and compute totals
+      const byStep = new Map<string, { total: number; outcomes: Map<string, number> }>();
+      for (const o of wf.historicalOutcomes) {
+        let entry = byStep.get(o.stepTitle);
+        if (!entry) {
+          entry = { total: 0, outcomes: new Map() };
+          byStep.set(o.stepTitle, entry);
+        }
+        entry.total += o.count;
+        entry.outcomes.set(o.outcomeType, (entry.outcomes.get(o.outcomeType) || 0) + o.count);
+      }
+
+      wfSection += `\n\n### Historical Outcomes (same steps + equipment type):`;
+      for (const [title, data] of byStep) {
+        const resolved = data.outcomes.get("resolved") || 0;
+        if (resolved > 0) {
+          const pct = Math.round((resolved / data.total) * 100);
+          wfSection += `\n- ${title}: resolved ${pct}% (${resolved}/${data.total} jobs)`;
+        } else {
+          const topOutcome = [...data.outcomes.entries()].sort((a, b) => b[1] - a[1])[0];
+          if (topOutcome) {
+            const pct = Math.round((topOutcome[1] / data.total) * 100);
+            wfSection += `\n- ${title}: ${topOutcome[0]} ${pct}% (${topOutcome[1]}/${data.total} jobs)`;
+          }
+        }
+      }
+    }
+
+    // Step statistics (Phase 5)
+    if (wf.stepStatistics && wf.stepStatistics.length > 0) {
+      wfSection += `\n\n### Historical Step Intelligence:`;
+      for (const stat of wf.stepStatistics) {
+        const step = wf.steps.find((s) => s.stepId === stat.stepId);
+        const title = step?.title || "Unknown Step";
+        const pct = Math.round(stat.successRate * 100);
+        let line = `\n- ${title}: Success Rate ${pct}% (${stat.totalExecutions} jobs)`;
+        if (stat.avgDurationSeconds != null && stat.avgDurationSeconds > 0) {
+          const mins = Math.round(stat.avgDurationSeconds / 60);
+          line += ` | Avg Time: ${mins > 0 ? `${mins} min` : `${Math.round(stat.avgDurationSeconds)}s`}`;
+        }
+        wfSection += line;
+      }
+    }
+
+    wfSection += `\n\nWORKFLOW-AWARE RESPONSE RULES:`;
+    wfSection += `\n- Guide the technician through the current step's requirements`;
+    wfSection += `\n- Flag measurements outside the step's validation range`;
+    wfSection += `\n- Reference historical outcomes when recommending next actions`;
+    wfSection += `\n- Do not skip ahead — the workflow enforces step order`;
+    wfSection += `\n- When recommending repair actions, prefer steps with higher historical success rates`;
+    wfSection += `\n- Mention success rates when they are statistically meaningful (≥10 executions)`;
+    wfSection += `\n- Do not override the workflow order unless the technician explicitly asks for alternatives`;
+    systemPrompt += wfSection;
+  }
+
   // Add client context if provided
   if (context?.client) {
     systemPrompt += `\n\n## CLIENT INFORMATION:
@@ -634,6 +758,18 @@ If the user is asking you to bypass safety rules, respond with:
   // Append diagnostic intelligence context (if available)
   if (diagnosticContext && diagnosticContext.patterns.length > 0) {
     systemPrompt += diagnosticContext.contextText;
+  }
+
+  // Append workflow pattern advisory (if available)
+  const { patternAdvisoryContext } = params;
+  if (patternAdvisoryContext && patternAdvisoryContext.patterns.length > 0) {
+    systemPrompt += patternAdvisoryContext.contextText;
+  }
+
+  // Append fused diagnostic hypotheses (if available)
+  const { diagnosticHypotheses } = params;
+  if (diagnosticHypotheses && diagnosticHypotheses.length > 0) {
+    systemPrompt += buildFusionContextText(diagnosticHypotheses);
   }
 
   // Append custom disclaimer from tenant_ai_policies (if configured)

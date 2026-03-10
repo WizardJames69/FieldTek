@@ -109,6 +109,19 @@ function classifyOutcome(
   return { key: "resolved", label: "Resolved", type: "resolved" };
 }
 
+// ── Step Outcome Classification ───────────────────────────────
+
+function classifyStepOutcome(
+  step: { status: string; skipped_reason?: string | null },
+  jobOutcome: string,
+): string {
+  if (step.status === "skipped") return "no_change";
+  if (jobOutcome === "resolved") return "resolved";
+  if (jobOutcome === "parts_ordered" || jobOutcome === "escalated") return "improved";
+  if (jobOutcome === "repeat_visit") return "no_change";
+  return "improved";
+}
+
 // ── Main Handler ──────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -175,15 +188,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fetch equipment type if equipment_id is present
+    // Fetch equipment type and model if equipment_id is present
     let equipmentType: string | null = null;
+    let equipmentModel: string | null = null;
     if (job.equipment_id) {
       const { data: equipment } = await client
         .from("equipment_registry")
-        .select("equipment_type")
+        .select("equipment_type, model")
         .eq("id", job.equipment_id)
         .single();
       equipmentType = equipment?.equipment_type || null;
+      equipmentModel = equipment?.model || null;
+    }
+
+    // Fetch workflow execution data (if job used workflow templates)
+    // deno-lint-ignore no-explicit-any
+    let execData: any = null;
+    // deno-lint-ignore no-explicit-any
+    let stepExecs: any[] = [];
+    {
+      const { data: exec } = await client
+        .from("workflow_executions")
+        .select("id, workflow_id, technician_id, status")
+        .eq("job_id", job_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      execData = exec;
+
+      if (execData) {
+        const { data: steps } = await client
+          .from("workflow_step_executions")
+          .select("id, step_id, step_number, status, technician_notes, measurement_value, measurement_unit, started_at, completed_at, skipped_reason")
+          .eq("execution_id", execData.id)
+          .order("step_number", { ascending: true });
+        stepExecs = steps || [];
+      }
     }
 
     const tenantId = job.tenant_id;
@@ -414,10 +454,71 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Record per-step outcomes ─────────────────────────────
+    let stepOutcomesInserted = 0;
+    if (execData && stepExecs.length > 0) {
+      const outcomeRows = stepExecs
+        .filter((s: { status: string }) => s.status === "completed" || s.status === "skipped")
+        .map((s: { id: string; step_id: string; status: string; skipped_reason?: string | null; measurement_value?: number | null; measurement_unit?: string | null }) => ({
+          tenant_id: tenantId,
+          workflow_id: execData.workflow_id,
+          step_id: s.step_id,
+          step_execution_id: s.id,
+          job_id: job_id,
+          equipment_type: equipmentType,
+          equipment_model: equipmentModel,
+          symptom: symptomKeys.length > 0 ? symptomKeys[0] : null,
+          outcome_type: classifyStepOutcome(s, outcome.key),
+          measurement_value: s.measurement_value ?? null,
+          measurement_unit: s.measurement_unit ?? null,
+          technician_id: execData.technician_id,
+        }));
+
+      if (outcomeRows.length > 0) {
+        const { error: outcomeErr } = await client
+          .from("workflow_step_outcomes")
+          .insert(outcomeRows);
+        if (outcomeErr) {
+          console.error("[workflow-intelligence] Failed to insert step outcomes:", outcomeErr);
+        } else {
+          stepOutcomesInserted = outcomeRows.length;
+        }
+      }
+    }
+
+    // ── Aggregate step statistics ────────────────────────────
+    let stepStatsUpserted = 0;
+    if (execData && stepExecs.length > 0) {
+      for (const s of stepExecs.filter((s: { status: string }) => s.status === "completed" || s.status === "skipped")) {
+        // Compute duration in seconds (null if timestamps missing)
+        let durationSeconds: number | null = null;
+        if (s.started_at && s.completed_at) {
+          durationSeconds = (new Date(s.completed_at).getTime() - new Date(s.started_at).getTime()) / 1000;
+          if (durationSeconds < 0) durationSeconds = null;
+        }
+
+        const { error: statErr } = await client.rpc("upsert_workflow_step_statistic", {
+          p_tenant_id: tenantId,
+          p_workflow_id: execData.workflow_id,
+          p_step_id: s.step_id,
+          p_equipment_type: equipmentType,
+          p_equipment_model: equipmentModel,
+          p_outcome_type: classifyStepOutcome(s, outcome.key),
+          p_duration_seconds: durationSeconds,
+        });
+        if (statErr) {
+          console.error("[workflow-intelligence] Failed to upsert step statistic:", statErr);
+        } else {
+          stepStatsUpserted++;
+        }
+      }
+    }
+
     const latencyMs = Date.now() - start;
     console.log(
       `[workflow-intelligence] Complete: ${edgeDefs.length} edges upserted, ` +
-      `${affectedSources.size} sources recomputed (${latencyMs}ms)`,
+      `${affectedSources.size} sources recomputed, ${stepOutcomesInserted} step outcomes, ` +
+      `${stepStatsUpserted} step stats (${latencyMs}ms)`,
     );
 
     return new Response(
@@ -430,6 +531,8 @@ Deno.serve(async (req) => {
           diagnostics: diagnosticItems.length,
           repairs: repairKeys.length,
           outcome: outcome.key,
+          step_outcomes: stepOutcomesInserted,
+          step_stats: stepStatsUpserted,
         },
         edges_upserted: edgeDefs.length,
         latency_ms: latencyMs,

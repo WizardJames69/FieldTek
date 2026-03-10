@@ -162,3 +162,44 @@ export interface WorkflowComplianceContext {
   verdicts: ComplianceVerdictSummary[];
   blockingIssues: string[];
 }
+
+// ── Workflow Execution Context (Phase 4) ──────────────────
+
+export interface WorkflowExecutionStep {
+  stepId?: string;
+  stepNumber: number;
+  title: string;
+  instruction: string;
+  stageName: string;
+  status: string;
+  evidenceRequirements: Record<string, boolean>;
+  validationRules: Record<string, number>;
+  measurementValue?: number | null;
+  measurementUnit?: string | null;
+  technicianNotes?: string | null;
+  skippedReason?: string | null;
+}
+
+export interface WorkflowStepOutcomeSummary {
+  stepTitle: string;
+  outcomeType: string;
+  count: number;
+}
+
+export interface WorkflowStepStatistic {
+  stepId: string;
+  successRate: number;
+  totalExecutions: number;
+  avgDurationSeconds?: number | null;
+}
+
+export interface WorkflowExecutionContext {
+  workflowName: string;
+  executionStatus: string;
+  currentStepNumber: number;
+  totalSteps: number;
+  completedSteps: number;
+  steps: WorkflowExecutionStep[];
+  historicalOutcomes: WorkflowStepOutcomeSummary[];
+  stepStatistics?: WorkflowStepStatistic[];
+}

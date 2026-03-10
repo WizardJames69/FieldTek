@@ -27,9 +27,12 @@ import {
 } from 'lucide-react';
 import { CustomerEquipmentHistory } from '@/components/equipment/CustomerEquipmentHistory';
 import { JobStageWorkflow } from '@/components/jobs/JobStageWorkflow';
+import { WorkflowExecutionView } from '@/components/jobs/workflows/WorkflowExecutionView';
+import { WorkflowAssignDialog } from '@/components/jobs/workflows/WorkflowAssignDialog';
 import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/useTerminology';
-import { useUserRole } from '@/contexts/TenantContext';
+import { useTenant, useUserRole } from '@/contexts/TenantContext';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 interface Job {
   id: string;
@@ -45,6 +48,9 @@ interface Job {
   notes: string | null;
   internal_notes: string | null;
   workflow_stage?: string | null;
+  workflow_execution_id?: string | null;
+  assigned_to?: string | null;
+  equipment_id?: string | null;
   client_id: string | null;
   clients?: {
     id: string;
@@ -90,8 +96,12 @@ export function JobDetailSheet({
   onStatusChange,
 }: JobDetailSheetProps) {
   const [showChecklist, setShowChecklist] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const { t } = useTerminology();
   const { role } = useUserRole();
+  const { tenant } = useTenant();
+  const { isEnabled } = useFeatureFlags();
+  const showWorkflows = isEnabled('workflow_templates');
   if (!job) return null;
 
   const status = statusConfig[job.status || 'pending'];
@@ -303,26 +313,70 @@ export function JobDetailSheet({
                 </div>
               )}
 
-              {/* Job Workflow Checklist with enhanced styling */}
+              {/* Workflow Execution or Job Checklist */}
               {job.status === 'in_progress' && (
                 <>
                   <div className="section-divider" />
                   <div>
-                    <Button
-                      variant="outline"
-                      className="w-full mb-3 touch-native bg-background/50 hover:bg-background/80"
-                      onClick={() => setShowChecklist(!showChecklist)}
-                    >
-                      {showChecklist ? 'Hide Checklist' : `Show ${t('job')} Checklist`}
-                    </Button>
-                    {showChecklist && (
-                      <JobStageWorkflow
-                        jobId={job.id}
-                        jobType={job.job_type || undefined}
-                        currentStage={job.workflow_stage || undefined}
-                      />
+                    {job.workflow_execution_id ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          className="w-full mb-3 touch-native bg-background/50 hover:bg-background/80"
+                          onClick={() => setShowChecklist(!showChecklist)}
+                        >
+                          {showChecklist ? 'Hide Workflow' : 'Show Workflow'}
+                        </Button>
+                        {showChecklist && (
+                          <WorkflowExecutionView
+                            jobId={job.id}
+                            executionId={job.workflow_execution_id}
+                            variant="desktop"
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          className="w-full mb-3 touch-native bg-background/50 hover:bg-background/80"
+                          onClick={() => setShowChecklist(!showChecklist)}
+                        >
+                          {showChecklist ? 'Hide Checklist' : `Show ${t('job')} Checklist`}
+                        </Button>
+                        {showChecklist && (
+                          <JobStageWorkflow
+                            jobId={job.id}
+                            jobType={job.job_type || undefined}
+                            currentStage={job.workflow_stage || undefined}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
+                </>
+              )}
+
+              {/* Assign Workflow button (admin only, no workflow assigned, job not completed) */}
+              {showWorkflows && (role === 'admin' || role === 'owner') && !job.workflow_execution_id && job.status !== 'completed' && job.status !== 'cancelled' && tenant?.id && (
+                <>
+                  <div className="section-divider" />
+                  <Button
+                    variant="outline"
+                    className="w-full touch-native"
+                    onClick={() => setAssignDialogOpen(true)}
+                  >
+                    Assign Workflow
+                  </Button>
+                  <WorkflowAssignDialog
+                    jobId={job.id}
+                    jobType={job.job_type}
+                    equipmentType={null}
+                    technicianId={job.assigned_to ?? null}
+                    tenantId={tenant.id}
+                    open={assignDialogOpen}
+                    onOpenChange={setAssignDialogOpen}
+                  />
                 </>
               )}
             </div>

@@ -25,6 +25,7 @@ interface EvidenceRequest {
   job_id: string;
   checklist_item_id: string;
   stage_name: string;
+  step_execution_id?: string;
   evidence: {
     photo_url?: string;
     measurement_value?: number;
@@ -178,7 +179,7 @@ Deno.serve(async (req: Request) => {
 
     // Parse request
     const body: EvidenceRequest = await req.json();
-    const { job_id, checklist_item_id, stage_name, evidence, device_timestamp } = body;
+    const { job_id, checklist_item_id, stage_name, step_execution_id, evidence, device_timestamp } = body;
 
     if (!job_id || !checklist_item_id || !stage_name || !evidence) {
       return new Response(
@@ -197,16 +198,56 @@ Deno.serve(async (req: Request) => {
     const flagEnabled = flag?.is_enabled ?? false;
     const mode = (flag?.metadata as Record<string, unknown>)?.mode as string ?? "logging_only";
 
-    // Fetch template to get required_evidence
-    const { data: template } = await serviceClient
-      .from("job_stage_templates")
-      .select("required_evidence")
-      .eq("tenant_id", tenantId)
-      .eq("stage_name", stage_name)
-      .maybeSingle();
+    // Resolve evidence requirements — from workflow template step or legacy stage templates
+    let itemRequirement: EvidenceRequirement | undefined;
 
-    const requiredEvidence = (template?.required_evidence as Record<string, EvidenceRequirement>) ?? {};
-    const itemRequirement = requiredEvidence[checklist_item_id];
+    if (step_execution_id) {
+      // Workflow step: resolve requirements from workflow_template_steps
+      const { data: stepExec } = await serviceClient
+        .from("workflow_step_executions")
+        .select("step_id")
+        .eq("id", step_execution_id)
+        .single();
+
+      if (stepExec) {
+        const { data: templateStep } = await serviceClient
+          .from("workflow_template_steps")
+          .select("evidence_requirements, validation_rules, required_inputs")
+          .eq("id", stepExec.step_id)
+          .single();
+
+        if (templateStep) {
+          const evReq = templateStep.evidence_requirements as Record<string, boolean | undefined> ?? {};
+          const valRules = templateStep.validation_rules as Record<string, number | undefined> ?? {};
+          const reqInputs = templateStep.required_inputs as Record<string, string | boolean | undefined> ?? {};
+
+          // Convert template format to EvidenceRequirement format
+          const req: EvidenceRequirement = {};
+          if (evReq.photo) req.photo = true;
+          if (evReq.gps_required) req.gps_required = true;
+          if (evReq.serial_scan) req.serial_scan = true;
+          if (evReq.measurement) {
+            req.measurement = {
+              unit: (reqInputs.measurement_unit as string) || "units",
+              min: valRules.measurement_min as number | undefined,
+              max: valRules.measurement_max as number | undefined,
+            };
+          }
+          itemRequirement = req;
+        }
+      }
+    } else {
+      // Legacy: resolve from job_stage_templates
+      const { data: template } = await serviceClient
+        .from("job_stage_templates")
+        .select("required_evidence")
+        .eq("tenant_id", tenantId)
+        .eq("stage_name", stage_name)
+        .maybeSingle();
+
+      const requiredEvidence = (template?.required_evidence as Record<string, EvidenceRequirement>) ?? {};
+      itemRequirement = requiredEvidence[checklist_item_id];
+    }
 
     // Validate evidence against requirements
     let failures: ValidationFailure[] = [];
@@ -235,6 +276,7 @@ Deno.serve(async (req: Request) => {
       job_id,
       checklist_item_id,
       stage_name,
+      step_execution_id: step_execution_id || null,
       technician_id: user.id,
       evidence_type: type,
       photo_url: type === "photo" ? evidence.photo_url : null,
@@ -255,6 +297,7 @@ Deno.serve(async (req: Request) => {
         job_id,
         checklist_item_id,
         stage_name,
+        step_execution_id: step_execution_id || null,
         technician_id: user.id,
         evidence_type: "photo", // default type for failed attempt
         photo_url: null,
