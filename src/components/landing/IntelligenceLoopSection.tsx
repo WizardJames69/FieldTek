@@ -15,18 +15,21 @@ const loopStyles = `
     0%, 100% { opacity: 0.7; }
     50% { opacity: 1; }
   }
+  @keyframes loopDataFlow {
+    to { stroke-dashoffset: -120; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .loop-animate * { animation: none !important; }
   }
 `;
 
 const loopSteps = [
-  { label: "Job\nCompleted", x: 160, y: 40 },
-  { label: "Outcome\nRecorded", x: 280, y: 100 },
-  { label: "Statistics\nComputed", x: 280, y: 200 },
-  { label: "Patterns\nDiscovered", x: 160, y: 260 },
-  { label: "Better\nGuidance", x: 40, y: 200 },
-  { label: "Next\nJob", x: 40, y: 100 },
+  { label: "Job\nCompleted", x: 170, y: 42 },
+  { label: "Outcome\nRecorded", x: 296, y: 106 },
+  { label: "Statistics\nComputed", x: 296, y: 214 },
+  { label: "Patterns\nDiscovered", x: 170, y: 278 },
+  { label: "Better\nGuidance", x: 44, y: 214 },
+  { label: "Next\nJob", x: 44, y: 106 },
 ];
 
 function IntelligenceLoopIllustration() {
@@ -41,22 +44,32 @@ function IntelligenceLoopIllustration() {
   });
 
   return (
-    <svg viewBox="0 0 320 300" className="w-full h-full loop-animate" fill="none">
+    <svg viewBox="0 0 340 320" className="w-full h-full loop-animate" fill="none">
       <style>{loopStyles}</style>
 
-      {/* Connection lines */}
+      {/* Static connection lines */}
       <path
         d={closedPath}
         stroke="rgba(255,255,255,0.06)"
-        strokeWidth="1"
+        strokeWidth="1.5"
         fill="none"
+      />
+
+      {/* Flowing data pulse along the loop */}
+      <path
+        d={closedPath}
+        stroke="rgba(249,115,22,0.12)"
+        strokeWidth="1.5"
+        fill="none"
+        strokeDasharray="6 14"
+        style={{ animation: "loopDataFlow 8s linear infinite" }}
       />
 
       {/* Traveling dots */}
       {segments.map((seg, i) => (
         <circle
           key={`dot-${i}`}
-          r="3"
+          r="3.5"
           fill="#f97316"
           opacity="0.8"
           style={{
@@ -69,15 +82,25 @@ function IntelligenceLoopIllustration() {
       {/* Nodes */}
       {loopSteps.map((step, i) => (
         <g key={i} style={{ animation: `loopNodePulse ${3 + i * 0.3}s ease-in-out infinite` }}>
+          {/* Glow behind Job Completed node */}
+          {i === 0 && (
+            <circle
+              cx={step.x}
+              cy={step.y}
+              r="36"
+              fill="#f97316"
+              opacity="0.04"
+            />
+          )}
           {/* Node background */}
           <rect
-            x={step.x - 40}
-            y={step.y - 18}
-            width="80"
-            height="36"
-            rx="8"
+            x={step.x - 44}
+            y={step.y - 20}
+            width="88"
+            height="40"
+            rx="10"
             fill="#161819"
-            stroke={i === 0 ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.08)"}
+            stroke={i === 0 ? "rgba(249,115,22,0.45)" : "rgba(255,255,255,0.08)"}
             strokeWidth={i === 0 ? 1.5 : 1}
           />
           {/* Node label */}
@@ -85,10 +108,10 @@ function IntelligenceLoopIllustration() {
             <text
               key={li}
               x={step.x}
-              y={step.y + (li === 0 ? -3 : 10)}
+              y={step.y + (li === 0 ? -4 : 10)}
               textAnchor="middle"
               fill={i === 0 ? "rgba(249,115,22,0.7)" : "rgba(255,255,255,0.4)"}
-              fontSize="9"
+              fontSize="10"
               fontFamily="system-ui, sans-serif"
             >
               {line}
@@ -125,7 +148,7 @@ const points = [
 
 export function IntelligenceLoopSection() {
   return (
-    <section className="bg-[#0C0D0F] py-8 md:py-20 lg:py-[100px]">
+    <section className="bg-[#0C0D0F] py-12 md:py-20 lg:py-[100px]">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: Text */}
@@ -138,7 +161,7 @@ export function IntelligenceLoopSection() {
             </ScrollReveal>
             <ScrollReveal delay={0.1}>
               <p className="text-zinc-400 leading-relaxed mb-8">
-                Most field service AI is static — it only knows what was programmed. FieldTek continuously
+                Most field service AI is static. It only knows what was programmed. FieldTek continuously
                 improves because it learns from every completed job. Repair outcomes feed into diagnostic
                 statistics, which reveal patterns, which improve the guidance your technicians receive next time.
               </p>
@@ -151,7 +174,7 @@ export function IntelligenceLoopSection() {
                     <CheckCircle2 className="h-4 w-4 text-orange-500 mt-1 flex-shrink-0" />
                     <div>
                       <span className="text-sm font-semibold text-white">{point.title}</span>
-                      <span className="text-sm text-zinc-400 ml-1">— {point.description}</span>
+                      <span className="text-sm text-zinc-400 ml-1">: {point.description}</span>
                     </div>
                   </div>
                 </ScrollReveal>
@@ -161,7 +184,7 @@ export function IntelligenceLoopSection() {
 
           {/* Right: Loop Illustration */}
           <ScrollReveal delay={0.1}>
-            <div className="w-full max-w-[400px] mx-auto aspect-[16/15]">
+            <div className="w-full max-w-[480px] mx-auto aspect-[340/320]">
               <IntelligenceLoopIllustration />
             </div>
           </ScrollReveal>

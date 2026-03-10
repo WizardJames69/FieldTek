@@ -10,13 +10,13 @@ const capabilities = [
     icon: BookOpen,
     title: "RAG over Documentation",
     description:
-      "Upload manuals. AI retrieves the exact procedure, page, and paragraph — verified by a quality judge before reaching your tech.",
+      "Upload manuals. AI retrieves the exact procedure, page, and paragraph, verified by a quality judge before reaching your tech.",
   },
   {
     icon: Network,
     title: "Equipment Knowledge Graph",
     description:
-      "Maps every equipment model, its components, known failure modes, and which repairs actually worked — updated with every job.",
+      "Maps every equipment model, its components, known failure modes, and which repairs actually worked. Updated with every job.",
   },
   {
     icon: GitBranch,

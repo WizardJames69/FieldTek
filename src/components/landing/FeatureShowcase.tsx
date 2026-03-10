@@ -8,7 +8,7 @@ const features = [
     eyebrow: "Sentinel AI",
     title: "Your documentation, your expert. On every job.",
     description:
-      "Sentinel AI reads your uploaded manuals, wiring diagrams, and spec sheets — then delivers step-by-step guidance, code compliance alerts, and diagnostic reasoning directly to your techs in the field.",
+      "Sentinel AI reads your uploaded manuals, wiring diagrams, and spec sheets, then delivers step-by-step guidance, code compliance alerts, and diagnostic reasoning directly to your techs in the field.",
     bullets: [
       "Diagnostic reasoning with failure probability analysis",
       "Real-time NEC, IPC, and IMC code compliance alerts",

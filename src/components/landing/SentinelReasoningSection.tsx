@@ -20,41 +20,41 @@ const pipelineStyles = `
 `;
 
 const pipelineStages = [
-  { label: "Technician\nQuestion", y: 24 },
-  { label: "Manual\nRetrieval", y: 68 },
-  { label: "Diagnostic\nGraph", y: 112 },
-  { label: "Workflow\nStatistics", y: 156 },
-  { label: "Pattern\nAdvisory", y: 200 },
-  { label: "Context\nFusion", y: 244 },
-  { label: "Ranked\nHypotheses", y: 288 },
+  { label: "Technician\nQuestion", y: 28 },
+  { label: "Manual\nRetrieval", y: 76 },
+  { label: "Diagnostic\nGraph", y: 124 },
+  { label: "Workflow\nStatistics", y: 172 },
+  { label: "Pattern\nAdvisory", y: 220 },
+  { label: "Context\nFusion", y: 268 },
+  { label: "Ranked\nHypotheses", y: 328 },
 ];
 
 function SentinelPipelineIllustration() {
-  const cx = 160;
+  const cx = 170;
 
   return (
-    <svg viewBox="0 0 320 320" className="w-full h-full pipeline-animate" fill="none">
+    <svg viewBox="0 0 340 370" className="w-full h-full pipeline-animate" fill="none">
       <style>{pipelineStyles}</style>
 
       {/* Vertical connecting line */}
       <line
         x1={cx}
-        y1={pipelineStages[0].y + 16}
+        y1={pipelineStages[0].y + 18}
         x2={cx}
-        y2={pipelineStages[pipelineStages.length - 1].y - 16}
+        y2={pipelineStages[pipelineStages.length - 1].y - 18}
         stroke="rgba(255,255,255,0.06)"
-        strokeWidth="1"
+        strokeWidth="1.5"
         strokeDasharray="4 3"
       />
 
       {/* Traveling dots between stages */}
       {pipelineStages.slice(0, -1).map((stage, i) => {
         const next = pipelineStages[i + 1];
-        const segPath = `M${cx},${stage.y + 16} L${cx},${next.y - 16}`;
+        const segPath = `M${cx},${stage.y + 18} L${cx},${next.y - 18}`;
         return (
           <circle
             key={`dot-${i}`}
-            r="2.5"
+            r="3"
             fill="#f97316"
             opacity="0.7"
             style={{
@@ -78,24 +78,35 @@ function SentinelPipelineIllustration() {
               animation: `pipelineNodeGlow ${3 + i * 0.2}s ease-in-out infinite`,
             }}
           >
+            {/* Glow behind Context Fusion and Ranked Hypotheses */}
+            {(isFusion || isLast) && (
+              <circle
+                cx={cx}
+                cy={stage.y}
+                r="38"
+                fill="#f97316"
+                opacity={isLast ? "0.04" : "0.03"}
+              />
+            )}
+
             {/* Node box */}
             <rect
-              x={cx - 56}
-              y={stage.y - 14}
-              width="112"
-              height="28"
-              rx="6"
+              x={cx - 62}
+              y={stage.y - 16}
+              width="124"
+              height="32"
+              rx="7"
               fill={isLast ? "#1a1412" : "#161819"}
               stroke={
                 isFirst
                   ? "rgba(255,255,255,0.12)"
                   : isFusion
-                    ? "rgba(249,115,22,0.25)"
+                    ? "rgba(249,115,22,0.35)"
                     : isLast
-                      ? "rgba(249,115,22,0.35)"
+                      ? "rgba(249,115,22,0.45)"
                       : "rgba(255,255,255,0.06)"
               }
-              strokeWidth={isLast ? 1.5 : 1}
+              strokeWidth={isLast ? 2 : 1}
             />
 
             {/* Label */}
@@ -103,16 +114,16 @@ function SentinelPipelineIllustration() {
               <text
                 key={li}
                 x={cx}
-                y={stage.y + (li === 0 ? -2 : 9)}
+                y={stage.y + (li === 0 ? -2 : 10)}
                 textAnchor="middle"
                 fill={
                   isLast
-                    ? "rgba(249,115,22,0.8)"
+                    ? "rgba(249,115,22,0.9)"
                     : isFusion
-                      ? "rgba(249,115,22,0.6)"
+                      ? "rgba(249,115,22,0.7)"
                       : "rgba(255,255,255,0.45)"
                 }
-                fontSize="9"
+                fontSize="10"
                 fontFamily="system-ui, sans-serif"
                 fontWeight={isLast ? "600" : "400"}
               >
@@ -123,7 +134,7 @@ function SentinelPipelineIllustration() {
             {/* Arrow indicator between nodes */}
             {i < pipelineStages.length - 1 && (
               <polygon
-                points={`${cx - 3},${stage.y + 18} ${cx + 3},${stage.y + 18} ${cx},${stage.y + 22}`}
+                points={`${cx - 3},${stage.y + 20} ${cx + 3},${stage.y + 20} ${cx},${stage.y + 24}`}
                 fill="rgba(255,255,255,0.08)"
               />
             )}
@@ -138,18 +149,14 @@ function SentinelPipelineIllustration() {
 
 export function SentinelReasoningSection() {
   return (
-    <section className="bg-[#111214] py-8 md:py-20 lg:py-[100px]">
+    <section className="bg-[#111214] py-12 md:py-20 lg:py-[100px]">
+      {/* Gradient divider at top */}
+      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -mt-12 md:-mt-20 lg:-mt-[100px] mb-12 md:mb-20 lg:mb-[100px]" />
+
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          {/* Left: Pipeline Illustration */}
-          <ScrollReveal delay={0.1}>
-            <div className="w-full max-w-[360px] mx-auto aspect-square">
-              <SentinelPipelineIllustration />
-            </div>
-          </ScrollReveal>
-
-          {/* Right: Text */}
-          <div className="lg:order-last">
+          {/* Text (mobile: first, desktop: right) */}
+          <div>
             <AnimatedEyebrow label="How Sentinel Reasons" colorClass="text-orange-500" className="mb-3" />
             <ScrollReveal delay={0.05}>
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white tracking-tight mb-4">
@@ -160,7 +167,7 @@ export function SentinelReasoningSection() {
               <p className="text-zinc-400 leading-relaxed mb-6">
                 When a technician asks Sentinel for help, it doesn't just search manuals. It pulls from
                 equipment documentation, diagnostic history, workflow success rates, and discovered repair
-                patterns — then ranks the most likely solutions by confidence.
+                patterns, then ranks the most likely solutions by confidence.
               </p>
             </ScrollReveal>
             <ScrollReveal delay={0.15}>
@@ -176,13 +183,20 @@ export function SentinelReasoningSection() {
                       <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                     </div>
                     <p className="text-sm text-zinc-400">
-                      <span className="text-white font-medium">{item.source}</span> — {item.detail}
+                      <span className="text-white font-medium">{item.source}</span>: {item.detail}
                     </p>
                   </div>
                 ))}
               </div>
             </ScrollReveal>
           </div>
+
+          {/* Pipeline Illustration (mobile: second, desktop: left) */}
+          <ScrollReveal delay={0.1} className="lg:order-first">
+            <div className="w-full max-w-[440px] mx-auto aspect-[340/370]">
+              <SentinelPipelineIllustration />
+            </div>
+          </ScrollReveal>
         </div>
       </div>
     </section>

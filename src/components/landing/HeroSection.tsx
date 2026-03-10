@@ -44,7 +44,7 @@ export const HeroSection = memo(function HeroSection() {
 
               {/* Subtitle */}
               <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-6 md:mb-14 leading-relaxed">
-                AI-guided diagnostics. Workflow enforcement. Automatic documentation. Compliance protection — all getting smarter with every repair.
+                AI-guided diagnostics. Workflow enforcement. Automatic documentation. Compliance protection. All getting smarter with every repair.
               </p>
             </AnimatedGroup>
           </div>
