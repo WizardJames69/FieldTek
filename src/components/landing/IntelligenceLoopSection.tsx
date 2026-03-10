@@ -148,7 +148,7 @@ const points = [
 
 export function IntelligenceLoopSection() {
   return (
-    <section className="bg-[#0C0D0F] py-12 md:py-20 lg:py-[100px]">
+    <section className="bg-[#0C0D0F] py-20 md:py-28">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: Text */}

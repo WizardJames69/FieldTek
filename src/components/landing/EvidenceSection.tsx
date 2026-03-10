@@ -108,7 +108,7 @@ const benefits = [
 
 export function EvidenceSection() {
   return (
-    <section className="bg-[#0C0D0F] py-8 md:py-20 lg:py-[100px]">
+    <section className="bg-[#0C0D0F] py-20 md:py-28">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div>
