@@ -44,7 +44,7 @@ const staggerItem = {
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="bg-[#0C0D0F] py-20 md:py-28">
+    <section id="how-it-works" className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
           <AnimatedEyebrow label="Get Started" center />

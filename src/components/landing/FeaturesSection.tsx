@@ -5,7 +5,7 @@ import { IsometricFeatures } from "./IsometricFeatures";
 
 export const FeaturesSection = memo(function FeaturesSection() {
   return (
-    <section id="features" className="bg-[#111214] py-20 md:py-28">
+    <section id="features" className="bg-[#111214] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
           <AnimatedEyebrow label="The Solution" center />

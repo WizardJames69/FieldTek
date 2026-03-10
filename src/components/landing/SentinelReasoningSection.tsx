@@ -149,9 +149,9 @@ function SentinelPipelineIllustration() {
 
 export function SentinelReasoningSection() {
   return (
-    <section className="bg-[#111214] py-20 md:py-28">
+    <section className="bg-[#111214] py-6 md:py-8 lg:py-10">
       {/* Gradient divider at top */}
-      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -mt-20 md:-mt-28 mb-20 md:mb-28" />
+      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -mt-6 md:-mt-8 lg:-mt-10 mb-6 md:mb-8 lg:mb-10" />
 
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">

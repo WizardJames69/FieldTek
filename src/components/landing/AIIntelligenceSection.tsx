@@ -34,7 +34,7 @@ const capabilities = [
 
 export function AIIntelligenceSection() {
   return (
-    <section id="ai-platform" className="landing-section-dark landing-ai-glow py-20 md:py-28 relative">
+    <section id="ai-platform" className="landing-section-dark landing-ai-glow py-6 md:py-8 lg:py-10 relative">
       <IsometricLights />
       <div className="mx-auto max-w-6xl px-4 relative z-[1]">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">

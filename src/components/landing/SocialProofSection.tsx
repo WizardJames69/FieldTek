@@ -41,7 +41,7 @@ const staggerItem = {
 
 export function SocialProofSection({ onApply }: SocialProofSectionProps) {
   return (
-    <section className="bg-[#111214] py-20 md:py-28">
+    <section className="bg-[#111214] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center mb-12 md:mb-16">
           <AnimatedEyebrow label="Early Access" center />
