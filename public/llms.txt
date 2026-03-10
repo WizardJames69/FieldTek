@@ -1,0 +1,44 @@
+FieldTek
+
+AI-powered field service management platform
+
+FieldTek is a field service management platform powered by Sentinel AI, a proprietary compliance and diagnostic engine for HVAC, electrical, plumbing, and mechanical contractors.
+
+Core Features
+
+Sentinel AI: Real-time compliance diagnostics with NEC, IPC, IMC code verification
+AI-guided install and repair procedures from manufacturer documentation
+Automatic compliance documentation generation
+Warranty protection and OEM specification verification
+Equipment Knowledge Graph with failure mode tracking
+Workflow Intelligence with pattern discovery and success rate analysis
+Job scheduling, dispatch, and tracking
+Photo evidence with GPS and timestamp verification
+Client portal for service request submission
+
+Target Users
+
+HVAC contractors
+Electrical contractors
+Plumbing contractors
+Mechanical contractors
+Field service managers
+Operations managers
+
+Key Differentiators
+
+Proprietary AI (Sentinel AI) trained on technical documentation and equipment data
+Real-time code compliance alerts during installations and repairs
+Automatic warranty compliance verification against OEM specifications
+Manufacturer-specific guidance (not generic)
+Self-improving AI that learns from every completed job
+Equipment Knowledge Graph mapping models, components, and failure modes
+Workflow Intelligence discovering repair patterns across your fleet
+
+Links
+
+Website: https://fieldtek.ai
+Pricing: https://fieldtek.ai/pricing
+FAQ: https://fieldtek.ai/faq
+Contact: https://fieldtek.ai/contact
+Blog: https://fieldtek.ai/blog

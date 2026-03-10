@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPostLoginDestination } from "@/lib/authRouting";
 import { Navbar } from "@/components/landing/Navbar";
@@ -102,6 +103,21 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen overflow-x-hidden noise-overlay">
+      <Helmet>
+        <title>FieldTek | AI-Powered Field Service Platform | Guide Every Repair. Learn From Every Job.</title>
+        <meta name="description" content="FieldTek's Sentinel AI guides technicians through manufacturer-specific procedures, auto-generates compliance documentation, and protects warranties. Built for HVAC, electrical, plumbing, and mechanical contractors." />
+        <meta name="keywords" content="field service management, HVAC software, AI field service, warranty compliance, install documentation, Sentinel AI, technician guidance, compliance reporting, HVAC technician app, plumbing software, electrical contractor software, mechanical contractor software, field service app, AI diagnostics, NEC compliance, equipment knowledge graph, workflow intelligence" />
+        <link rel="canonical" href="https://fieldtek.ai/" />
+        <meta property="og:title" content="FieldTek | Guide Every Repair. Learn From Every Job." />
+        <meta property="og:description" content="AI-powered compliance and diagnostic guidance for field technicians. Sentinel AI delivers real-time NEC code compliance and manufacturer-specific procedures." />
+        <meta property="og:url" content="https://fieldtek.ai/" />
+        <meta property="og:image" content="https://fieldtek.ai/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="FieldTek | Guide Every Repair. Learn From Every Job." />
+        <meta name="twitter:description" content="AI-powered compliance and diagnostic guidance for field technicians." />
+        <meta name="twitter:image" content="https://fieldtek.ai/og-image.png" />
+      </Helmet>
+
       {/* Dark hero zone */}
       <div className="landing-section-dark">
         <Navbar onApply={openBetaModal} />

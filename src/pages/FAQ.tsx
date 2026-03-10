@@ -97,11 +97,11 @@ export default function FAQ() {
   return (
     <div className="min-h-screen bg-[#08090A]">
       <Helmet>
-        <title>FAQ | FieldTek</title>
-        <meta name="description" content="Common questions about FieldTek's AI-powered field service platform." />
+        <title>FAQ | FieldTek - Common Questions About AI Field Service</title>
+        <meta name="description" content="Frequently asked questions about FieldTek's AI-powered field service platform. Learn about Sentinel AI, compliance features, pricing, and getting started for HVAC, electrical, plumbing, and mechanical contractors." />
         <link rel="canonical" href="https://fieldtek.ai/faq" />
-        <meta property="og:title" content="FAQ | FieldTek" />
-        <meta property="og:description" content="Common questions about FieldTek's AI-powered field service platform." />
+        <meta property="og:title" content="FAQ | FieldTek - Common Questions About AI Field Service" />
+        <meta property="og:description" content="Frequently asked questions about FieldTek's AI-powered field service platform. Learn about Sentinel AI, compliance, pricing, and getting started." />
         <meta property="og:url" content="https://fieldtek.ai/faq" />
         <meta property="og:image" content="https://fieldtek.ai/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />

@@ -223,7 +223,7 @@ export default function BookDemo() {
     <div className="min-h-screen bg-[#08090A] dark-page">
       <Helmet>
         <title>Schedule a Consultation — FieldTek AI</title>
-        <meta name="description" content="Book a free consultation with FieldTek AI. Get personalized guidance on how AI-powered field service management can transform your trade business." />
+        <meta name="description" content="Book a free consultation with FieldTek. See how Sentinel AI delivers real-time compliance diagnostics, automated documentation, and warranty protection for HVAC, electrical, plumbing, and mechanical contractors." />
         <link rel="canonical" href="https://fieldtek.ai/consultation" />
         <meta property="og:title" content="Schedule a Consultation — FieldTek AI" />
         <meta property="og:description" content="Book a free consultation to see how FieldTek AI can transform your field service operations." />

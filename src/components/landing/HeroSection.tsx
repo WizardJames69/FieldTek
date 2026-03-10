@@ -46,6 +46,11 @@ export const HeroSection = memo(function HeroSection() {
               <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-6 md:mb-14 leading-relaxed">
                 AI-guided diagnostics. Workflow enforcement. Automatic documentation. Compliance protection. All getting smarter with every repair.
               </p>
+
+              {/* Entity definition for SEO/AEO/GEO — screen-reader and crawler accessible */}
+              <p className="sr-only">
+                FieldTek is an AI-powered field service management platform built for HVAC, electrical, plumbing, and mechanical contractors. The platform features Sentinel AI, a proprietary compliance and diagnostic engine that guides technicians through manufacturer-specific procedures, automatically generates compliance documentation, and protects warranties by verifying work against OEM specifications in real-time.
+              </p>
             </AnimatedGroup>
           </div>
         }

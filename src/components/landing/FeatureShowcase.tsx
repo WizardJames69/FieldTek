@@ -116,9 +116,9 @@ export function FeatureShowcase() {
               <div className={reverse ? "md:order-last" : ""}>
                 <AnimatedEyebrow label={feature.eyebrow} colorClass="text-orange-500" className="mb-3" />
                 <ScrollReveal delay={0.05}>
-                  <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
+                  <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                     {feature.title}
-                  </h3>
+                  </h2>
                 </ScrollReveal>
                 <ScrollReveal delay={0.1}>
                   <p className="text-zinc-400 leading-relaxed mb-6">{feature.description}</p>

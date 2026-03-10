@@ -141,7 +141,7 @@ export default function Contact() {
     <div className="min-h-screen bg-[#08090A] dark-page" data-testid="contact-form-container">
       <Helmet>
         <title>Contact Us — FieldTek AI | Get in Touch</title>
-        <meta name="description" content="Have questions about FieldTek AI? Contact our team for sales inquiries, support, partnerships, or general questions. We respond within 1-2 business days." />
+        <meta name="description" content="Contact the FieldTek team for questions about Sentinel AI, field service management, compliance diagnostics, or partnership opportunities. We respond within 1-2 business days." />
         <link rel="canonical" href="https://fieldtek.ai/contact" />
         <meta property="og:title" content="Contact Us — FieldTek AI" />
         <meta property="og:description" content="Have questions about FieldTek AI? Contact our team — we respond within 1-2 business days." />
