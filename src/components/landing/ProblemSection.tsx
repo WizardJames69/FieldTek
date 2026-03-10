@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { AlertTriangle, FileX, UserMinus } from "lucide-react";
+import { AlertTriangle, FileX, UserMinus, RotateCcw } from "lucide-react";
 import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
 
@@ -21,6 +21,12 @@ const problems = [
     title: "Knowledge Walks Out the Door",
     description:
       "When your best tech retires, decades of institutional knowledge leave with them. New hires start from scratch every time.",
+  },
+  {
+    icon: RotateCcw,
+    title: "Diagnostics Start From Scratch",
+    description:
+      "Each technician independently troubleshoots the same symptoms again and again. No system captures what actually worked before.",
   },
 ];
 
@@ -55,7 +61,7 @@ export function ProblemSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
         >
           {problems.map((problem, i) => (
             <motion.div

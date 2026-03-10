@@ -30,6 +30,15 @@ const HowItWorksSection = lazy(() =>
 const ClientPortalSection = lazy(() =>
   import("@/components/landing/ClientPortalSection").then((m) => ({ default: m.ClientPortalSection }))
 );
+const IntelligenceLoopSection = lazy(() =>
+  import("@/components/landing/IntelligenceLoopSection").then((m) => ({ default: m.IntelligenceLoopSection }))
+);
+const SentinelReasoningSection = lazy(() =>
+  import("@/components/landing/SentinelReasoningSection").then((m) => ({ default: m.SentinelReasoningSection }))
+);
+const EvidenceSection = lazy(() =>
+  import("@/components/landing/EvidenceSection").then((m) => ({ default: m.EvidenceSection }))
+);
 
 function SectionSkeleton({ minHeight = "min-h-[400px]" }: { minHeight?: string }) {
   return (
@@ -110,9 +119,16 @@ export default function Landing() {
           <AIIntelligenceSection />
         </Suspense>
 
+        {/* Intelligence loop + Sentinel reasoning */}
+        <Suspense fallback={<SectionSkeleton minHeight="min-h-[500px]" />}>
+          <IntelligenceLoopSection />
+          <SentinelReasoningSection />
+        </Suspense>
+
         {/* Feature deep-dives */}
         <Suspense fallback={<SectionSkeleton minHeight="min-h-[600px]" />}>
           <FeatureShowcase />
+          <EvidenceSection />
           <ClientPortalSection />
           <HowItWorksSection />
           <SocialProofSection onApply={openBetaModal} />

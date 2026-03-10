@@ -14,6 +14,7 @@ const features = [
       "Real-time NEC, IPC, and IMC code compliance alerts",
       "Equipment-specific guidance from uploaded manufacturer documentation",
       "Step-by-step workflow tracking from symptom to resolution",
+      "Cross-references diagnostic history, workflow statistics, and discovered repair patterns to rank the most likely repair solutions",
     ],
     icon: MessageSquare,
     mockup: "ai-assistant",

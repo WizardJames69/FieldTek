@@ -10,25 +10,25 @@ const capabilities = [
     icon: BookOpen,
     title: "RAG over Documentation",
     description:
-      "Upload manuals. AI retrieves relevant procedures in real-time.",
+      "Upload manuals. AI retrieves the exact procedure, page, and paragraph — verified by a quality judge before reaching your tech.",
   },
   {
     icon: Network,
     title: "Equipment Knowledge Graph",
     description:
-      "Maps equipment models, components, failure modes, and proven fixes.",
+      "Maps every equipment model, its components, known failure modes, and which repairs actually worked — updated with every job.",
   },
   {
     icon: GitBranch,
     title: "Workflow Intelligence",
     description:
-      "Surfaces best practices from how your top technicians work.",
+      "Detects repair patterns from completed jobs and suggests new workflows. Your best technicians' methods become your company standard.",
   },
   {
     icon: Brain,
     title: "Diagnostic Learning Loop",
     description:
-      "Learns from real repair outcomes to improve recommendations.",
+      "Tracks every diagnostic outcome. Discovers which symptom-to-repair sequences have the highest success rates. Ranks hypotheses by confidence.",
   },
 ];
 
