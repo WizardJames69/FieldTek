@@ -86,6 +86,8 @@ WITH (security_invoker=on) AS
   WHERE wie.edge_type = 'leads_to'
   ORDER BY wie.probability DESC;
 
+GRANT SELECT ON public.workflow_failure_paths TO authenticated, anon, service_role;
+
 -- C2. workflow_diagnostic_success
 DROP VIEW IF EXISTS public.workflow_diagnostic_success;
 CREATE VIEW public.workflow_diagnostic_success
@@ -104,6 +106,8 @@ WITH (security_invoker=on) AS
     wd.avg_duration_minutes
   FROM public.workflow_diagnostics wd
   ORDER BY success_rate_pct DESC;
+
+GRANT SELECT ON public.workflow_diagnostic_success TO authenticated, anon, service_role;
 
 -- C3. workflow_repair_effectiveness
 DROP VIEW IF EXISTS public.workflow_repair_effectiveness;
@@ -142,6 +146,8 @@ WITH (security_invoker=on) AS
     ON e_ro.target_id = wo.id
   WHERE e_sf.edge_type = 'leads_to'
   ORDER BY e_sf.probability DESC, e_fr.probability DESC;
+
+GRANT SELECT ON public.workflow_repair_effectiveness TO authenticated, anon, service_role;
 
 
 -- ────────────────────────────────────────────────────────────
