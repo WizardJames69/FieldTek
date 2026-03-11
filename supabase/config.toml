@@ -89,3 +89,12 @@ verify_jwt = false
 
 [functions.send-health-alert]
 verify_jwt = true
+
+[functions.verify-step-evidence]
+verify_jwt = false
+
+[functions.collect-workflow-intelligence]
+verify_jwt = false
+
+[functions.suggest-workflow-patterns]
+verify_jwt = false
