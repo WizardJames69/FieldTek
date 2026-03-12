@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { VoiceInput } from '@/components/assistant/VoiceInput';
 
 interface JobCompletionDialogProps {
   open: boolean;
@@ -22,6 +24,15 @@ interface JobCompletionDialogProps {
 
 const MIN_RESOLUTION_LENGTH = 10;
 
+const RESOLUTION_TEMPLATES = [
+  'Replaced capacitor and tested system',
+  'Cleaned unit and verified operation',
+  'Adjusted thermostat settings',
+  'No issues found during inspection',
+  'Repaired wiring and restored power',
+  'Performed inspection and system operating normally',
+] as const;
+
 export function JobCompletionDialog({
   open,
   onOpenChange,
@@ -29,17 +40,32 @@ export function JobCompletionDialog({
   onConfirm,
 }: JobCompletionDialogProps) {
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const isValid = resolutionNotes.trim().length >= MIN_RESOLUTION_LENGTH;
 
   const handleConfirm = () => {
     if (!isValid) return;
     onConfirm(resolutionNotes.trim());
     setResolutionNotes('');
+    setSelectedTemplate(null);
   };
 
   const handleCancel = () => {
     setResolutionNotes('');
+    setSelectedTemplate(null);
     onOpenChange(false);
+  };
+
+  const handleSelectTemplate = (tpl: string) => {
+    setResolutionNotes(tpl);
+    setSelectedTemplate(tpl);
+  };
+
+  const handleTextChange = (value: string) => {
+    setResolutionNotes(value);
+    if (selectedTemplate && value !== selectedTemplate) {
+      setSelectedTemplate(null);
+    }
   };
 
   return (
@@ -58,15 +84,39 @@ export function JobCompletionDialog({
         </AlertDialogHeader>
 
         <div className="space-y-2 py-2">
-          <Label htmlFor="resolution-notes" className="flex items-center gap-1.5">
-            <FileText className="h-4 w-4" />
-            Resolution Notes
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="resolution-notes" className="flex items-center gap-1.5">
+              <FileText className="h-4 w-4" />
+              Resolution Notes
+            </Label>
+            <VoiceInput
+              maxDurationMs={15000}
+              onTranscript={(text) => {
+                setResolutionNotes((prev) => (prev ? prev + ' ' + text : text));
+                setSelectedTemplate(null);
+              }}
+            />
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {RESOLUTION_TEMPLATES.map((tpl) => (
+              <Button
+                key={tpl}
+                type="button"
+                variant={selectedTemplate === tpl ? 'secondary' : 'outline'}
+                className="text-xs h-7 px-2.5"
+                onClick={() => handleSelectTemplate(tpl)}
+              >
+                {tpl}
+              </Button>
+            ))}
+          </div>
+
           <Textarea
             id="resolution-notes"
             placeholder="Describe the repair actions taken, parts replaced, and final outcome..."
             value={resolutionNotes}
-            onChange={(e) => setResolutionNotes(e.target.value)}
+            onChange={(e) => handleTextChange(e.target.value)}
             rows={4}
             className="resize-none"
           />

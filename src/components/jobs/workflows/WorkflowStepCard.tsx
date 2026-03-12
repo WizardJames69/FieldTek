@@ -3,6 +3,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { AlertTriangle, ChevronDown, ChevronUp, Check, SkipForward } from 'lucide-react';
 import { StepEvidenceCapture } from '@/components/mobile/StepEvidenceCapture';
 import {
@@ -75,7 +82,8 @@ export function WorkflowStepCard({
   const [notes, setNotes] = useState(step.stepExecution.technician_notes || '');
   const [detailExpanded, setDetailExpanded] = useState(false);
   const [skipDialogOpen, setSkipDialogOpen] = useState(false);
-  const [skipReason, setSkipReason] = useState('');
+  const [selectedSkipReason, setSelectedSkipReason] = useState('');
+  const [customSkipReason, setCustomSkipReason] = useState('');
 
   const status = step.stepExecution.status;
   const isCompleted = status === 'completed';
@@ -90,11 +98,16 @@ export function WorkflowStepCard({
     onComplete({ technician_notes: notes || undefined });
   };
 
+  const effectiveSkipReason = selectedSkipReason === 'Other'
+    ? customSkipReason.trim()
+    : selectedSkipReason;
+
   const handleSkip = () => {
-    if (skipReason.trim()) {
-      onSkip(skipReason.trim());
+    if (effectiveSkipReason) {
+      onSkip(effectiveSkipReason);
       setSkipDialogOpen(false);
-      setSkipReason('');
+      setSelectedSkipReason('');
+      setCustomSkipReason('');
     }
   };
 
@@ -242,19 +255,36 @@ export function WorkflowStepCard({
                 Skip
               </Button>
             ) : (
-              <div className="flex items-center gap-2">
-                <Textarea
-                  placeholder="Reason for skipping..."
-                  value={skipReason}
-                  onChange={(e) => setSkipReason(e.target.value)}
-                  className="min-h-[40px] text-sm w-48"
-                />
-                <Button size="sm" onClick={handleSkip} disabled={!skipReason.trim()}>
-                  Confirm
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => { setSkipDialogOpen(false); setSkipReason(''); }}>
-                  Cancel
-                </Button>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Select value={selectedSkipReason} onValueChange={(v) => { setSelectedSkipReason(v); setCustomSkipReason(''); }}>
+                    <SelectTrigger className="w-48 h-10 text-sm">
+                      <SelectValue placeholder="Select reason..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Not applicable">Not applicable</SelectItem>
+                      <SelectItem value="Already completed">Already completed</SelectItem>
+                      <SelectItem value="Client declined">Client declined</SelectItem>
+                      <SelectItem value="Part unavailable">Part unavailable</SelectItem>
+                      <SelectItem value="Access blocked">Access blocked</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={handleSkip} disabled={!effectiveSkipReason}>
+                    Confirm
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setSkipDialogOpen(false); setSelectedSkipReason(''); setCustomSkipReason(''); }}>
+                    Cancel
+                  </Button>
+                </div>
+                {selectedSkipReason === 'Other' && (
+                  <Textarea
+                    placeholder="Describe reason..."
+                    value={customSkipReason}
+                    onChange={(e) => setCustomSkipReason(e.target.value)}
+                    className="min-h-[40px] text-sm"
+                  />
+                )}
               </div>
             )}
           </div>

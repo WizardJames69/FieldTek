@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { Camera, MapPin, Hash, Ruler, Loader2, CheckCircle2, AlertTriangle, CloudOff } from "lucide-react";
+import { Camera, MapPin, Hash, Ruler, Loader2, CheckCircle2, AlertTriangle, CloudOff, ScanLine } from "lucide-react";
+import { BarcodeScanner } from "./BarcodeScanner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -277,6 +278,7 @@ function SerialCapture({
   onSubmitted?: () => void;
 }) {
   const [serial, setSerial] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
   const { submitOfflineEvidence, isPending } = useOfflineAwareSubmitEvidence();
 
   const handleSubmit = async () => {
@@ -308,6 +310,15 @@ function SerialCapture({
       />
       <Button
         variant="outline"
+        size="icon"
+        className="h-12 w-12"
+        onClick={() => setScannerOpen(true)}
+        data-testid="evidence-serial-scan"
+      >
+        <ScanLine className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
         className="h-12 text-sm"
         onClick={handleSubmit}
         disabled={!serial.trim() || isPending}
@@ -320,6 +331,11 @@ function SerialCapture({
         )}
       </Button>
       <StatusIndicator existing={existing} />
+      <BarcodeScanner
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        onScan={(value) => setSerial(value)}
+      />
     </div>
   );
 }

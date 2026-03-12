@@ -12,6 +12,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useJobEvidence } from '@/hooks/useStepEvidence';
@@ -42,7 +49,8 @@ export function WorkflowExecutionView({ jobId, executionId, variant = 'mobile' }
 
   const [viewingStepNumber, setViewingStepNumber] = useState<number | null>(null);
   const [abortDialogOpen, setAbortDialogOpen] = useState(false);
-  const [abortReason, setAbortReason] = useState('');
+  const [selectedAbortReason, setSelectedAbortReason] = useState('');
+  const [customAbortReason, setCustomAbortReason] = useState('');
 
   if (isLoading) {
     return (
@@ -110,12 +118,17 @@ export function WorkflowExecutionView({ jobId, executionId, variant = 'mobile' }
     }
   };
 
+  const effectiveAbortReason = selectedAbortReason === 'Other'
+    ? customAbortReason.trim()
+    : selectedAbortReason;
+
   const handleAbort = async () => {
-    if (!abortReason.trim()) return;
+    if (!effectiveAbortReason) return;
     try {
-      await abortExecution.mutateAsync({ executionId, reason: abortReason.trim() });
+      await abortExecution.mutateAsync({ executionId, reason: effectiveAbortReason });
       setAbortDialogOpen(false);
-      setAbortReason('');
+      setSelectedAbortReason('');
+      setCustomAbortReason('');
       toast.success('Workflow aborted');
     } catch (err: any) {
       toast.error(err.message || 'Failed to abort workflow');
@@ -243,7 +256,13 @@ export function WorkflowExecutionView({ jobId, executionId, variant = 'mobile' }
       )}
 
       {/* Abort Dialog */}
-      <AlertDialog open={abortDialogOpen} onOpenChange={setAbortDialogOpen}>
+      <AlertDialog open={abortDialogOpen} onOpenChange={(open) => {
+        setAbortDialogOpen(open);
+        if (!open) {
+          setSelectedAbortReason('');
+          setCustomAbortReason('');
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Abort Workflow</AlertDialogTitle>
@@ -251,17 +270,34 @@ export function WorkflowExecutionView({ jobId, executionId, variant = 'mobile' }
               This will stop the current workflow execution. The workflow record will be preserved for audit purposes.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Textarea
-            placeholder="Reason for aborting..."
-            value={abortReason}
-            onChange={(e) => setAbortReason(e.target.value)}
-            className="min-h-[60px]"
-          />
+          <div className="space-y-2">
+            <Select value={selectedAbortReason} onValueChange={(v) => { setSelectedAbortReason(v); setCustomAbortReason(''); }}>
+              <SelectTrigger className="h-10 text-sm">
+                <SelectValue placeholder="Select reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Client cancelled">Client cancelled</SelectItem>
+                <SelectItem value="Reschedule required">Reschedule required</SelectItem>
+                <SelectItem value="Parts needed">Parts needed</SelectItem>
+                <SelectItem value="Escalated">Escalated</SelectItem>
+                <SelectItem value="Safety issue">Safety issue</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            {selectedAbortReason === 'Other' && (
+              <Textarea
+                placeholder="Describe reason..."
+                value={customAbortReason}
+                onChange={(e) => setCustomAbortReason(e.target.value)}
+                className="min-h-[60px]"
+              />
+            )}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleAbort}
-              disabled={!abortReason.trim() || abortExecution.isPending}
+              disabled={!effectiveAbortReason || abortExecution.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {abortExecution.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}

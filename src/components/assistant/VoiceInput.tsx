@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useScribe, CommitStrategy } from "@elevenlabs/react";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Loader2 } from "lucide-react";
@@ -9,11 +9,14 @@ import { cn } from "@/lib/utils";
 interface VoiceInputProps {
   onTranscript: (text: string) => void;
   disabled?: boolean;
+  /** Auto-stop recording after this many milliseconds */
+  maxDurationMs?: number;
 }
 
-export function VoiceInput({ onTranscript, disabled = false }: VoiceInputProps) {
+export function VoiceInput({ onTranscript, disabled = false, maxDurationMs }: VoiceInputProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
@@ -29,8 +32,19 @@ export function VoiceInput({ onTranscript, disabled = false }: VoiceInputProps) 
     },
   });
 
+  const clearAutoTimeout = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => clearAutoTimeout, [clearAutoTimeout]);
+
   const handleToggle = useCallback(async () => {
     if (scribe.isConnected) {
+      clearAutoTimeout();
       scribe.disconnect();
       setCurrentTranscript("");
       return;
@@ -55,6 +69,15 @@ export function VoiceInput({ onTranscript, disabled = false }: VoiceInputProps) 
           noiseSuppression: true,
         },
       });
+
+      // Start auto-timeout if configured
+      if (maxDurationMs) {
+        clearAutoTimeout();
+        timeoutRef.current = setTimeout(() => {
+          scribe.disconnect();
+          setCurrentTranscript("");
+        }, maxDurationMs);
+      }
     } catch (error) {
       console.error("Voice input error:", error);
       if (error instanceof Error && error.name === "NotAllowedError") {
@@ -65,7 +88,7 @@ export function VoiceInput({ onTranscript, disabled = false }: VoiceInputProps) 
     } finally {
       setIsConnecting(false);
     }
-  }, [scribe, onTranscript]);
+  }, [scribe, onTranscript, maxDurationMs, clearAutoTimeout]);
 
   const isRecording = scribe.isConnected;
 
