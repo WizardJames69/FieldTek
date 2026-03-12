@@ -1,13 +1,12 @@
 import { useState, useRef } from "react";
-import { Camera, MapPin, Hash, Ruler, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Camera, MapPin, Hash, Ruler, Loader2, CheckCircle2, AlertTriangle, CloudOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   type EvidenceRequirement,
   type StepEvidence,
-  useUploadEvidencePhoto,
-  useSubmitEvidence,
+  useOfflineAwareSubmitEvidence,
+  QUEUED_EVIDENCE_STATUS,
 } from "@/hooks/useStepEvidence";
 
 interface StepEvidenceCaptureProps {
@@ -79,6 +78,25 @@ export function StepEvidenceCapture({
   );
 }
 
+// ── Queued Badge ──────────────────────────────────────────────
+
+function QueuedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+      <CloudOff className="h-3.5 w-3.5" /> Queued
+    </span>
+  );
+}
+
+function StatusIndicator({ existing }: { existing: StepEvidence[] }) {
+  const hasQueued = existing.some((e) => e.verification_status === QUEUED_EVIDENCE_STATUS);
+  const hasVerified = existing.some((e) => e.verification_status !== "failed" && e.verification_status !== QUEUED_EVIDENCE_STATUS);
+
+  if (hasQueued && !hasVerified) return <QueuedBadge />;
+  if (hasVerified) return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+  return null;
+}
+
 // ── Photo Capture ──────────────────────────────────────────────
 
 function PhotoCapture({
@@ -95,30 +113,29 @@ function PhotoCapture({
   onSubmitted?: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const uploadPhoto = useUploadEvidencePhoto();
-  const submitEvidence = useSubmitEvidence();
-  const hasVerified = existing.some((e) => e.verification_status !== "failed");
+  const { submitOfflineEvidence, isPending, isError } = useOfflineAwareSubmitEvidence();
+  const hasVerified = existing.some((e) => e.verification_status !== "failed" && e.verification_status !== QUEUED_EVIDENCE_STATUS);
 
   const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
-      const photoPath = await uploadPhoto.mutateAsync({ jobId, checklistItemId, file });
-      await submitEvidence.mutateAsync({
-        job_id: jobId,
-        checklist_item_id: checklistItemId,
-        stage_name: stageName,
-        evidence: { photo_url: photoPath },
-        device_timestamp: new Date().toISOString(),
-      });
+      await submitOfflineEvidence(
+        {
+          job_id: jobId,
+          checklist_item_id: checklistItemId,
+          stage_name: stageName,
+          evidence: {},
+          device_timestamp: new Date().toISOString(),
+        },
+        file
+      );
       onSubmitted?.();
     } catch {
-      // Error handled by mutation state
+      // Error handled by mutation state / toast
     }
   };
-
-  const isLoading = uploadPhoto.isPending || submitEvidence.isPending;
 
   return (
     <div className="flex items-center gap-2">
@@ -135,18 +152,18 @@ function PhotoCapture({
         variant="outline"
         className="h-12 text-sm gap-2"
         onClick={() => fileRef.current?.click()}
-        disabled={isLoading}
+        disabled={isPending}
         data-testid="evidence-photo-button"
       >
-        {isLoading ? (
+        {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Camera className="h-4 w-4" />
         )}
         {hasVerified ? "Retake Photo" : "Take Photo"}
       </Button>
-      {hasVerified && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
-      {submitEvidence.isError && (
+      <StatusIndicator existing={existing} />
+      {isError && (
         <span className="text-sm text-destructive font-medium">Upload failed</span>
       )}
     </div>
@@ -175,15 +192,14 @@ function MeasurementCapture({
   onSubmitted?: () => void;
 }) {
   const [value, setValue] = useState("");
-  const submitEvidence = useSubmitEvidence();
-  const hasVerified = existing.some((e) => e.verification_status === "verified");
+  const { submitOfflineEvidence, isPending } = useOfflineAwareSubmitEvidence();
 
   const handleSubmit = async () => {
     const numValue = parseFloat(value);
     if (isNaN(numValue)) return;
 
     try {
-      await submitEvidence.mutateAsync({
+      await submitOfflineEvidence({
         job_id: jobId,
         checklist_item_id: checklistItemId,
         stage_name: stageName,
@@ -192,7 +208,7 @@ function MeasurementCapture({
       });
       onSubmitted?.();
     } catch {
-      // Error handled by mutation state
+      // Error handled by mutation state / toast
     }
   };
 
@@ -220,16 +236,16 @@ function MeasurementCapture({
           variant="outline"
           className="h-12 text-sm"
           onClick={handleSubmit}
-          disabled={!value || submitEvidence.isPending}
+          disabled={!value || isPending}
           data-testid="evidence-measurement-submit"
         >
-          {submitEvidence.isPending ? (
+          {isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             "Save"
           )}
         </Button>
-        {hasVerified && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+        <StatusIndicator existing={existing} />
       </div>
       {outOfRange && (
         <div className="flex items-center gap-1.5 text-sm text-amber-500 dark:text-amber-400 font-medium">
@@ -261,14 +277,13 @@ function SerialCapture({
   onSubmitted?: () => void;
 }) {
   const [serial, setSerial] = useState("");
-  const submitEvidence = useSubmitEvidence();
-  const hasVerified = existing.some((e) => e.verification_status !== "failed");
+  const { submitOfflineEvidence, isPending } = useOfflineAwareSubmitEvidence();
 
   const handleSubmit = async () => {
     if (!serial.trim()) return;
 
     try {
-      await submitEvidence.mutateAsync({
+      await submitOfflineEvidence({
         job_id: jobId,
         checklist_item_id: checklistItemId,
         stage_name: stageName,
@@ -277,7 +292,7 @@ function SerialCapture({
       });
       onSubmitted?.();
     } catch {
-      // Error handled by mutation state
+      // Error handled by mutation state / toast
     }
   };
 
@@ -295,16 +310,16 @@ function SerialCapture({
         variant="outline"
         className="h-12 text-sm"
         onClick={handleSubmit}
-        disabled={!serial.trim() || submitEvidence.isPending}
+        disabled={!serial.trim() || isPending}
         data-testid="evidence-serial-submit"
       >
-        {submitEvidence.isPending ? (
+        {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           "Save"
         )}
       </Button>
-      {hasVerified && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+      <StatusIndicator existing={existing} />
     </div>
   );
 }
@@ -326,8 +341,8 @@ function GPSCheckin({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const submitEvidence = useSubmitEvidence();
-  const hasVerified = existing.some((e) => e.verification_status !== "failed");
+  const { submitOfflineEvidence, isPending } = useOfflineAwareSubmitEvidence();
+  const hasVerified = existing.some((e) => e.verification_status !== "failed" && e.verification_status !== QUEUED_EVIDENCE_STATUS);
 
   const handleCheckin = async () => {
     if (!navigator.geolocation) {
@@ -348,7 +363,7 @@ function GPSCheckin({
           })
       );
 
-      await submitEvidence.mutateAsync({
+      await submitOfflineEvidence({
         job_id: jobId,
         checklist_item_id: checklistItemId,
         stage_name: stageName,
@@ -380,17 +395,17 @@ function GPSCheckin({
           variant="outline"
           className="h-12 text-sm gap-2"
           onClick={handleCheckin}
-          disabled={loading || submitEvidence.isPending}
+          disabled={loading || isPending}
           data-testid="evidence-gps-button"
         >
-          {loading || submitEvidence.isPending ? (
+          {loading || isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <MapPin className="h-4 w-4" />
           )}
           {hasVerified ? "Re-capture Location" : "Check In (GPS)"}
         </Button>
-        {hasVerified && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+        <StatusIndicator existing={existing} />
       </div>
       {error && (
         <div className="text-sm text-destructive font-medium">{error}</div>

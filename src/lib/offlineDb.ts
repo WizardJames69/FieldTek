@@ -4,11 +4,11 @@
  */
 
 const DB_NAME = 'fieldtek-offline';
-const DB_VERSION = 2; // Bumped for new stores
+const DB_VERSION = 3; // Bumped for evidence_blobs store
 
 export interface QueuedOperation {
   id: string;
-  type: 'job_status_update' | 'job_checklist_update' | 'job_notes_update';
+  type: 'job_status_update' | 'job_checklist_update' | 'job_notes_update' | 'evidence_submission';
   payload: Record<string, any>;
   createdAt: string;
   retryCount: number;
@@ -87,6 +87,11 @@ export async function initOfflineDb(): Promise<IDBDatabase> {
       // Store for offline metadata (last sync time, user preferences, etc.)
       if (!database.objectStoreNames.contains('offline_metadata')) {
         database.createObjectStore('offline_metadata', { keyPath: 'key' });
+      }
+
+      // Store for evidence photo blobs (keyed by sync queue ID)
+      if (!database.objectStoreNames.contains('evidence_blobs')) {
+        database.createObjectStore('evidence_blobs', { keyPath: 'queueId' });
       }
     };
   });
@@ -357,6 +362,46 @@ export async function getOfflineMetadata(key: string): Promise<any> {
   });
 }
 
+// Evidence Blob Operations
+export async function storeEvidenceBlob(queueId: string, blob: Blob): Promise<void> {
+  const database = await initOfflineDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(['evidence_blobs'], 'readwrite');
+    const store = transaction.objectStore('evidence_blobs');
+    const request = store.put({ queueId, blob, storedAt: new Date().toISOString() });
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getEvidenceBlob(queueId: string): Promise<Blob | null> {
+  const database = await initOfflineDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(['evidence_blobs'], 'readonly');
+    const store = transaction.objectStore('evidence_blobs');
+    const request = store.get(queueId);
+
+    request.onsuccess = () => resolve(request.result?.blob || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function removeEvidenceBlob(queueId: string): Promise<void> {
+  const database = await initOfflineDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(['evidence_blobs'], 'readwrite');
+    const store = transaction.objectStore('evidence_blobs');
+    const request = store.delete(queueId);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // Bulk caching for initial data load
 export async function cacheJobsWithClients(jobs: Record<string, any>[]): Promise<void> {
   const database = await initOfflineDb();
@@ -435,7 +480,7 @@ export async function clearAllOfflineData(): Promise<void> {
 
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(
-      ['cached_jobs', 'cached_clients', 'cached_checklists', 'sync_queue', 'offline_metadata'],
+      ['cached_jobs', 'cached_clients', 'cached_checklists', 'sync_queue', 'offline_metadata', 'evidence_blobs'],
       'readwrite'
     );
 
@@ -444,6 +489,7 @@ export async function clearAllOfflineData(): Promise<void> {
     transaction.objectStore('cached_checklists').clear();
     transaction.objectStore('sync_queue').clear();
     transaction.objectStore('offline_metadata').clear();
+    transaction.objectStore('evidence_blobs').clear();
 
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);

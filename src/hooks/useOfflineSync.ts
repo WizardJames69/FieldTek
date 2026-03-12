@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  initOfflineDb, 
-  getSyncQueue, 
-  removeFromSyncQueue, 
+import {
+  initOfflineDb,
+  getSyncQueue,
+  removeFromSyncQueue,
   updateQueueItemRetry,
   QueuedOperation,
   clearOldCachedJobs,
-  setOfflineMetadata
+  setOfflineMetadata,
+  getEvidenceBlob,
+  removeEvidenceBlob,
 } from '@/lib/offlineDb';
 import { useOnlineStatus } from './useOnlineStatus';
 import { toast } from 'sonner';
@@ -115,13 +117,58 @@ export function useOfflineSync() {
           const { jobId, notes } = operation.payload;
           const { error } = await supabase
             .from('scheduled_jobs')
-            .update({ 
+            .update({
               notes,
               updated_at: new Date().toISOString()
             })
             .eq('id', jobId);
-          
+
           if (error) throw error;
+          break;
+        }
+
+        case 'evidence_submission': {
+          const { tenant_id, hasBlob, ...evidenceParams } = operation.payload;
+          if (!tenant_id) {
+            throw new Error(`evidence_submission missing tenant_id (queue id: ${operation.id})`);
+          }
+
+          // 1. Upload photo blob if present
+          if (hasBlob) {
+            const blob = await getEvidenceBlob(operation.id);
+            if (blob) {
+              const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+              const path = `${tenant_id}/${evidenceParams.job_id}/${evidenceParams.checklist_item_id}/${Date.now()}.${ext}`;
+              const file = new File([blob], `evidence_${Date.now()}.${ext}`, { type: blob.type });
+              const { error: uploadError } = await supabase.storage
+                .from('job-evidence')
+                .upload(path, file, { upsert: false });
+              if (uploadError) throw uploadError;
+              evidenceParams.evidence = { ...evidenceParams.evidence, photo_url: path };
+            }
+          }
+
+          // 2. Call verify-step-evidence edge function
+          const response = await supabase.functions.invoke('verify-step-evidence', {
+            body: {
+              job_id: evidenceParams.job_id,
+              checklist_item_id: evidenceParams.checklist_item_id,
+              stage_name: evidenceParams.stage_name,
+              step_execution_id: evidenceParams.step_execution_id,
+              evidence: evidenceParams.evidence,
+              device_timestamp: evidenceParams.device_timestamp,
+            },
+          });
+          if (response.error) {
+            throw new Error(response.error.message || 'Evidence verification failed');
+          }
+
+          // 3. Clean up blob
+          if (hasBlob) {
+            await removeEvidenceBlob(operation.id).catch((err) =>
+              console.warn('[OfflineSync] Failed to remove evidence blob:', err)
+            );
+          }
           break;
         }
 
@@ -177,7 +224,8 @@ export function useOfflineSync() {
         queryClient.invalidateQueries({ queryKey: ['jobs'] });
         queryClient.invalidateQueries({ queryKey: ['my-jobs'] });
         queryClient.invalidateQueries({ queryKey: ['scheduled-jobs'] });
-        
+        queryClient.invalidateQueries({ queryKey: ['step-evidence'] });
+
         toast.success(`Synced ${successCount} offline update${successCount > 1 ? 's' : ''}`);
       }
 
