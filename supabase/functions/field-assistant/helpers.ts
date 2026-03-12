@@ -2,7 +2,7 @@
 // Field Assistant — Utility & Helper Functions
 // ============================================================
 
-import { SYMPTOM_CATEGORIES, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "./constants.ts";
+import { SYMPTOM_CATEGORIES, EMBEDDING_MODEL, EMBEDDING_DIMENSION, detectSymptomsInText as sharedDetectSymptomsInText } from "./constants.ts";
 import type {
   ChatMessage,
   ServiceJob,
@@ -140,20 +140,8 @@ export function extractTextFromMessage(msg: ChatMessage | undefined): string {
 }
 
 // ── Symptom Detection ───────────────────────────────────────
-
-export function detectSymptomsInText(text: string): string[] {
-  const symptoms: string[] = [];
-  const lowerText = text.toLowerCase();
-
-  for (const [key, config] of Object.entries(SYMPTOM_CATEGORIES)) {
-    if (config.keywords.test(lowerText)) {
-      symptoms.push(key);
-    }
-    config.keywords.lastIndex = 0;
-  }
-
-  return symptoms;
-}
+// Delegates to the shared vocabulary module (single source of truth).
+export const detectSymptomsInText = sharedDetectSymptomsInText;
 
 export function extractExcerpt(text: string, keyword: string, contextChars: number): string {
   const lowerText = text.toLowerCase();

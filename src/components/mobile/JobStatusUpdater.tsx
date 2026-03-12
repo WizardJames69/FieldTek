@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useTenant } from '@/contexts/TenantContext';
 import { useOfflineJobUpdate } from '@/hooks/useOfflineJobUpdate';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { JobCompletionDialog } from '@/components/jobs/JobCompletionDialog';
 import { cn } from '@/lib/utils';
 
 interface JobStatusUpdaterProps {
@@ -28,23 +29,36 @@ export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }:
   const { isOnline } = useOnlineStatus();
   const { updateJobStatus } = useOfflineJobUpdate();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
 
   const statusConfig = STATUS_FLOW[currentStatus as keyof typeof STATUS_FLOW] || STATUS_FLOW.pending;
 
   const handleStatusUpdate = async () => {
     if (!statusConfig.next) return;
-    
+
+    // Intercept completion: require resolution notes
+    if (statusConfig.next === 'completed') {
+      setCompletionDialogOpen(true);
+      return;
+    }
+
+    await applyUpdate();
+  };
+
+  const applyUpdate = async (resolutionNotes?: string) => {
+    if (!statusConfig.next) return;
+
     setIsUpdating(true);
     try {
       const success = await updateJobStatus(
-        jobId, 
+        jobId,
         statusConfig.next as 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
         undefined,
-        { title: jobTitle, clientName }
+        { title: jobTitle, clientName, resolutionNotes }
       );
-      
+
       if (success) {
-        toast({ 
+        toast({
           title: isOnline ? 'Status updated' : 'Saved offline',
           description: isOnline ? undefined : 'Will sync when connected'
         });
@@ -130,6 +144,16 @@ export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }:
           </span>
         </div>
       )}
+
+      <JobCompletionDialog
+        open={completionDialogOpen}
+        onOpenChange={setCompletionDialogOpen}
+        jobTitle={jobTitle}
+        onConfirm={(notes) => {
+          setCompletionDialogOpen(false);
+          applyUpdate(notes);
+        }}
+      />
     </div>
   );
 }

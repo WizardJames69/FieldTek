@@ -431,6 +431,7 @@ serve(async (req) => {
           serviceRoleClient,
           context.job.id,
           context.equipment?.equipment_type || null,
+          tenantUser.tenant_id,
         );
       } catch (wfErr) {
         console.error("[workflow] Execution context fetch error (non-fatal):", wfErr);

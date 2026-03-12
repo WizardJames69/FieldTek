@@ -64,6 +64,7 @@ import { useSelection } from '@/hooks/useSelection';
 import { SelectCheckbox, SelectAllCheckbox } from '@/components/bulk/SelectCheckbox';
 import { BulkActionToolbar } from '@/components/bulk/BulkActionToolbar';
 import { BulkConfirmDialog } from '@/components/bulk/BulkConfirmDialog';
+import { JobCompletionDialog } from '@/components/jobs/JobCompletionDialog';
 import { exportJobsToCsv } from '@/lib/exportCsv';
 import { useActiveRecurringJobsCount } from '@/hooks/useRecurringJobs';
 
@@ -110,7 +111,9 @@ export default function Jobs() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
-  
+  const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [completingJobId, setCompletingJobId] = useState<string | null>(null);
+
   const recurringCount = useActiveRecurringJobsCount();
 
   // Bulk selection
@@ -246,20 +249,43 @@ export default function Jobs() {
   };
 
   const handleStatusChange = async (jobId: string, newStatus: JobStatus) => {
+    // Intercept completion: require resolution notes
+    if (newStatus === 'completed') {
+      setCompletingJobId(jobId);
+      setCompletionDialogOpen(true);
+      return;
+    }
+
+    await applyStatusChange(jobId, newStatus);
+  };
+
+  const handleCompleteWithNotes = async (resolutionNotes: string) => {
+    if (!completingJobId) return;
+    setCompletionDialogOpen(false);
+    await applyStatusChange(completingJobId, 'completed', resolutionNotes);
+    setCompletingJobId(null);
+  };
+
+  const applyStatusChange = async (jobId: string, newStatus: JobStatus, resolutionNotes?: string) => {
     const jobToUpdate = jobs.find(j => j.id === jobId);
     const previousStatus = jobToUpdate?.status;
-    
+
     try {
+      const updatePayload: Record<string, unknown> = { status: newStatus };
+      if (resolutionNotes) {
+        updatePayload.resolution_notes = resolutionNotes;
+      }
+
       const { error } = await supabase
         .from('scheduled_jobs')
-        .update({ status: newStatus })
+        .update(updatePayload)
         .eq('id', jobId);
 
       if (error) throw error;
-      
+
       setJobs(jobs.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
       toast({ title: `Job marked as ${newStatus.replace('_', ' ')}` });
-      
+
       // Notify dispatchers when job is completed
       if (newStatus === 'completed' && previousStatus !== 'completed' && tenant?.id && jobToUpdate) {
         notifyJobCompleted(tenant.id, {
@@ -833,6 +859,17 @@ export default function Jobs() {
         open={isImportOpen}
         onOpenChange={setIsImportOpen}
         onSuccess={fetchJobs}
+      />
+
+      {/* Job Completion Dialog (requires resolution notes) */}
+      <JobCompletionDialog
+        open={completionDialogOpen}
+        onOpenChange={(open) => {
+          setCompletionDialogOpen(open);
+          if (!open) setCompletingJobId(null);
+        }}
+        jobTitle={completingJobId ? jobs.find(j => j.id === completingJobId)?.title : undefined}
+        onConfirm={handleCompleteWithNotes}
       />
     </MainLayout>
   );

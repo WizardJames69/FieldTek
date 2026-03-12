@@ -18,18 +18,23 @@ export function useOfflineJobUpdate() {
     jobId: string,
     status: JobStatus,
     notes?: string,
-    jobDetails?: { title?: string; clientName?: string }
+    jobDetails?: { title?: string; clientName?: string; resolutionNotes?: string }
   ): Promise<boolean> => {
     if (isOnline) {
       // Online: update directly
       try {
+        const updatePayload: Record<string, unknown> = {
+          status,
+          notes,
+          updated_at: new Date().toISOString(),
+        };
+        if (jobDetails?.resolutionNotes) {
+          updatePayload.resolution_notes = jobDetails.resolutionNotes;
+        }
+
         const { error } = await supabase
           .from('scheduled_jobs')
-          .update({ 
-            status, 
-            notes,
-            updated_at: new Date().toISOString()
-          })
+          .update(updatePayload)
           .eq('id', jobId);
 
         if (error) throw error;
@@ -59,7 +64,7 @@ export function useOfflineJobUpdate() {
       try {
         await addToSyncQueue({
           type: 'job_status_update',
-          payload: { jobId, status, notes },
+          payload: { jobId, status, notes, resolutionNotes: jobDetails?.resolutionNotes },
         });
 
         // Update local cache optimistically

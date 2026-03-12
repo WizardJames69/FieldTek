@@ -107,6 +107,7 @@ export async function fetchWorkflowExecutionContext(
   client: SupabaseClient,
   jobId: string,
   equipmentType: string | null,
+  tenantId?: string,
 ): Promise<WorkflowExecutionContext | null> {
   if (workflowExecutionContextCache.has(jobId)) {
     return workflowExecutionContextCache.get(jobId)!;
@@ -189,6 +190,11 @@ export async function fetchWorkflowExecutionContext(
     // Filter by step IDs
     query = query.in("step_id", stepIds);
 
+    // Enforce tenant isolation (service_role bypasses RLS)
+    if (tenantId) {
+      query = query.eq("tenant_id", tenantId);
+    }
+
     // Filter by equipment type if available
     if (equipmentType) {
       query = query.eq("equipment_type", equipmentType);
@@ -223,6 +229,10 @@ export async function fetchWorkflowExecutionContext(
       .from("workflow_step_statistics")
       .select("step_id, success_rate, total_executions, avg_duration_seconds")
       .in("step_id", stepIds);
+    // Enforce tenant isolation (service_role bypasses RLS)
+    if (tenantId) {
+      statsQuery = statsQuery.eq("tenant_id", tenantId);
+    }
     if (equipmentType) {
       statsQuery = statsQuery.eq("equipment_type", equipmentType);
     }

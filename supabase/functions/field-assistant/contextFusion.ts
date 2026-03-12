@@ -133,21 +133,23 @@ export function fuseContextSignals(input: ContextFusionInput): DiagnosticHypothe
     }
   }
 
-  // 4. Apply confidence dampening and build result
+  // 4. Apply corroboration boost and build result
+  // Multiple independent sources confirming the same hypothesis should
+  // INCREASE confidence, not decrease it (was: score/sqrt(sources)).
   const hypotheses: DiagnosticHypothesis[] = [];
 
   for (const [key, entry] of accumulator) {
     if (entry.confidence <= 0) continue;
 
-    // Dampening: confidence / sqrt(number_of_sources)
-    const dampened = entry.confidence / Math.sqrt(entry.sources.size);
+    // Corroboration: reward signals confirmed by multiple sources
+    const boosted = entry.confidence * Math.log2(1 + entry.sources.size);
 
     hypotheses.push({
       repairAction: formatLabel(key),
       failureComponent: entry.failureComponent
         ? formatLabel(entry.failureComponent)
         : undefined,
-      confidence: Math.round(dampened * 100) / 100,
+      confidence: Math.round(boosted * 100) / 100,
       sources: Array.from(entry.sources),
     });
   }

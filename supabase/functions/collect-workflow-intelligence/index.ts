@@ -1,92 +1,28 @@
 // ============================================================
 // Collect Workflow Intelligence — Edge Function
 // ============================================================
-// Triggered when a job completes. Extracts diagnostic patterns
-// (symptoms, failures, diagnostics, repairs, outcomes) from
-// the job data and upserts into the workflow intelligence graph.
+// Triggered via DB trigger when scheduled_jobs.status → 'completed'.
+// Extracts diagnostic patterns (symptoms, failures, diagnostics,
+// repairs, outcomes) and upserts into the workflow intelligence graph.
 //
-// Called from frontend when scheduled_jobs.status → 'completed'.
 // Behind the 'workflow_intelligence' feature flag.
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  SYMPTOM_CATEGORIES,
+  FAILURE_PATTERNS,
+  REPAIR_PATTERNS,
+  extractPatternMatches,
+  detectSymptomsInText,
+  formatLabel,
+} from "../_shared/symptomVocabulary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-// ── Extraction Helpers ────────────────────────────────────────
-
-const SYMPTOM_PATTERNS: Record<string, RegExp> = {
-  "no_cooling": /\b(no\s+cool|not\s+cool|won'?t\s+cool|no\s+ac|ac\s+not\s+working)\b/i,
-  "no_heating": /\b(no\s+heat|not\s+heat|won'?t\s+heat|furnace\s+not\s+working)\b/i,
-  "strange_noise": /\b(strange\s+noise|loud\s+noise|rattling|buzzing|humming|grinding|squealing)\b/i,
-  "leaking": /\b(leak|leaking|water\s+drip|dripping|puddle)\b/i,
-  "short_cycling": /\b(short\s+cycl|cycling\s+on\s+and\s+off|keeps\s+turning\s+off)\b/i,
-  "high_energy": /\b(high\s+energy|high\s+bill|energy\s+cost|inefficient)\b/i,
-  "bad_smell": /\b(bad\s+smell|burning\s+smell|musty|odor|smell)\b/i,
-  "tripped_breaker": /\b(tripped?\s+breaker|breaker\s+trip|circuit\s+trip|blowing\s+fuse)\b/i,
-  "frozen_coil": /\b(frozen|froze|ice\s+on|iced?\s+up|frost)\b/i,
-  "thermostat_issue": /\b(thermostat\s+not|thermostat\s+blank|no\s+display|wrong\s+temp)\b/i,
-  "weak_airflow": /\b(weak\s+air|low\s+airflow|no\s+air|poor\s+airflow|reduced\s+air)\b/i,
-  "vibration": /\b(vibrat|shaking|wobbl)\b/i,
-  "electrical_issue": /\b(electrical|wiring|no\s+power|power\s+issue|voltage)\b/i,
-};
-
-const FAILURE_PATTERNS: Record<string, RegExp> = {
-  "capacitor_failure": /\b(capacitor\s+fail|bad\s+cap|cap\s+fail|weak\s+cap|blown\s+cap|swollen\s+cap)\b/i,
-  "compressor_failure": /\b(compressor\s+fail|bad\s+compressor|compressor\s+locked|compressor\s+seized)\b/i,
-  "contactor_failure": /\b(contactor\s+fail|bad\s+contactor|pitted\s+contactor|contactor\s+stuck)\b/i,
-  "refrigerant_leak": /\b(refrigerant\s+leak|low\s+charge|low\s+refrigerant|freon\s+leak)\b/i,
-  "motor_failure": /\b(motor\s+fail|bad\s+motor|burned?\s+(out\s+)?motor|motor\s+seized)\b/i,
-  "board_failure": /\b(board\s+fail|bad\s+board|control\s+board|circuit\s+board)\b/i,
-  "thermostat_failure": /\b(thermostat\s+fail|bad\s+thermostat|thermostat\s+malfunction)\b/i,
-  "coil_damage": /\b(coil\s+(damage|leak|corrode|dirty)|damaged?\s+coil|plugged\s+coil)\b/i,
-  "relay_failure": /\b(relay\s+fail|bad\s+relay|stuck\s+relay)\b/i,
-  "transformer_failure": /\b(transformer\s+fail|bad\s+transformer|burned?\s+transformer)\b/i,
-  "valve_failure": /\b(valve\s+fail|bad\s+valve|stuck\s+valve|txv\s+fail)\b/i,
-  "ductwork_issue": /\b(duct\s+(leak|damage|disconnect)|ductwork\s+issue)\b/i,
-  "filter_blocked": /\b(filter\s+(block|clog|dirty|restrict)|clogged\s+filter)\b/i,
-  "wiring_fault": /\b(wiring\s+fault|loose\s+wire|bad\s+connection|corroded?\s+wire)\b/i,
-};
-
-const REPAIR_PATTERNS: Record<string, RegExp> = {
-  "replaced_capacitor": /\b(replace[d]?\s+cap|new\s+cap|installed?\s+cap)\b/i,
-  "replaced_compressor": /\b(replace[d]?\s+compressor|new\s+compressor|installed?\s+compressor)\b/i,
-  "replaced_contactor": /\b(replace[d]?\s+contactor|new\s+contactor|installed?\s+contactor)\b/i,
-  "recharged_refrigerant": /\b(recharg|add(ed)?\s+refrigerant|add(ed)?\s+freon|topped?\s+(off|up))\b/i,
-  "replaced_motor": /\b(replace[d]?\s+motor|new\s+motor|installed?\s+motor)\b/i,
-  "replaced_board": /\b(replace[d]?\s+board|new\s+board|installed?\s+board)\b/i,
-  "replaced_thermostat": /\b(replace[d]?\s+thermostat|new\s+thermostat|installed?\s+thermostat)\b/i,
-  "cleaned_coil": /\b(clean(ed)?\s+coil|coil\s+clean|wash(ed)?\s+coil)\b/i,
-  "repaired_wiring": /\b(repair(ed)?\s+wir|fix(ed)?\s+wir|rewire|re-?wire)\b/i,
-  "replaced_filter": /\b(replace[d]?\s+filter|new\s+filter|changed?\s+filter)\b/i,
-  "sealed_duct": /\b(seal(ed)?\s+duct|duct\s+seal|repair(ed)?\s+duct)\b/i,
-  "replaced_valve": /\b(replace[d]?\s+valve|new\s+valve|installed?\s+valve|new\s+txv)\b/i,
-  "replaced_relay": /\b(replace[d]?\s+relay|new\s+relay)\b/i,
-};
-
-function extractPatternMatches(
-  text: string,
-  patterns: Record<string, RegExp>,
-): string[] {
-  const matches: string[] = [];
-  for (const [key, regex] of Object.entries(patterns)) {
-    if (regex.test(text)) {
-      matches.push(key);
-    }
-  }
-  return matches;
-}
-
-function formatLabel(key: string): string {
-  return key
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
 
 function classifyOutcome(
   job: { status: string; resolution_notes: string | null; notes: string | null },
@@ -234,7 +170,7 @@ Deno.serve(async (req) => {
 
     // ── Extract patterns ──────────────────────────────────────
 
-    const symptomKeys = extractPatternMatches(combinedText, SYMPTOM_PATTERNS);
+    const symptomKeys = detectSymptomsInText(combinedText);
     const failureKeys = extractPatternMatches(
       `${job.resolution_notes || ""} ${(checklists || []).filter((c) => !c.completed).map((c) => c.notes || c.checklist_item).join(" ")}`,
       FAILURE_PATTERNS,
@@ -244,10 +180,38 @@ Deno.serve(async (req) => {
       REPAIR_PATTERNS,
     );
 
-    // Extract diagnostics from checklist items with measurements
-    const diagnosticItems = (checklists || []).filter(
-      (c) => c.measurement_value !== null && c.measurement_value !== undefined,
-    );
+    // Extract diagnostics from measurements.
+    // Canonical source: workflow_step_executions (preferred over job_checklist_completions).
+    // Falls back to checklist data for jobs without workflow templates.
+    const diagnosticItems: Array<{
+      stage_name: string;
+      checklist_item: string;
+      completed: boolean;
+      measurement_value: number | null;
+      measurement_unit: string | null;
+    }> = [];
+
+    // 1. Prefer step execution measurements (canonical)
+    for (const step of stepExecs) {
+      if (step.measurement_value !== null && step.measurement_value !== undefined) {
+        diagnosticItems.push({
+          stage_name: `step_${step.step_number}`,
+          checklist_item: `Step ${step.step_number}`,
+          completed: step.status === "completed",
+          measurement_value: step.measurement_value,
+          measurement_unit: step.measurement_unit ?? null,
+        });
+      }
+    }
+
+    // 2. Fall back to checklist measurements (legacy)
+    if (diagnosticItems.length === 0) {
+      for (const c of checklists || []) {
+        if (c.measurement_value !== null && c.measurement_value !== undefined) {
+          diagnosticItems.push(c);
+        }
+      }
+    }
 
     // Classify outcome
     const outcome = classifyOutcome(job);
