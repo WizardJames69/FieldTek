@@ -563,17 +563,17 @@ export default function Assistant() {
               Sentinel AI
             </h1>
             <p className="text-sm text-muted-foreground hidden sm:block">
-              Get help with troubleshooting, procedures, and technical questions
+              Your field safety assistant — troubleshooting, procedures, and technical guidance
             </p>
           </div>
           <div className="flex items-center gap-4">
             {rateLimitInfo && (
-              <div data-testid="rate-limit-display" className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Zap className="h-3.5 w-3.5" />
+              <div data-testid="rate-limit-display" className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Zap className="h-4 w-4" />
                 <span className={cn(
                   rateLimitInfo.used >= rateLimitInfo.limit && "text-destructive font-medium"
                 )}>
-                  {rateLimitInfo.used}/{rateLimitInfo.limit} today
+                  {rateLimitInfo.used}/{rateLimitInfo.limit} queries today
                 </span>
               </div>
             )}
@@ -596,7 +596,7 @@ export default function Assistant() {
                 onCheckedChange={handleCodeReferenceToggle}
               />
               <Label htmlFor="code-reference" className="text-sm cursor-pointer">
-                Code Ref
+                Building Codes
               </Label>
             </div>
             <div className="flex items-center gap-2">
@@ -782,16 +782,13 @@ export default function Assistant() {
                   <Bot className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">How can I help you today?</h3>
                   
-                  {/* Documentation Warning Banner */}
+                  {/* Documentation Info Banner */}
                   {documents.length === 0 && !codeReferenceEnabled && (
-                    <Alert variant="destructive" className="mb-4 max-w-lg text-left">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>No Documentation Uploaded</AlertTitle>
+                    <Alert className="mb-4 max-w-lg text-left bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400">
+                      <BookOpen className="h-4 w-4" />
+                      <AlertTitle>Tip: Upload Equipment Manuals</AlertTitle>
                       <AlertDescription>
-                        I can only provide guidance from uploaded manufacturer manuals. 
-                        <strong className="block mt-1">
-                          Please upload equipment manuals, spec sheets, and warranty documents in the Documents section before asking technical questions.
-                        </strong>
+                        Upload manufacturer manuals, spec sheets, and warranty documents in the Documents section to get equipment-specific guidance.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -819,9 +816,9 @@ export default function Assistant() {
                   <p className="text-muted-foreground max-w-md">
                     {codeReferenceEnabled
                       ? "Ask about code compliance, requirements, or regulations for electrical, plumbing, and HVAC work."
-                      : documents.length === 0 
-                        ? "Without documentation, I cannot answer technical questions. I can only describe what I observe in images."
-                        : "Ask me about troubleshooting, procedures, or technical questions. I'll only answer from your uploaded documentation."
+                      : documents.length === 0
+                        ? "Upload equipment manuals to unlock full technical guidance. You can still ask general troubleshooting questions or share photos for analysis."
+                        : "Ask me about troubleshooting, procedures, or technical questions. I'll reference your uploaded documentation."
                     }
                   </p>
                   <div className="flex flex-wrap gap-2 mt-4 justify-center">
@@ -911,7 +908,7 @@ export default function Assistant() {
                                   )}
                                   {msg.metadata?.confidence && (
                                     <div data-testid="confidence-badge" className={cn(
-                                      "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md w-fit",
+                                      "flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-md w-fit font-medium",
                                       msg.metadata.confidence === 'high' && "text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-950/30",
                                       msg.metadata.confidence === 'medium' && "text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/30",
                                       msg.metadata.confidence === 'low' && "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-950/30",
@@ -1018,17 +1015,19 @@ export default function Assistant() {
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about troubleshooting, or use voice/camera..."
                   disabled={isLoading}
-                  className="flex-1"
+                  className="flex-1 h-12"
                 />
                 <Button
                   data-testid="send-message-button"
+                  size="icon"
+                  className="h-12 w-12"
                   onClick={() => handleSend()}
                   disabled={isLoading || (!input.trim() && attachedImages.length === 0)}
                 >
                   {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <Send className="h-5 w-5" />
                   )}
                 </Button>
               </div>

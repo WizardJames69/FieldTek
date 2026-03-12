@@ -28,9 +28,9 @@ export function StepEvidenceCapture({
   onEvidenceSubmitted,
 }: StepEvidenceCaptureProps) {
   return (
-    <div className="mt-2 space-y-2 border-t border-zinc-800 pt-2">
-      <div className="text-[11px] uppercase tracking-wider text-zinc-500 font-medium">
-        Required Evidence
+    <div className="mt-2 space-y-3 border-t border-border/50 pt-3">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+        Step Verification
       </div>
 
       {requirement.photo && (
@@ -133,22 +133,21 @@ function PhotoCapture({
       />
       <Button
         variant="outline"
-        size="sm"
-        className="h-8 text-xs gap-1.5"
+        className="h-12 text-sm gap-2"
         onClick={() => fileRef.current?.click()}
         disabled={isLoading}
         data-testid="evidence-photo-button"
       >
         {isLoading ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <Camera className="h-3 w-3" />
+          <Camera className="h-4 w-4" />
         )}
         {hasVerified ? "Retake Photo" : "Take Photo"}
       </Button>
       {hasVerified && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
       {submitEvidence.isError && (
-        <span className="text-xs text-red-400">Upload failed</span>
+        <span className="text-sm text-destructive font-medium">Upload failed</span>
       )}
     </div>
   );
@@ -205,28 +204,27 @@ function MeasurementCapture({
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <Ruler className="h-3 w-3 text-zinc-500" />
-        <div className="flex items-center gap-1.5 flex-1">
+        <Ruler className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 flex-1">
           <Input
             type="number"
             placeholder={min != null && max != null ? `${min}–${max}` : "Value"}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            className="h-8 text-xs w-24"
+            className="h-12 text-sm w-28"
             data-testid="evidence-measurement-input"
           />
-          <span className="text-xs text-zinc-500">{unit}</span>
+          <span className="text-sm text-muted-foreground font-medium">{unit}</span>
         </div>
         <Button
           variant="outline"
-          size="sm"
-          className="h-8 text-xs"
+          className="h-12 text-sm"
           onClick={handleSubmit}
           disabled={!value || submitEvidence.isPending}
           data-testid="evidence-measurement-submit"
         >
           {submitEvidence.isPending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             "Save"
           )}
@@ -234,8 +232,8 @@ function MeasurementCapture({
         {hasVerified && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
       </div>
       {outOfRange && (
-        <div className="flex items-center gap-1 text-xs text-amber-400">
-          <AlertTriangle className="h-3 w-3" />
+        <div className="flex items-center gap-1.5 text-sm text-amber-500 dark:text-amber-400 font-medium">
+          <AlertTriangle className="h-4 w-4" />
           {min != null && max != null
             ? `Expected range: ${min}–${max} ${unit}`
             : min != null
@@ -285,24 +283,23 @@ function SerialCapture({
 
   return (
     <div className="flex items-center gap-2">
-      <Hash className="h-3 w-3 text-zinc-500" />
+      <Hash className="h-4 w-4 text-muted-foreground" />
       <Input
         placeholder="Serial number"
         value={serial}
         onChange={(e) => setSerial(e.target.value)}
-        className="h-8 text-xs flex-1"
+        className="h-12 text-sm flex-1"
         data-testid="evidence-serial-input"
       />
       <Button
         variant="outline"
-        size="sm"
-        className="h-8 text-xs"
+        className="h-12 text-sm"
         onClick={handleSubmit}
         disabled={!serial.trim() || submitEvidence.isPending}
         data-testid="evidence-serial-submit"
       >
         {submitEvidence.isPending ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           "Save"
         )}
@@ -381,26 +378,25 @@ function GPSCheckin({
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
-          size="sm"
-          className="h-8 text-xs gap-1.5"
+          className="h-12 text-sm gap-2"
           onClick={handleCheckin}
           disabled={loading || submitEvidence.isPending}
           data-testid="evidence-gps-button"
         >
           {loading || submitEvidence.isPending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <MapPin className="h-3 w-3" />
+            <MapPin className="h-4 w-4" />
           )}
           {hasVerified ? "Re-capture Location" : "Check In (GPS)"}
         </Button>
         {hasVerified && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
       </div>
       {error && (
-        <div className="text-xs text-red-400">{error}</div>
+        <div className="text-sm text-destructive font-medium">{error}</div>
       )}
       {hasVerified && existing[0]?.gps_location && (
-        <div className="text-[10px] text-zinc-500">
+        <div className="text-xs text-muted-foreground">
           {(existing[0].gps_location as { latitude: number; longitude: number; accuracy: number }).latitude.toFixed(5)},{" "}
           {(existing[0].gps_location as { latitude: number; longitude: number; accuracy: number }).longitude.toFixed(5)}{" "}
           (±{Math.round((existing[0].gps_location as { accuracy: number }).accuracy)}m)

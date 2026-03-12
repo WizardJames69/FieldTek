@@ -122,7 +122,7 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
         return (
           <div key={stageName}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-xs text-muted-foreground uppercase tracking-widest">
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-widest">
                 {stageName}
               </h3>
               <span className="text-xs font-semibold text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
@@ -145,21 +145,24 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                   >
                     <div className="p-4">
                       <div className="flex items-start gap-4">
-                        <div className={cn(
-                          "h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-all touch-native",
-                          item.completed 
-                            ? 'bg-success/20 ring-1 ring-success/40' 
-                            : 'bg-muted/50 ring-1 ring-border/50'
-                        )}>
+                        <button
+                          type="button"
+                          onClick={() => toggleMutation.mutate({ itemId: item.id, completed: !item.completed })}
+                          disabled={toggleMutation.isPending}
+                          className={cn(
+                            "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-all touch-native",
+                            item.completed
+                              ? 'bg-success/20 ring-1 ring-success/40'
+                              : 'bg-muted/50 ring-1 ring-border/50'
+                          )}
+                        >
                           <Checkbox
                             checked={item.completed}
-                            onCheckedChange={(checked) =>
-                              toggleMutation.mutate({ itemId: item.id, completed: !!checked })
-                            }
-                            className="h-5 w-5 border-0"
+                            tabIndex={-1}
+                            className="h-6 w-6 border-0 pointer-events-none"
                             disabled={toggleMutation.isPending}
                           />
-                        </div>
+                        </button>
                         <div className="flex-1 min-w-0">
                           <button
                             onClick={() => setExpandedItem(isExpanded ? null : item.id)}
@@ -173,13 +176,13 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                                 {item.checklist_item}
                               </p>
                               <div className={cn(
-                                "h-6 w-6 rounded-lg flex items-center justify-center transition-colors",
+                                "h-10 w-10 rounded-xl flex items-center justify-center transition-colors shrink-0",
                                 isExpanded ? 'bg-primary/10' : 'bg-muted/50 group-hover:bg-muted'
                               )}>
                                 {isExpanded ? (
-                                  <ChevronUp className="h-4 w-4 text-primary" />
+                                  <ChevronUp className="h-5 w-5 text-primary" />
                                 ) : (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
                                 )}
                               </div>
                             </div>
@@ -269,8 +272,8 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                           )}
                         </div>
                         {item.completed && !isExpanded && (
-                          <div className="h-7 w-7 rounded-lg bg-success/20 flex items-center justify-center ring-1 ring-success/40 shrink-0">
-                            <Check className="h-4 w-4 text-success" />
+                          <div className="h-10 w-10 rounded-xl bg-success/20 flex items-center justify-center ring-1 ring-success/40 shrink-0">
+                            <Check className="h-5 w-5 text-success" />
                           </div>
                         )}
                       </div>

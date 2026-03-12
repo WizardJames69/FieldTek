@@ -76,7 +76,7 @@ export function VoiceInput({ onTranscript, disabled = false }: VoiceInputProps) 
         variant={isRecording ? "destructive" : "ghost"}
         size="icon"
         className={cn(
-          "h-8 w-8 transition-all",
+          "h-12 w-12 transition-all",
           isRecording && "animate-pulse"
         )}
         onClick={handleToggle}
@@ -94,7 +94,7 @@ export function VoiceInput({ onTranscript, disabled = false }: VoiceInputProps) 
       
       {/* Show live partial transcript */}
       {currentTranscript && (
-        <span className="text-xs text-muted-foreground italic truncate max-w-[200px]">
+        <span className="text-sm text-muted-foreground italic truncate max-w-[200px]">
           {currentTranscript}...
         </span>
       )}

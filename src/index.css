@@ -357,13 +357,29 @@
     }
   }
   
-  /* Touch Native Utilities */
+  /* Field-Ready Touch Utilities */
   .touch-native {
     @apply active:scale-[0.98] transition-transform duration-100;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
-  
+
   .touch-glow {
     @apply active:ring-2 active:ring-primary/30 transition-all duration-150;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Apply field-ready touch behavior to all interactive elements */
+  button,
+  [role="button"],
+  [role="checkbox"],
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
   
   /* Glass Surface Utility */

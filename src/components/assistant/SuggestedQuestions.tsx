@@ -19,8 +19,8 @@ export function SuggestedQuestions({
 
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground w-full mb-1">
-        <Lightbulb className="h-3 w-3" />
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground w-full mb-1">
+        <Lightbulb className="h-4 w-4" />
         <span>Follow-up questions</span>
       </div>
       {suggestions.map((suggestion, idx) => (
@@ -30,7 +30,7 @@ export function SuggestedQuestions({
           size="sm"
           onClick={() => onSelect(suggestion)}
           disabled={disabled}
-          className="text-xs h-7 px-2.5 bg-muted/30 hover:bg-muted/50 border-muted-foreground/20"
+          className="text-sm h-10 px-3 bg-muted/30 hover:bg-muted/50 border-muted-foreground/20"
         >
           {suggestion}
         </Button>
