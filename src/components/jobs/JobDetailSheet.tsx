@@ -29,6 +29,7 @@ import { CustomerEquipmentHistory } from '@/components/equipment/CustomerEquipme
 import { JobStageWorkflow } from '@/components/jobs/JobStageWorkflow';
 import { WorkflowExecutionView } from '@/components/jobs/workflows/WorkflowExecutionView';
 import { WorkflowAssignDialog } from '@/components/jobs/workflows/WorkflowAssignDialog';
+import { SentinelInsightPanel } from '@/components/jobs/SentinelInsightPanel';
 import { cn } from '@/lib/utils';
 import { useTerminology } from '@/hooks/useTerminology';
 import { useTenant, useUserRole } from '@/contexts/TenantContext';
@@ -311,6 +312,19 @@ export function JobDetailSheet({
                     </CardContent>
                   </Card>
                 </div>
+              )}
+
+              {/* Sentinel Insight Panel */}
+              {job.status === 'in_progress' && (
+                <SentinelInsightPanel
+                  jobId={job.id}
+                  jobDescription={job.description}
+                  jobNotes={job.notes}
+                  jobType={job.job_type}
+                  equipmentId={job.equipment_id ?? null}
+                  equipmentModel={null}
+                  defaultExpanded={true}
+                />
               )}
 
               {/* Workflow Execution or Job Checklist */}

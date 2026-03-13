@@ -11,6 +11,7 @@ import { MobileJobCard } from '@/components/mobile/MobileJobCard';
 import { JobStatusUpdater } from '@/components/mobile/JobStatusUpdater';
 import { JobChecklist } from '@/components/mobile/JobChecklist';
 import { WorkflowExecutionView } from '@/components/jobs/workflows/WorkflowExecutionView';
+import { SentinelInsightPanel } from '@/components/jobs/SentinelInsightPanel';
 import { JobPartsList } from '@/components/jobs/JobPartsList';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -306,6 +307,19 @@ export default function MyJobs() {
                     <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-3">Notes</h4>
                     <p className="text-sm text-foreground/90 leading-relaxed bg-muted/30 rounded-xl p-4 border border-border/30">{selectedJob.notes}</p>
                   </div>
+                )}
+
+                {/* Sentinel Insight Panel */}
+                {selectedJob.status === 'in_progress' && (
+                  <SentinelInsightPanel
+                    jobId={selectedJob.id}
+                    jobDescription={selectedJob.description ?? null}
+                    jobNotes={selectedJob.notes ?? null}
+                    jobType={selectedJob.job_type ?? null}
+                    equipmentId={selectedJob.equipment_id ?? null}
+                    equipmentModel={null}
+                    defaultExpanded={false}
+                  />
                 )}
 
                 {/* Workflow Execution or Checklist */}
