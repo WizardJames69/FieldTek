@@ -13,9 +13,6 @@ export function StripeConnectIndicator() {
   const { tenant } = useTenant();
   const { isAdmin, isOwner } = useUserRole();
 
-  // Only show for admins/owners
-  if (!isAdmin && !isOwner) return null;
-
   const { data: stripeStatus, isLoading } = useQuery({
     queryKey: ['stripe-connect-status-dashboard', tenant?.id],
     queryFn: async () => {
@@ -40,6 +37,9 @@ export function StripeConnectIndicator() {
     enabled: !!tenant?.id && (isAdmin || isOwner),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Only show for admins/owners
+  if (!isAdmin && !isOwner) return null;
 
   if (isLoading || !stripeStatus) return null;
 

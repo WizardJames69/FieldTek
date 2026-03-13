@@ -1075,7 +1075,7 @@ serve(async (req) => {
       let accumulatedContent = "";
       let validationFailed = false;
       let failureReason = "";
-      let matchedPatterns: string[] = [];
+      const matchedPatterns: string[] = [];
       const allChunks: Uint8Array[] = [];
 
       try {

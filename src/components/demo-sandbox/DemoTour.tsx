@@ -464,7 +464,7 @@ export function DemoTour({
       return calculateBestPosition(targetRect, tooltipWidth, tooltipHeight);
     }
     
-    let effectivePosition = currentStep.position as 'top' | 'bottom' | 'left' | 'right';
+    const effectivePosition = currentStep.position as 'top' | 'bottom' | 'left' | 'right';
     
     const availableSpace = {
       top: targetRect.top - TOTAL_TOP_OFFSET,

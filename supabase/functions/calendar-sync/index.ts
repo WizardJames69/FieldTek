@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
     const googleClientSecret = Deno.env.get("GOOGLE_CALENDAR_CLIENT_SECRET");
 
     let accessToken = tokenRow.google_access_token;
-    let tokenUpdates: Record<string, string> = {};
+    const tokenUpdates: Record<string, string> = {};
 
     // Refresh if expired or close to expiry
     const isExpired =
@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
     const azureTenantId = Deno.env.get("AZURE_TENANT_ID") || "common";
 
     let accessToken = tokenRow.outlook_access_token;
-    let tokenUpdates: Record<string, string> = {};
+    const tokenUpdates: Record<string, string> = {};
 
     const isExpired =
       tokenRow.outlook_token_expiry &&

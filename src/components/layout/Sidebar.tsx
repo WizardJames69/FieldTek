@@ -432,7 +432,7 @@ export function Sidebar() {
 
       {/* Collapse Toggle with glow on hover */}
       <button
-        onClick={() => { const next = !collapsed; setCollapsed(next); try { localStorage.setItem('sidebar-collapsed', String(next)); } catch {} }}
+        onClick={() => { const next = !collapsed; setCollapsed(next); try { localStorage.setItem('sidebar-collapsed', String(next)); } catch { /* ignore storage errors */ } }}
         className="absolute -right-3 top-20 w-6 h-6 bg-sidebar border border-sidebar-border/50 rounded-full flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent hover:border-sidebar-primary/30 hover:shadow-[0_0_8px_hsl(var(--sidebar-primary)/0.3)] transition-all duration-200"
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
