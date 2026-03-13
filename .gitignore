@@ -5,8 +5,8 @@ dist
 .env.local
 
 e2e-results*.txt
-playwright-report
-test-results
+e2e-context.json
+playwright-report/
+test-results/
 coverage
-.playwright/auth/
-.playwright/test-results/
+.playwright/

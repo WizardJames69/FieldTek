@@ -1,12 +1,4 @@
-#!/bin/sh
-echo "Running E2E tests before push..."
-rm -rf .playwright/auth
-npx playwright test --reporter=line
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
-if [ $? -ne 0 ]; then
-  echo ""
-  echo "E2E tests failed. Push blocked. Fix tests before pushing."
-  exit 1
-fi
-
-echo "All tests passed. Pushing..."
+npm run test

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import OpenAI from "https://esm.sh/openai@4.96.0";
 
 // ── Constants ───────────────────────────────────────────────
@@ -134,7 +135,6 @@ function parseReceiptJson(rawText: string): Record<string, unknown> {
 }
 
 // ── Image extraction ────────────────────────────────────────
-// Accepts base64 string → constructs data URI → sends via Responses API input_image
 async function extractTextFromImage(
   base64Data: string,
   mimeType: string,
@@ -164,7 +164,6 @@ async function extractTextFromImage(
 }
 
 // ── PDF extraction ──────────────────────────────────────────
-// Accepts base64 string → constructs data URI → sends via Responses API input_file inline
 async function extractTextFromPDF(
   base64Data: string,
   fileName: string,
@@ -206,6 +205,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Track documentId at outer scope for error write-back
+  let reqDocumentId: string | undefined;
+
   try {
     // ── Auth check — allow both user auth and service role key ──
     const authHeader = req.headers.get("Authorization");
@@ -229,7 +231,7 @@ serve(async (req) => {
       }
     }
 
-    // ── Parse & validate request ────────────────────────────
+    // ── Parse request ────────────────────────────────────────
     const body = await req.json();
     const {
       fileBase64,
@@ -245,65 +247,109 @@ serve(async (req) => {
       documentId?: string;
     };
 
-    if (!fileBase64 || typeof fileBase64 !== "string") {
-      return jsonResponse(
-        { success: false, extractedText: "", structuredData: null, error: "fileBase64 is required and must be a string" },
-        400
-      );
-    }
-
-    if (!mimeType || typeof mimeType !== "string") {
-      return jsonResponse(
-        { success: false, extractedText: "", structuredData: null, error: "mimeType is required and must be a string" },
-        400
-      );
-    }
-
-    if (fileBase64.length > MAX_BASE64_LENGTH) {
-      return jsonResponse(
-        { success: false, extractedText: "", structuredData: null, error: "File too large. Maximum ~15MB for extraction." },
-        400
-      );
-    }
+    reqDocumentId = documentId;
 
     // ── Generate correlation ID for end-to-end tracing ──────
     const correlationId = crypto.randomUUID();
 
-    // ── Route by file type ──────────────────────────────────
-    const normalizedType = mimeType.toLowerCase();
-    const prompt = mode === "receipt" ? RECEIPT_PROMPT : DOCUMENT_PROMPT;
-    const docName = fileName || "document";
-    let extractedText: string;
+    // ── Resolve file data ────────────────────────────────────
+    // Two paths:
+    //   1. fileBase64 provided directly (receipt mode / backward compat)
+    //   2. documentId provided → download from Supabase Storage
+    let resolvedBase64: string;
+    let resolvedMimeType: string;
+    let resolvedFileName: string;
 
-    console.log(`[extract-document-text] [correlation_id=${correlationId}] mode:`, mode, "type:", normalizedType, "name:", docName, "base64Len:", fileBase64.length);
-
-    // ── Mark extraction as processing (for retry tracking) ──
-    if (mode === "document" && documentId) {
-      try {
-        const supabaseEarly = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    if (fileBase64) {
+      // ── Path 1: Direct base64 (receipt mode) ──────────────
+      if (!mimeType || typeof mimeType !== "string") {
+        return jsonResponse(
+          { success: false, extractedText: "", structuredData: null, error: "mimeType is required when fileBase64 is provided" },
+          400
         );
-        await supabaseEarly
-          .from("documents")
-          .update({
-            extraction_status: "processing",
-            processing_started_at: new Date().toISOString(),
-            correlation_id: correlationId,
-          })
-          .eq("id", documentId);
-      } catch (earlyErr) {
-        console.warn("[extract-document-text] Could not set processing status:", earlyErr);
       }
-    }
+      if (fileBase64.length > MAX_BASE64_LENGTH) {
+        return jsonResponse(
+          { success: false, extractedText: "", structuredData: null, error: "File too large. Maximum ~15MB for extraction." },
+          400
+        );
+      }
+      resolvedBase64 = fileBase64;
+      resolvedMimeType = mimeType;
+      resolvedFileName = fileName || "document";
+    } else if (documentId) {
+      // ── Path 2: Download from Storage ─────────────────────
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
 
-    if (SUPPORTED_IMAGE_TYPES.some((t) => normalizedType.includes(t))) {
-      extractedText = await extractTextFromImage(fileBase64, normalizedType, prompt);
-    } else if (SUPPORTED_PDF_TYPES.some((t) => normalizedType.includes(t))) {
-      extractedText = await extractTextFromPDF(fileBase64, docName, prompt);
+      // Fetch document record
+      const { data: doc, error: docError } = await supabaseAdmin
+        .from("documents")
+        .select("file_url, file_type, extraction_status, name")
+        .eq("id", documentId)
+        .single();
+
+      if (docError || !doc) {
+        return jsonResponse(
+          { success: false, extractedText: "", structuredData: null, error: `Document not found: ${docError?.message || "unknown"}` },
+          404
+        );
+      }
+
+      // Prevent duplicate extraction
+      if (doc.extraction_status === "completed") {
+        return jsonResponse({ success: true, status: "already_extracted" });
+      }
+
+      // Mark as processing
+      await supabaseAdmin
+        .from("documents")
+        .update({
+          extraction_status: "processing",
+          processing_started_at: new Date().toISOString(),
+          correlation_id: correlationId,
+        })
+        .eq("id", documentId);
+
+      // Download file from storage
+      const { data: fileData, error: downloadError } = await supabaseAdmin
+        .storage.from("documents")
+        .download(doc.file_url);
+
+      if (downloadError || !fileData) {
+        throw new Error(`Failed to download file from storage: ${downloadError?.message || "no data"}`);
+      }
+
+      // Convert to base64
+      const arrayBuffer = await fileData.arrayBuffer();
+      resolvedBase64 = encodeBase64(new Uint8Array(arrayBuffer));
+      resolvedMimeType = doc.file_type || "application/octet-stream";
+      resolvedFileName = doc.name || "document";
+
+      console.log(`[extract-document-text] [correlation_id=${correlationId}] Downloaded from storage: ${doc.file_url} (${resolvedBase64.length} base64 chars)`);
     } else {
       return jsonResponse(
-        { success: false, extractedText: "", structuredData: null, error: `Unsupported file type: ${mimeType}` },
+        { success: false, extractedText: "", structuredData: null, error: "Either fileBase64 or documentId is required" },
+        400
+      );
+    }
+
+    // ── Route by file type ──────────────────────────────────
+    const normalizedType = resolvedMimeType.toLowerCase();
+    const prompt = mode === "receipt" ? RECEIPT_PROMPT : DOCUMENT_PROMPT;
+    let extractedText: string;
+
+    console.log(`[extract-document-text] [correlation_id=${correlationId}] mode:`, mode, "type:", normalizedType, "name:", resolvedFileName, "base64Len:", resolvedBase64.length);
+
+    if (SUPPORTED_IMAGE_TYPES.some((t) => normalizedType.includes(t))) {
+      extractedText = await extractTextFromImage(resolvedBase64, normalizedType, prompt);
+    } else if (SUPPORTED_PDF_TYPES.some((t) => normalizedType.includes(t))) {
+      extractedText = await extractTextFromPDF(resolvedBase64, resolvedFileName, prompt);
+    } else {
+      return jsonResponse(
+        { success: false, extractedText: "", structuredData: null, error: `Unsupported file type: ${resolvedMimeType}` },
         400
       );
     }
@@ -319,7 +365,7 @@ serve(async (req) => {
     const { sanitized, injectionDetected } = sanitizeExtractedText(extractedText);
     extractedText = sanitized;
     if (injectionDetected) {
-      console.warn("[extract-document-text] Injection patterns detected in:", docName);
+      console.warn("[extract-document-text] Injection patterns detected in:", resolvedFileName);
     }
 
     // ── Build structuredData for receipt mode ────────────────
@@ -362,7 +408,7 @@ serve(async (req) => {
       }
     }
 
-    console.log("[extract-document-text] Success:", docName, "length:", sanitized.length, "mode:", mode);
+    console.log("[extract-document-text] Success:", resolvedFileName, "length:", sanitized.length, "mode:", mode);
 
     return jsonResponse({
       success: true,
@@ -372,6 +418,25 @@ serve(async (req) => {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("[extract-document-text] Error:", message);
+
+    // Write error back to documents table for document mode
+    if (reqDocumentId) {
+      try {
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        await supabaseAdmin
+          .from("documents")
+          .update({
+            extraction_status: "failed",
+            last_error: message.substring(0, 500),
+          })
+          .eq("id", reqDocumentId);
+      } catch (writeBackErr) {
+        console.error("[extract-document-text] Error write-back failed:", writeBackErr);
+      }
+    }
 
     return jsonResponse(
       { success: false, extractedText: "", structuredData: null, error: message },
