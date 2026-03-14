@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import OpenAI from "https://esm.sh/openai@4.96.0";
 import { extractText as extractPdfText } from "npm:unpdf";
+import { fetchWithFallback } from "../_shared/aiClient.ts";
+import { chunkTextStructured, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
 
 // ── Constants ───────────────────────────────────────────────
 const corsHeaders = {
@@ -23,6 +25,74 @@ const SUPPORTED_IMAGE_TYPES = [
 ];
 
 const SUPPORTED_PDF_TYPES = ["application/pdf"];
+
+// ── Embedding REST helpers (raw fetch, no supabase-js) ──────
+const SUPA_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPA_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+function embRestHeaders(prefer = "return=minimal"): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "apikey": SUPA_SERVICE_KEY,
+    "Authorization": `Bearer ${SUPA_SERVICE_KEY}`,
+    "Prefer": prefer,
+  };
+}
+
+async function embRestSelect<T>(table: string, query: string): Promise<T[]> {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, {
+    headers: embRestHeaders("return=representation"),
+  });
+  if (!res.ok) throw new Error(`REST select ${table}: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function embRestInsert(table: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}`, {
+    method: "POST",
+    headers: embRestHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`REST insert ${table}: ${res.status} ${await res.text()}`);
+}
+
+async function embRestUpdate(table: string, query: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, {
+    method: "PATCH",
+    headers: embRestHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`REST update ${table}: ${res.status} ${await res.text()}`);
+}
+
+async function embRestDelete(table: string, query: string): Promise<void> {
+  const res = await fetch(`${SUPA_URL}/rest/v1/${table}?${query}`, {
+    method: "DELETE",
+    headers: embRestHeaders(),
+  });
+  if (!res.ok) throw new Error(`REST delete ${table}: ${res.status} ${await res.text()}`);
+}
+
+async function generateSingleEmbedding(text: string, apiKey: string, correlationId?: string): Promise<number[]> {
+  const { response, gatewayUsed } = await fetchWithFallback(
+    "/embeddings",
+    { model: EMBEDDING_MODEL, input: text, dimensions: EMBEDDING_DIMENSION },
+    apiKey,
+    correlationId,
+  );
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Embedding failed (${gatewayUsed}):`, response.status, errorText);
+    if (response.status === 429) throw new Error("Rate limit exceeded");
+    if (response.status === 402) throw new Error("AI credits exhausted");
+    throw new Error(`Embedding failed: ${response.status}`);
+  }
+  if (gatewayUsed === "fallback") {
+    console.warn(`[extract-document-text] Used fallback gateway for embedding`);
+  }
+  const data = await response.json();
+  return data.data?.[0]?.embedding || [];
+}
 
 // ── Prompts ─────────────────────────────────────────────────
 const RECEIPT_PROMPT = `You are a receipt OCR specialist. Extract part/product details from this receipt.
@@ -427,22 +497,101 @@ serve(async (req) => {
 
         console.log("[extract-document-text] Saved to DB for document:", documentId);
 
-        // Trigger embedding generation as a background task.
-        // EdgeRuntime.waitUntil() keeps the isolate alive after the response is sent,
-        // ensuring the fetch request completes without blocking the client.
-        const embeddingPromise = fetch(
-          `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-embeddings`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-            },
-            body: JSON.stringify({ documentId, correlationId }),
-          },
-        )
-          .then((r) => console.log(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger status: ${r.status} for: ${documentId}`))
-          .catch((err) => console.error(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger error:`, err));
+        // Generate embeddings inline (background task via waitUntil)
+        const embeddingPromise = (async () => {
+          try {
+            const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+            if (!OPENAI_API_KEY) {
+              console.error("[extract-document-text] No OPENAI_API_KEY, skipping embeddings");
+              return;
+            }
+
+            await embRestUpdate("documents", `id=eq.${documentId}`, {
+              embedding_status: "processing",
+              processing_started_at: new Date().toISOString(),
+            });
+            await embRestDelete("document_chunks", `document_id=eq.${documentId}`);
+
+            // Get document metadata for chunk records
+            const docRows = await embRestSelect<Record<string, unknown>>(
+              "documents",
+              `id=eq.${documentId}&select=tenant_id,equipment_types,category`
+            );
+            const docMeta = docRows[0];
+            if (!docMeta) throw new Error("Document metadata not found");
+
+            // Resolve equipment brand/model
+            let equipmentBrand: string | null = null;
+            let equipmentModel: string | null = null;
+            let equipmentType: string | null = null;
+            if (Array.isArray(docMeta.equipment_types) && (docMeta.equipment_types as string[]).length > 0) {
+              equipmentType = (docMeta.equipment_types as string[])[0];
+              try {
+                const eqRows = await embRestSelect<Record<string, unknown>>(
+                  "equipment_registry",
+                  `tenant_id=eq.${docMeta.tenant_id}&equipment_type=eq.${encodeURIComponent(equipmentType)}&select=brand,model&limit=1`
+                );
+                if (eqRows[0]) {
+                  equipmentBrand = (eqRows[0].brand as string) || null;
+                  equipmentModel = (eqRows[0].model as string) || null;
+                }
+              } catch (e) {
+                console.warn("[extract-document-text] Equipment metadata lookup failed:", e);
+              }
+            }
+
+            // Chunk the extracted text and process one at a time
+            const chunks = chunkTextStructured(sanitized);
+            const totalChunks = chunks.length;
+            console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding ${totalChunks} chunks for ${documentId}`);
+
+            let insertedCount = 0;
+            let totalTokens = 0;
+
+            for (let i = 0; i < totalChunks; i++) {
+              const chunk = chunks[i];
+              const embedding = await generateSingleEmbedding(chunk.text, OPENAI_API_KEY, correlationId);
+              const tokenCount = estimateTokens(chunk.text);
+              totalTokens += tokenCount;
+
+              await embRestInsert("document_chunks", {
+                document_id: documentId,
+                tenant_id: docMeta.tenant_id,
+                chunk_index: i,
+                chunk_text: chunk.text,
+                embedding: `[${embedding.join(",")}]`,
+                token_count: tokenCount,
+                chunk_type: chunk.type,
+                equipment_type: equipmentType,
+                brand: equipmentBrand,
+                model: equipmentModel,
+                document_category: docMeta.category || null,
+                correlation_id: correlationId,
+                embedding_model: EMBEDDING_MODEL,
+                embedding_dimensions: EMBEDDING_DIMENSION,
+              });
+
+              insertedCount++;
+              // deno-lint-ignore no-explicit-any
+              (chunks as any)[i] = null; // Free processed chunk
+
+              if ((i + 1) % 10 === 0 || i === totalChunks - 1) {
+                console.log(`[extract-document-text] Embedded chunk ${i + 1}/${totalChunks}`);
+              }
+              if (i < totalChunks - 1) {
+                await new Promise(r => setTimeout(r, 200));
+              }
+            }
+
+            await embRestUpdate("documents", `id=eq.${documentId}`, { embedding_status: "completed" });
+            console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding completed: ${insertedCount} chunks, ${totalTokens} tokens`);
+          } catch (embErr) {
+            console.error(`[extract-document-text] [correlation_id=${correlationId}] Inline embedding failed:`, embErr);
+            try {
+              await embRestUpdate("documents", `id=eq.${documentId}`, { embedding_status: "failed" });
+            } catch (_) { /* ignore status update failure */ }
+          }
+        })();
 
         // deno-lint-ignore no-explicit-any
         (globalThis as any).EdgeRuntime?.waitUntil?.(embeddingPromise);
