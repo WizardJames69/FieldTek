@@ -255,13 +255,13 @@ function classifyChunkType(text: string): string {
   return 'narrative';
 }
 
-// Generate embeddings for a batch of texts using OpenAI batch API (single request)
-async function generateEmbeddingBatch(texts: string[], apiKey: string, correlationId?: string): Promise<number[][]> {
+// Generate embedding for a single text using OpenAI API
+async function generateSingleEmbedding(text: string, apiKey: string, correlationId?: string): Promise<number[]> {
   const { response, gatewayUsed } = await fetchWithFallback(
     "/embeddings",
     {
       model: EMBEDDING_MODEL,
-      input: texts,
+      input: text,
       dimensions: EMBEDDING_DIMENSION,
     },
     apiKey,
@@ -286,9 +286,8 @@ async function generateEmbeddingBatch(texts: string[], apiKey: string, correlati
   }
 
   const data = await response.json();
-  // OpenAI returns embeddings sorted by index
-  const sorted = (data.data || []).sort((a: any, b: any) => a.index - b.index);
-  return sorted.map((item: any) => item.embedding || []);
+  const embedding: number[] = data.data?.[0]?.embedding || [];
+  return embedding;
 }
 
 serve(async (req) => {
@@ -405,49 +404,45 @@ serve(async (req) => {
         .delete()
         .eq("document_id", documentId);
 
-      // Chunk the document text using structure-aware chunking
-      const structuredChunks: (StructuredChunk | null)[] = chunkTextStructured(doc.extracted_text);
-      const totalChunks = structuredChunks.length;
+      // Chunk the document text — keep only boundary info (start/end/type), not text content
+      const rawChunks = chunkTextStructured(doc.extracted_text);
+      const totalChunks = rawChunks.length;
       console.log(`[generate-embeddings] [correlation_id=${correlationId}] Document split into ${totalChunks} structured chunks`);
 
-      // Free extracted text from memory (~100K chars)
+      // Store chunk boundaries + types, then free the full text and raw chunks
+      const chunkMeta: { text: string; type: string }[] = rawChunks.map(c => ({ text: c.text, type: c.type }));
       // deno-lint-ignore no-explicit-any
-      (doc as any).extracted_text = null;
+      (rawChunks as any).length = 0; // Free raw chunk objects
+      // deno-lint-ignore no-explicit-any
+      (doc as any).extracted_text = null; // Free ~100K chars
 
       // Extract equipment type from parent document (first entry if array)
       const equipmentType = Array.isArray(doc.equipment_types) && doc.equipment_types.length > 0
         ? doc.equipment_types[0]
         : null;
 
-      // Process chunks in small batches to stay within memory limits
-      const BATCH_SIZE = 3;
+      // Process ONE chunk at a time to minimize peak memory
       let insertedChunkCount = 0;
       let totalTokens = 0;
 
-      for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
-        const batchEnd = Math.min(i + BATCH_SIZE, totalChunks);
-        const batch: StructuredChunk[] = [];
-        for (let j = i; j < batchEnd; j++) {
-          if (structuredChunks[j]) batch.push(structuredChunks[j]!);
-        }
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = chunkMeta[i];
 
-        if (batch.length === 0) continue;
+        // Generate embedding for this single chunk
+        const embedding = await generateSingleEmbedding(chunk.text, OPENAI_API_KEY, correlationId);
 
-        // Generate embeddings for batch in a single API call
-        const embeddings = await generateEmbeddingBatch(
-          batch.map(c => c.text), OPENAI_API_KEY, correlationId
-        );
+        // Build the embedding string and insert immediately
+        const tokenCount = estimateTokens(chunk.text);
+        totalTokens += tokenCount;
 
-        // Prepare chunk records with full metadata
-        const chunkRecords = batch.map((chunk, batchIndex) => {
-          const tokenCount = estimateTokens(chunk.text);
-          totalTokens += tokenCount;
-          return {
+        const { error: insertError } = await supabaseAdmin
+          .from("document_chunks")
+          .insert({
             document_id: doc.id,
             tenant_id: doc.tenant_id,
-            chunk_index: i + batchIndex,
+            chunk_index: i,
             chunk_text: chunk.text,
-            embedding: `[${embeddings[batchIndex].join(",")}]`,
+            embedding: `[${embedding.join(",")}]`,
             token_count: tokenCount,
             chunk_type: chunk.type,
             equipment_type: equipmentType,
@@ -457,30 +452,25 @@ serve(async (req) => {
             correlation_id: correlationId,
             embedding_model: EMBEDDING_MODEL,
             embedding_dimensions: EMBEDDING_DIMENSION,
-          };
-        });
-
-        // Insert chunks
-        const { error: insertError } = await supabaseAdmin
-          .from("document_chunks")
-          .insert(chunkRecords);
+          });
 
         if (insertError) {
-          throw new Error(`Failed to insert chunks: ${insertError.message}`);
+          throw new Error(`Failed to insert chunk ${i}: ${insertError.message}`);
         }
 
-        insertedChunkCount += chunkRecords.length;
+        insertedChunkCount++;
 
-        // Free processed chunks from memory
-        for (let j = i; j < batchEnd; j++) {
-          structuredChunks[j] = null;
+        // Null out the chunk text so GC can reclaim it
+        // deno-lint-ignore no-explicit-any
+        (chunkMeta as any)[i] = null;
+
+        if ((i + 1) % 10 === 0 || i === totalChunks - 1) {
+          console.log(`[generate-embeddings] Processed chunk ${i + 1}/${totalChunks}`);
         }
 
-        console.log(`Processed chunks ${i + 1}-${batchEnd} of ${totalChunks}`);
-
-        // Small delay between batches to avoid rate limits
-        if (batchEnd < totalChunks) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+        // Small delay between chunks to avoid rate limits
+        if (i < totalChunks - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200));
         }
       }
 
