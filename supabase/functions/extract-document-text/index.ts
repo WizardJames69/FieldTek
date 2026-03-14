@@ -1,7 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { encode as encodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
+import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import OpenAI from "https://esm.sh/openai@4.96.0";
+import { extractText as extractPdfText } from "npm:unpdf";
 
 // ── Constants ───────────────────────────────────────────────
 const corsHeaders = {
@@ -163,7 +164,30 @@ async function extractTextFromImage(
   return text.trim();
 }
 
-// ── PDF extraction ──────────────────────────────────────────
+// ── Local PDF text extraction (no API call) ─────────────────
+const MIN_LOCAL_TEXT_LENGTH = 200; // chars — below this, assume scanned/image PDF
+
+async function extractTextFromPDFLocal(base64Data: string): Promise<string | null> {
+  try {
+    const pdfBytes = decodeBase64(base64Data);
+    const { text, totalPages } = await extractPdfText(pdfBytes);
+    const fullText = Array.isArray(text) ? text.join("\n") : text;
+
+    console.log(`[extract-document-text] Local PDF extraction: ${fullText.length} chars, ${totalPages} pages`);
+
+    if (fullText && fullText.trim().length >= MIN_LOCAL_TEXT_LENGTH) {
+      return fullText.trim();
+    }
+
+    // Too little text — likely a scanned/image PDF
+    return null;
+  } catch (err) {
+    console.warn("[extract-document-text] Local PDF extraction failed, falling back to OpenAI:", err);
+    return null;
+  }
+}
+
+// ── PDF extraction (OpenAI vision fallback) ─────────────────
 async function extractTextFromPDF(
   base64Data: string,
   fileName: string,
@@ -346,7 +370,18 @@ serve(async (req) => {
     if (SUPPORTED_IMAGE_TYPES.some((t) => normalizedType.includes(t))) {
       extractedText = await extractTextFromImage(resolvedBase64, normalizedType, prompt);
     } else if (SUPPORTED_PDF_TYPES.some((t) => normalizedType.includes(t))) {
-      extractedText = await extractTextFromPDF(resolvedBase64, resolvedFileName, prompt);
+      // Try local text extraction first (instant, no API call)
+      const localText = mode !== "receipt"
+        ? await extractTextFromPDFLocal(resolvedBase64)
+        : null;
+
+      if (localText) {
+        extractedText = localText;
+        console.log(`[extract-document-text] [correlation_id=${correlationId}] Used local extraction (${localText.length} chars)`);
+      } else {
+        // Fallback to OpenAI for scanned/image PDFs or receipt mode
+        extractedText = await extractTextFromPDF(resolvedBase64, resolvedFileName, prompt);
+      }
     } else {
       return jsonResponse(
         { success: false, extractedText: "", structuredData: null, error: `Unsupported file type: ${resolvedMimeType}` },
@@ -392,16 +427,25 @@ serve(async (req) => {
 
         console.log("[extract-document-text] Saved to DB for document:", documentId);
 
-        // Fire-and-forget: trigger embedding generation (pass correlationId for tracing)
-        supabaseAdmin.functions
-          .invoke("generate-embeddings", { body: { documentId, correlationId } })
-          .then(({ error: invokeErr }) => {
-            if (invokeErr) console.error(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger failed:`, invokeErr);
-            else console.log(`[extract-document-text] [correlation_id=${correlationId}] Embeddings triggered for:`, documentId);
-          })
-          .catch((err: unknown) => {
-            console.error(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger error:`, err);
-          });
+        // Trigger embedding generation as a background task.
+        // EdgeRuntime.waitUntil() keeps the isolate alive after the response is sent,
+        // ensuring the fetch request completes without blocking the client.
+        const embeddingPromise = fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-embeddings`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({ documentId, correlationId }),
+          },
+        )
+          .then((r) => console.log(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger status: ${r.status} for: ${documentId}`))
+          .catch((err) => console.error(`[extract-document-text] [correlation_id=${correlationId}] Embeddings trigger error:`, err));
+
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).EdgeRuntime?.waitUntil?.(embeddingPromise);
       } catch (dbErr) {
         // Don't fail the response — text was extracted successfully
         console.error("[extract-document-text] DB write-back failed:", dbErr);

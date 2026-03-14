@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const appUrl = Deno.env.get("APP_URL") || "https://fieldforce-unified-hub.lovable.app";
+  const appUrl = Deno.env.get("APP_URL") || "https://fieldtek.ai";
   const redirectUri = `${supabaseUrl.replace("/rest/v1", "")}/functions/v1/calendar-oauth`;
 
   // --- POST: Authenticated initiation ---

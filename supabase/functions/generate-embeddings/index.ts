@@ -255,13 +255,13 @@ function classifyChunkType(text: string): string {
   return 'narrative';
 }
 
-// Generate embedding using AI gateway with fallback
-async function generateEmbedding(text: string, apiKey: string, correlationId?: string): Promise<number[]> {
+// Generate embeddings for a batch of texts using OpenAI batch API (single request)
+async function generateEmbeddingBatch(texts: string[], apiKey: string, correlationId?: string): Promise<number[][]> {
   const { response, gatewayUsed } = await fetchWithFallback(
     "/embeddings",
     {
       model: EMBEDDING_MODEL,
-      input: text,
+      input: texts,
       dimensions: EMBEDDING_DIMENSION,
     },
     apiKey,
@@ -286,7 +286,9 @@ async function generateEmbedding(text: string, apiKey: string, correlationId?: s
   }
 
   const data = await response.json();
-  return data.data?.[0]?.embedding || [];
+  // OpenAI returns embeddings sorted by index
+  const sorted = (data.data || []).sort((a: any, b: any) => a.index - b.index);
+  return sorted.map((item: any) => item.embedding || []);
 }
 
 serve(async (req) => {
@@ -404,43 +406,59 @@ serve(async (req) => {
         .eq("document_id", documentId);
 
       // Chunk the document text using structure-aware chunking
-      const structuredChunks = chunkTextStructured(doc.extracted_text);
-      console.log(`[generate-embeddings] [correlation_id=${correlationId}] Document split into ${structuredChunks.length} structured chunks`);
+      const structuredChunks: (StructuredChunk | null)[] = chunkTextStructured(doc.extracted_text);
+      const totalChunks = structuredChunks.length;
+      console.log(`[generate-embeddings] [correlation_id=${correlationId}] Document split into ${totalChunks} structured chunks`);
 
-      // Process chunks in batches to avoid rate limits
-      const BATCH_SIZE = 5;
+      // Free extracted text from memory (~100K chars)
+      // deno-lint-ignore no-explicit-any
+      (doc as any).extracted_text = null;
+
+      // Extract equipment type from parent document (first entry if array)
+      const equipmentType = Array.isArray(doc.equipment_types) && doc.equipment_types.length > 0
+        ? doc.equipment_types[0]
+        : null;
+
+      // Process chunks in small batches to stay within memory limits
+      const BATCH_SIZE = 3;
       let insertedChunkCount = 0;
+      let totalTokens = 0;
 
-      for (let i = 0; i < structuredChunks.length; i += BATCH_SIZE) {
-        const batch = structuredChunks.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
+        const batchEnd = Math.min(i + BATCH_SIZE, totalChunks);
+        const batch: StructuredChunk[] = [];
+        for (let j = i; j < batchEnd; j++) {
+          if (structuredChunks[j]) batch.push(structuredChunks[j]!);
+        }
 
-        // Generate embeddings for this batch
-        const embeddings = await Promise.all(
-          batch.map(chunk => generateEmbedding(chunk.text, OPENAI_API_KEY, correlationId))
+        if (batch.length === 0) continue;
+
+        // Generate embeddings for batch in a single API call
+        const embeddings = await generateEmbeddingBatch(
+          batch.map(c => c.text), OPENAI_API_KEY, correlationId
         );
 
-        // Extract equipment type from parent document (first entry if array)
-        const equipmentType = Array.isArray(doc.equipment_types) && doc.equipment_types.length > 0
-          ? doc.equipment_types[0]
-          : null;
-
-        // Prepare chunk records with full metadata for tracing + model versioning
-        const chunkRecords = batch.map((chunk, batchIndex) => ({
-          document_id: doc.id,
-          tenant_id: doc.tenant_id,
-          chunk_index: i + batchIndex,
-          chunk_text: chunk.text,
-          embedding: `[${embeddings[batchIndex].join(",")}]`, // Format as vector string
-          token_count: estimateTokens(chunk.text),
-          chunk_type: chunk.type, // Pre-classified by structure-aware chunker
-          equipment_type: equipmentType,
-          brand: equipmentBrand,
-          model: equipmentModel,
-          document_category: doc.category || null,
-          correlation_id: correlationId,
-          embedding_model: EMBEDDING_MODEL,
-          embedding_dimensions: EMBEDDING_DIMENSION,
-        }));
+        // Prepare chunk records with full metadata
+        const chunkRecords = batch.map((chunk, batchIndex) => {
+          const tokenCount = estimateTokens(chunk.text);
+          totalTokens += tokenCount;
+          return {
+            document_id: doc.id,
+            tenant_id: doc.tenant_id,
+            chunk_index: i + batchIndex,
+            chunk_text: chunk.text,
+            embedding: `[${embeddings[batchIndex].join(",")}]`,
+            token_count: tokenCount,
+            chunk_type: chunk.type,
+            equipment_type: equipmentType,
+            brand: equipmentBrand,
+            model: equipmentModel,
+            document_category: doc.category || null,
+            correlation_id: correlationId,
+            embedding_model: EMBEDDING_MODEL,
+            embedding_dimensions: EMBEDDING_DIMENSION,
+          };
+        });
 
         // Insert chunks
         const { error: insertError } = await supabaseAdmin
@@ -453,10 +471,15 @@ serve(async (req) => {
 
         insertedChunkCount += chunkRecords.length;
 
-        console.log(`Processed chunks ${i + 1} to ${Math.min(i + BATCH_SIZE, structuredChunks.length)} of ${structuredChunks.length}`);
+        // Free processed chunks from memory
+        for (let j = i; j < batchEnd; j++) {
+          structuredChunks[j] = null;
+        }
+
+        console.log(`Processed chunks ${i + 1}-${batchEnd} of ${totalChunks}`);
 
         // Small delay between batches to avoid rate limits
-        if (i + BATCH_SIZE < structuredChunks.length) {
+        if (batchEnd < totalChunks) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
@@ -474,7 +497,7 @@ serve(async (req) => {
           success: true,
           documentId: doc.id,
           chunksCreated: insertedChunkCount,
-          totalTokens: structuredChunks.reduce((sum, c) => sum + estimateTokens(c.text), 0)
+          totalTokens,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

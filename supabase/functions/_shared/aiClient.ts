@@ -6,7 +6,7 @@
 // simple circuit breaker to avoid hammering a failing primary.
 //
 // Configuration (env vars):
-//   AI_GATEWAY_URL          — primary gateway (default: Lovable)
+//   AI_GATEWAY_URL          — primary gateway (default: OpenAI)
 //   AI_FALLBACK_URL         — fallback gateway (optional)
 //   AI_FALLBACK_API_KEY     — fallback API key (optional)
 //   AI_GATEWAY_TIMEOUT_MS   — per-request timeout (default: 8000)
@@ -19,7 +19,7 @@
 
 const AI_PRIMARY_URL =
   (typeof Deno !== "undefined" ? Deno.env.get("AI_GATEWAY_URL") : undefined) ||
-  "https://ai.gateway.lovable.dev/v1";
+  "https://api.openai.com/v1";
 
 const AI_FALLBACK_URL =
   (typeof Deno !== "undefined" ? Deno.env.get("AI_FALLBACK_URL") : undefined) ||
