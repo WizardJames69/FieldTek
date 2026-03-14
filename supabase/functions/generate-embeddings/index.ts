@@ -1,6 +1,62 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
+
+// Raw Supabase REST helpers (no supabase-js SDK to save ~100MB heap)
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? SUPABASE_SERVICE_ROLE_KEY;
+
+function restHeaders(prefer = "return=minimal"): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_SERVICE_ROLE_KEY,
+    "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    "Prefer": prefer,
+  };
+}
+
+async function restSelect<T>(table: string, query: string): Promise<T[]> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    headers: restHeaders("return=representation"),
+  });
+  if (!res.ok) throw new Error(`REST select ${table} failed: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function restInsert(table: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: "POST",
+    headers: restHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`REST insert ${table} failed: ${res.status} ${err}`);
+  }
+}
+
+async function restUpdate(table: string, query: string, body: Record<string, unknown>): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method: "PATCH",
+    headers: restHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`REST update ${table} failed: ${res.status} ${err}`);
+  }
+}
+
+async function restDelete(table: string, query: string): Promise<void> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method: "DELETE",
+    headers: restHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`REST delete ${table} failed: ${res.status} ${err}`);
+  }
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -305,21 +361,22 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const isServiceRole = token === serviceRoleKey;
+    const isServiceRole = token === SUPABASE_SERVICE_ROLE_KEY;
 
     if (!isServiceRole) {
-      const supabaseAuth = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY") ?? serviceRoleKey,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-      if (authError || !user) {
+      // Verify user JWT via GoTrue API (no SDK needed)
+      const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+          "Authorization": authHeader,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+      });
+      if (!authRes.ok) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      const user = await authRes.json();
       console.log("[generate-embeddings] Authenticated user:", user.id);
     } else {
       console.log("[generate-embeddings] Service role access");
@@ -339,21 +396,15 @@ serve(async (req) => {
       throw new Error("OPENAI_API_KEY is not configured");
     }
 
-    // Use service role for database operations
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    // Get document with extracted text (raw REST)
+    const docs = await restSelect<Record<string, unknown>>(
+      "documents",
+      `id=eq.${documentId}&select=id,tenant_id,name,extracted_text,extraction_status,category,equipment_types`
     );
+    const doc = docs[0];
 
-    // Get document with extracted text
-    const { data: doc, error: docError } = await supabaseAdmin
-      .from("documents")
-      .select("id, tenant_id, name, extracted_text, extraction_status, category, equipment_types")
-      .eq("id", documentId)
-      .single();
-
-    if (docError || !doc) {
-      console.error("Document not found:", documentId, docError);
+    if (!doc) {
+      console.error("Document not found:", documentId);
       return new Response(
         JSON.stringify({ error: "Document not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -375,16 +426,13 @@ serve(async (req) => {
     let equipmentModel: string | null = null;
     if (Array.isArray(doc.equipment_types) && doc.equipment_types.length > 0) {
       try {
-        const { data: equipment } = await supabaseAdmin
-          .from("equipment_registry")
-          .select("brand, model")
-          .eq("tenant_id", doc.tenant_id)
-          .eq("equipment_type", doc.equipment_types[0])
-          .limit(1)
-          .maybeSingle();
-        if (equipment) {
-          equipmentBrand = equipment.brand || null;
-          equipmentModel = equipment.model || null;
+        const eqRows = await restSelect<Record<string, unknown>>(
+          "equipment_registry",
+          `tenant_id=eq.${doc.tenant_id}&equipment_type=eq.${encodeURIComponent(doc.equipment_types[0])}&select=brand,model&limit=1`
+        );
+        if (eqRows[0]) {
+          equipmentBrand = (eqRows[0].brand as string) || null;
+          equipmentModel = (eqRows[0].model as string) || null;
         }
       } catch (e) {
         console.warn(`[generate-embeddings] [correlation_id=${correlationId}] Failed to resolve equipment metadata:`, e);
@@ -392,20 +440,17 @@ serve(async (req) => {
     }
 
     // Update embedding status to processing with timestamp for retry tracking
-    await supabaseAdmin
-      .from("documents")
-      .update({ embedding_status: "processing", processing_started_at: new Date().toISOString() })
-      .eq("id", documentId);
+    await restUpdate("documents", `id=eq.${documentId}`, {
+      embedding_status: "processing",
+      processing_started_at: new Date().toISOString(),
+    });
 
     try {
       // Delete existing chunks for this document (in case of re-processing)
-      await supabaseAdmin
-        .from("document_chunks")
-        .delete()
-        .eq("document_id", documentId);
+      await restDelete("document_chunks", `document_id=eq.${documentId}`);
 
       // Chunk the document text — keep only boundary info (start/end/type), not text content
-      const rawChunks = chunkTextStructured(doc.extracted_text);
+      const rawChunks = chunkTextStructured(doc.extracted_text as string);
       const totalChunks = rawChunks.length;
       console.log(`[generate-embeddings] [correlation_id=${correlationId}] Document split into ${totalChunks} structured chunks`);
 
@@ -435,28 +480,22 @@ serve(async (req) => {
         const tokenCount = estimateTokens(chunk.text);
         totalTokens += tokenCount;
 
-        const { error: insertError } = await supabaseAdmin
-          .from("document_chunks")
-          .insert({
-            document_id: doc.id,
-            tenant_id: doc.tenant_id,
-            chunk_index: i,
-            chunk_text: chunk.text,
-            embedding: `[${embedding.join(",")}]`,
-            token_count: tokenCount,
-            chunk_type: chunk.type,
-            equipment_type: equipmentType,
-            brand: equipmentBrand,
-            model: equipmentModel,
-            document_category: doc.category || null,
-            correlation_id: correlationId,
-            embedding_model: EMBEDDING_MODEL,
-            embedding_dimensions: EMBEDDING_DIMENSION,
-          });
-
-        if (insertError) {
-          throw new Error(`Failed to insert chunk ${i}: ${insertError.message}`);
-        }
+        await restInsert("document_chunks", {
+          document_id: doc.id,
+          tenant_id: doc.tenant_id,
+          chunk_index: i,
+          chunk_text: chunk.text,
+          embedding: `[${embedding.join(",")}]`,
+          token_count: tokenCount,
+          chunk_type: chunk.type,
+          equipment_type: equipmentType,
+          brand: equipmentBrand,
+          model: equipmentModel,
+          document_category: doc.category || null,
+          correlation_id: correlationId,
+          embedding_model: EMBEDDING_MODEL,
+          embedding_dimensions: EMBEDDING_DIMENSION,
+        });
 
         insertedChunkCount++;
 
@@ -475,10 +514,7 @@ serve(async (req) => {
       }
 
       // Update document embedding status
-      await supabaseAdmin
-        .from("documents")
-        .update({ embedding_status: "completed" })
-        .eq("id", documentId);
+      await restUpdate("documents", `id=eq.${documentId}`, { embedding_status: "completed" });
 
       console.log(`[generate-embeddings] [correlation_id=${correlationId}] Completed:`, doc.id, "Chunks:", insertedChunkCount);
 
@@ -496,10 +532,7 @@ serve(async (req) => {
       console.error("Embedding generation failed:", embeddingError);
 
       // Update status to failed
-      await supabaseAdmin
-        .from("documents")
-        .update({ embedding_status: "failed" })
-        .eq("id", documentId);
+      await restUpdate("documents", `id=eq.${documentId}`, { embedding_status: "failed" });
 
       return new Response(
         JSON.stringify({
