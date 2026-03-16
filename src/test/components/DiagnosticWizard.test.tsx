@@ -59,19 +59,19 @@ describe("getDiagnosticPath", () => {
   it("returns electrical path for power symptoms", () => {
     const path = getDiagnosticPath("no power");
     expect(path).not.toBeNull();
-    expect(path?.id).toBe("electrical");
+    expect(path?.id).toBe("hvac-electrical");
   });
 
   it("returns noise path for noise symptoms", () => {
     const path = getDiagnosticPath("loud noise");
     expect(path).not.toBeNull();
-    expect(path?.id).toBe("noise");
+    expect(path?.id).toBe("hvac-noise");
   });
 
   it("returns pressure path for refrigerant symptoms", () => {
     const path = getDiagnosticPath("refrigerant pressure");
     expect(path).not.toBeNull();
-    expect(path?.id).toBe("pressure");
+    expect(path?.id).toBe("hvac-pressure");
   });
 
   it("returns null for unmatched symptoms", () => {
