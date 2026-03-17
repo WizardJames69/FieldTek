@@ -91,7 +91,111 @@ async function generateSingleEmbedding(text: string, apiKey: string, correlation
     console.warn(`[extract-document-text] Used fallback gateway for embedding`);
   }
   const data = await response.json();
-  return data.data?.[0]?.embedding || [];
+  const embedding = data.data?.[0]?.embedding;
+  if (!embedding || !Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMENSION) {
+    throw new Error(`Invalid embedding: expected ${EMBEDDING_DIMENSION}d vector, got ${embedding?.length ?? 0}d`);
+  }
+  return embedding;
+}
+
+// ── Inline embedding pipeline ────────────────────────────────
+async function runInlineEmbedding(documentId: string, text: string, correlationId: string): Promise<void> {
+  try {
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      console.error("[extract-document-text] No OPENAI_API_KEY, skipping embeddings");
+      return;
+    }
+
+    await embRestUpdate("documents", `id=eq.${documentId}`, {
+      embedding_status: "processing",
+      processing_started_at: new Date().toISOString(),
+    });
+    await embRestDelete("document_chunks", `document_id=eq.${documentId}`);
+
+    // Get document metadata for chunk records
+    const docRows = await embRestSelect<Record<string, unknown>>(
+      "documents",
+      `id=eq.${documentId}&select=tenant_id,equipment_types,category`
+    );
+    const docMeta = docRows[0];
+    if (!docMeta) throw new Error("Document metadata not found");
+
+    // Resolve equipment brand/model
+    let equipmentBrand: string | null = null;
+    let equipmentModel: string | null = null;
+    let equipmentType: string | null = null;
+    if (Array.isArray(docMeta.equipment_types) && (docMeta.equipment_types as string[]).length > 0) {
+      equipmentType = (docMeta.equipment_types as string[])[0];
+      try {
+        const eqRows = await embRestSelect<Record<string, unknown>>(
+          "equipment_registry",
+          `tenant_id=eq.${docMeta.tenant_id}&equipment_type=eq.${encodeURIComponent(equipmentType)}&select=brand,model&limit=1`
+        );
+        if (eqRows[0]) {
+          equipmentBrand = (eqRows[0].brand as string) || null;
+          equipmentModel = (eqRows[0].model as string) || null;
+        }
+      } catch (e) {
+        console.warn("[extract-document-text] Equipment metadata lookup failed:", e);
+      }
+    }
+
+    // Chunk the extracted text and process one at a time
+    const chunks = chunkTextStructured(text);
+    const totalChunks = chunks.length;
+    console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding ${totalChunks} chunks for ${documentId}`);
+
+    let insertedCount = 0;
+    let totalTokens = 0;
+
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = chunks[i];
+      const embedding = await generateSingleEmbedding(chunk.text, OPENAI_API_KEY, correlationId);
+      const tokenCount = estimateTokens(chunk.text);
+      totalTokens += tokenCount;
+
+      await embRestInsert("document_chunks", {
+        document_id: documentId,
+        tenant_id: docMeta.tenant_id,
+        chunk_index: i,
+        chunk_text: chunk.text,
+        embedding: `[${embedding.join(",")}]`,
+        token_count: tokenCount,
+        chunk_type: chunk.type,
+        equipment_type: equipmentType,
+        brand: equipmentBrand,
+        model: equipmentModel,
+        document_category: docMeta.category || null,
+        correlation_id: correlationId,
+        embedding_model: EMBEDDING_MODEL,
+        embedding_dimensions: EMBEDDING_DIMENSION,
+      });
+
+      insertedCount++;
+      // deno-lint-ignore no-explicit-any
+      (chunks as any)[i] = null; // Free processed chunk
+
+      if ((i + 1) % 10 === 0 || i === totalChunks - 1) {
+        console.log(`[extract-document-text] Embedded chunk ${i + 1}/${totalChunks}`);
+      }
+      if (i < totalChunks - 1) {
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    await embRestUpdate("documents", `id=eq.${documentId}`, { embedding_status: "completed" });
+    console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding completed: ${insertedCount} chunks, ${totalTokens} tokens`);
+  } catch (embErr) {
+    const errMsg = embErr instanceof Error ? embErr.message : String(embErr);
+    console.error(`[extract-document-text] [correlation_id=${correlationId}] Inline embedding failed:`, errMsg);
+    try {
+      await embRestUpdate("documents", `id=eq.${documentId}`, {
+        embedding_status: "failed",
+        last_error: errMsg.substring(0, 500),
+      });
+    } catch (_) { /* ignore status update failure */ }
+  }
 }
 
 // ── Prompts ─────────────────────────────────────────────────
@@ -381,7 +485,7 @@ serve(async (req) => {
       // Fetch document record
       const { data: doc, error: docError } = await supabaseAdmin
         .from("documents")
-        .select("file_url, file_type, extraction_status, name")
+        .select("file_url, file_type, extraction_status, embedding_status, name")
         .eq("id", documentId)
         .single();
 
@@ -392,8 +496,32 @@ serve(async (req) => {
         );
       }
 
-      // Prevent duplicate extraction
+      // Prevent duplicate extraction — but retry embeddings if needed
       if (doc.extraction_status === "completed") {
+        const needsEmbedding = !doc.embedding_status ||
+          doc.embedding_status === "pending" ||
+          doc.embedding_status === "failed";
+
+        if (needsEmbedding && documentId) {
+          const { data: fullDoc } = await supabaseAdmin
+            .from("documents")
+            .select("extracted_text")
+            .eq("id", documentId)
+            .single();
+
+          if (fullDoc?.extracted_text) {
+            console.log(`[extract-document-text] Re-running embeddings for already-extracted doc ${documentId} (status: ${doc.embedding_status})`);
+            const embPromise = runInlineEmbedding(documentId, fullDoc.extracted_text, correlationId);
+            const wuFn = (globalThis as any).EdgeRuntime?.waitUntil;
+            if (wuFn) {
+              wuFn.call((globalThis as any).EdgeRuntime, embPromise);
+            } else {
+              await embPromise;
+            }
+            return jsonResponse({ success: true, status: "already_extracted", embeddingRetriggered: true });
+          }
+        }
+
         return jsonResponse({ success: true, status: "already_extracted" });
       }
 
@@ -498,103 +626,14 @@ serve(async (req) => {
         console.log("[extract-document-text] Saved to DB for document:", documentId);
 
         // Generate embeddings inline (background task via waitUntil)
-        const embeddingPromise = (async () => {
-          try {
-            const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-            if (!OPENAI_API_KEY) {
-              console.error("[extract-document-text] No OPENAI_API_KEY, skipping embeddings");
-              return;
-            }
-
-            await embRestUpdate("documents", `id=eq.${documentId}`, {
-              embedding_status: "processing",
-              processing_started_at: new Date().toISOString(),
-            });
-            await embRestDelete("document_chunks", `document_id=eq.${documentId}`);
-
-            // Get document metadata for chunk records
-            const docRows = await embRestSelect<Record<string, unknown>>(
-              "documents",
-              `id=eq.${documentId}&select=tenant_id,equipment_types,category`
-            );
-            const docMeta = docRows[0];
-            if (!docMeta) throw new Error("Document metadata not found");
-
-            // Resolve equipment brand/model
-            let equipmentBrand: string | null = null;
-            let equipmentModel: string | null = null;
-            let equipmentType: string | null = null;
-            if (Array.isArray(docMeta.equipment_types) && (docMeta.equipment_types as string[]).length > 0) {
-              equipmentType = (docMeta.equipment_types as string[])[0];
-              try {
-                const eqRows = await embRestSelect<Record<string, unknown>>(
-                  "equipment_registry",
-                  `tenant_id=eq.${docMeta.tenant_id}&equipment_type=eq.${encodeURIComponent(equipmentType)}&select=brand,model&limit=1`
-                );
-                if (eqRows[0]) {
-                  equipmentBrand = (eqRows[0].brand as string) || null;
-                  equipmentModel = (eqRows[0].model as string) || null;
-                }
-              } catch (e) {
-                console.warn("[extract-document-text] Equipment metadata lookup failed:", e);
-              }
-            }
-
-            // Chunk the extracted text and process one at a time
-            const chunks = chunkTextStructured(sanitized);
-            const totalChunks = chunks.length;
-            console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding ${totalChunks} chunks for ${documentId}`);
-
-            let insertedCount = 0;
-            let totalTokens = 0;
-
-            for (let i = 0; i < totalChunks; i++) {
-              const chunk = chunks[i];
-              const embedding = await generateSingleEmbedding(chunk.text, OPENAI_API_KEY, correlationId);
-              const tokenCount = estimateTokens(chunk.text);
-              totalTokens += tokenCount;
-
-              await embRestInsert("document_chunks", {
-                document_id: documentId,
-                tenant_id: docMeta.tenant_id,
-                chunk_index: i,
-                chunk_text: chunk.text,
-                embedding: `[${embedding.join(",")}]`,
-                token_count: tokenCount,
-                chunk_type: chunk.type,
-                equipment_type: equipmentType,
-                brand: equipmentBrand,
-                model: equipmentModel,
-                document_category: docMeta.category || null,
-                correlation_id: correlationId,
-                embedding_model: EMBEDDING_MODEL,
-                embedding_dimensions: EMBEDDING_DIMENSION,
-              });
-
-              insertedCount++;
-              // deno-lint-ignore no-explicit-any
-              (chunks as any)[i] = null; // Free processed chunk
-
-              if ((i + 1) % 10 === 0 || i === totalChunks - 1) {
-                console.log(`[extract-document-text] Embedded chunk ${i + 1}/${totalChunks}`);
-              }
-              if (i < totalChunks - 1) {
-                await new Promise(r => setTimeout(r, 200));
-              }
-            }
-
-            await embRestUpdate("documents", `id=eq.${documentId}`, { embedding_status: "completed" });
-            console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding completed: ${insertedCount} chunks, ${totalTokens} tokens`);
-          } catch (embErr) {
-            console.error(`[extract-document-text] [correlation_id=${correlationId}] Inline embedding failed:`, embErr);
-            try {
-              await embRestUpdate("documents", `id=eq.${documentId}`, { embedding_status: "failed" });
-            } catch (_) { /* ignore status update failure */ }
-          }
-        })();
-
-        // deno-lint-ignore no-explicit-any
-        (globalThis as any).EdgeRuntime?.waitUntil?.(embeddingPromise);
+        const embeddingPromise = runInlineEmbedding(documentId, sanitized, correlationId);
+        const waitUntilFn = (globalThis as any).EdgeRuntime?.waitUntil;
+        if (waitUntilFn) {
+          waitUntilFn.call((globalThis as any).EdgeRuntime, embeddingPromise);
+        } else {
+          console.warn("[extract-document-text] EdgeRuntime.waitUntil unavailable, awaiting inline");
+          await embeddingPromise;
+        }
       } catch (dbErr) {
         // Don't fail the response — text was extracted successfully
         console.error("[extract-document-text] DB write-back failed:", dbErr);

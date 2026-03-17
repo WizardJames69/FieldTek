@@ -45,7 +45,16 @@ export function chunkTextStructured(text: string): StructuredChunk[] {
     }
   }
 
-  return chunks.filter(c => c.text.length > 50);
+  const result = chunks.filter(c => c.text.length > 50);
+
+  // Safety guard: cap chunk count to prevent runaway processing
+  const MAX_CHUNKS = 500;
+  if (result.length > MAX_CHUNKS) {
+    console.warn(`[chunking] Truncating ${result.length} chunks to ${MAX_CHUNKS}`);
+    result.length = MAX_CHUNKS;
+  }
+
+  return result;
 }
 
 // ── Section Splitting ───────────────────────────────────────

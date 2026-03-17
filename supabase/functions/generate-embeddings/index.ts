@@ -95,7 +95,10 @@ async function generateSingleEmbedding(text: string, apiKey: string, correlation
   }
 
   const data = await response.json();
-  const embedding: number[] = data.data?.[0]?.embedding || [];
+  const embedding: number[] | undefined = data.data?.[0]?.embedding;
+  if (!embedding || !Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMENSION) {
+    throw new Error(`Invalid embedding: expected ${EMBEDDING_DIMENSION}d vector, got ${embedding?.length ?? 0}d`);
+  }
   return embedding;
 }
 
@@ -284,8 +287,12 @@ serve(async (req) => {
     } catch (embeddingError) {
       console.error("Embedding generation failed:", embeddingError);
 
-      // Update status to failed
-      await restUpdate("documents", `id=eq.${documentId}`, { embedding_status: "failed" });
+      // Update status to failed with error detail
+      const errMsg = embeddingError instanceof Error ? embeddingError.message : String(embeddingError);
+      await restUpdate("documents", `id=eq.${documentId}`, {
+        embedding_status: "failed",
+        last_error: errMsg.substring(0, 500),
+      });
 
       return new Response(
         JSON.stringify({
