@@ -192,7 +192,7 @@ export function SentinelReasoningSection() {
           </div>
 
           {/* Pipeline Illustration (mobile: second, desktop: left) */}
-          <ScrollReveal delay={0.1} className="lg:order-first">
+          <ScrollReveal delay={0.1} className="hidden md:block lg:order-first">
             <div className="w-full max-w-[440px] mx-auto aspect-[340/370]">
               <SentinelPipelineIllustration />
             </div>

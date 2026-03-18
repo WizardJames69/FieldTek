@@ -183,7 +183,7 @@ export function IntelligenceLoopSection() {
           </div>
 
           {/* Right: Loop Illustration */}
-          <ScrollReveal delay={0.1}>
+          <ScrollReveal delay={0.1} className="hidden md:block">
             <div className="w-full max-w-[480px] mx-auto aspect-[340/320]">
               <IntelligenceLoopIllustration />
             </div>
