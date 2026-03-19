@@ -9,11 +9,6 @@ const styles = `
   .pillar-scroll::-webkit-scrollbar { display: none; }
   .pillar-scroll { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 
-  @keyframes isoBreath {
-    0%, 100% { opacity: 0.25; }
-    50% { opacity: 0.35; }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .iso-animate * {
       animation: none !important;
@@ -21,229 +16,180 @@ const styles = `
   }
 `;
 
-// ── Shared isometric defs (unique IDs per SVG via prefix) ────────────
-
-function IsoDefs({ p }: { p: string }) {
-  return (
-    <defs>
-      <linearGradient id={`${p}-top`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#2e2e32" />
-        <stop offset="100%" stopColor="#242427" />
-      </linearGradient>
-      <linearGradient id={`${p}-front`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#222225" />
-        <stop offset="100%" stopColor="#1a1a1d" />
-      </linearGradient>
-      <linearGradient id={`${p}-side`} x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#19191c" />
-        <stop offset="100%" stopColor="#141416" />
-      </linearGradient>
-      <filter id={`${p}-sh`}>
-        <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000" floodOpacity="0.25" />
-      </filter>
-    </defs>
-  );
-}
-
-// ── Isometric box helper ─────────────────────────────────────────────
-// Draws a 3-face isometric box. Iso angle: slope 0.29 (~16°).
-// (x,y) = top-left of front face. W = width, H = height, D = depth.
-// Depth direction goes upper-right: (+D, -D*0.5).
-
-function IsoBox({ x, y, w, h, d, p, opacity }: {
-  x: number; y: number; w: number; h: number; d: number; p: string; opacity?: number;
-}) {
-  const s = 0.29; // iso slope
-  const ds = 0.5; // depth slope
-  return (
-    <g opacity={opacity}>
-      {/* Front face */}
-      <polygon
-        points={`${x},${y} ${x + w},${y + w * s} ${x + w},${y + w * s + h} ${x},${y + h}`}
-        fill={`url(#${p}-front)`}
-      />
-      {/* Top face */}
-      <polygon
-        points={`${x},${y} ${x + w},${y + w * s} ${x + w + d},${y + w * s - d * ds} ${x + d},${y - d * ds}`}
-        fill={`url(#${p}-top)`}
-      />
-      {/* Right side */}
-      <polygon
-        points={`${x + w},${y + w * s} ${x + w + d},${y + w * s - d * ds} ${x + w + d},${y + w * s - d * ds + h} ${x + w},${y + w * s + h}`}
-        fill={`url(#${p}-side)`}
-      />
-    </g>
-  );
-}
-
-// ── FIG 1: AI-Powered Compliance ─────────────────────────────────────
+// ── FIG 1: AI-Powered Compliance — Frontal Checklist ─────────────────
 
 function ComplianceIllustration() {
-  const P = "c";
-  return (
-    <svg viewBox="0 0 280 220" className="w-full h-full iso-animate" fill="none">
-      <IsoDefs p={P} />
+  // Clipboard dimensions centered in 280×220 viewBox
+  const cx = 140, w = 110, h = 140;
+  const x = cx - w / 2, y = (220 - h) / 2;
+  const rowY = (i: number) => y + 40 + i * 26;
 
-      {/* Ghost documents behind (stacked specs) */}
-      <IsoBox x={82} y={52} w={85} h={100} d={10} p={P} opacity={0.07} />
-      <IsoBox x={87} y={47} w={85} h={100} d={10} p={P} opacity={0.13} />
-
-      {/* Main isometric document */}
-      <g filter={`url(#${P}-sh)`}>
-        <IsoBox x={92} y={42} w={85} h={100} d={10} p={P} />
-
-        {/* Header bar on document face */}
-        <polygon points="98,50 168,72 168,78 98,56" fill="rgba(255,255,255,0.03)" />
-
-        {/* Text lines (parallel to top edge, slope 0.29) */}
-        <line x1="98" y1="64" x2="164" y2="83" stroke="rgba(255,255,255,0.07)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="98" y1="74" x2="158" y2="91" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="98" y1="84" x2="162" y2="103" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="98" y1="94" x2="145" y2="108" stroke="rgba(255,255,255,0.04)" strokeWidth="2" strokeLinecap="round" />
-      </g>
-
-      {/* Shield — dark gray body, thin orange outline */}
-      <g>
-        <path
-          d="M192,118 L210,127 L210,148 Q210,158 192,166 Q174,158 174,148 L174,127 Z"
-          fill={`url(#${P}-front)`} stroke="rgba(249,115,22,0.3)" strokeWidth="1"
-        />
-        {/* Orange checkmark inside */}
-        <path d="M185,140 l4,4 8,-8" stroke="rgba(249,115,22,0.5)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </g>
-
-      {/* Green verification dot */}
-      <circle cx="104" cy="136" r="3" fill="rgba(34,197,94,0.5)" />
-    </svg>
-  );
-}
-
-// ── FIG 2: Automatic Documentation ───────────────────────────────────
-
-function DocumentationIllustration() {
-  const P = "d";
-  return (
-    <svg viewBox="0 0 280 220" className="w-full h-full iso-animate" fill="none">
-      <IsoDefs p={P} />
-
-      {/* ── Isometric phone/tablet (left) ── */}
-      <g filter={`url(#${P}-sh)`}>
-        <IsoBox x={38} y={58} w={40} h={82} d={8} p={P} />
-
-        {/* Screen (inset from front face) */}
-        <polygon points="43,66 73,75 73,130 43,121" fill="#111113" />
-
-        {/* Screen content lines */}
-        <line x1="47" y1="76" x2="69" y2="82" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="47" y1="86" x2="67" y2="92" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="47" y1="94" x2="68" y2="100" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="47" y1="102" x2="63" y2="107" stroke="rgba(255,255,255,0.04)" strokeWidth="1.5" strokeLinecap="round" />
-
-        {/* Orange status dot */}
-        <circle cx="69" cy="126" r="1.5" fill="#f97316" opacity="0.4" />
-      </g>
-
-      {/* ── Data cards in transit (dark gray, static) ── */}
-      <IsoBox x={102} y={68} w={24} h={14} d={5} p={P} opacity={0.9} />
-      <g>
-        <IsoBox x={120} y={95} w={22} h={12} d={5} p={P} opacity={0.85} />
-        {/* Faint orange edge on right side of middle card */}
-        <polygon
-          points={`${120 + 22},${95 + 22 * 0.29} ${120 + 22 + 5},${95 + 22 * 0.29 - 5 * 0.5} ${120 + 22 + 5},${95 + 22 * 0.29 - 5 * 0.5 + 12} ${120 + 22},${95 + 22 * 0.29 + 12}`}
-          fill="none" stroke="rgba(249,115,22,0.15)" strokeWidth="1"
-        />
-      </g>
-      <IsoBox x={136} y={56} w={20} h={11} d={5} p={P} opacity={0.8} />
-
-      {/* ── Storage block stack (right) ── */}
-      <g filter={`url(#${P}-sh)`}>
-        <IsoBox x={172} y={140} w={58} h={22} d={10} p={P} />
-      </g>
-      <g filter={`url(#${P}-sh)`}>
-        <IsoBox x={174} y={112} w={56} h={20} d={10} p={P} />
-      </g>
-      <g filter={`url(#${P}-sh)`}>
-        <IsoBox x={176} y={86} w={54} h={18} d={10} p={P} />
-        {/* Green indicator — single small dot */}
-        <circle cx="183" cy="94" r="2" fill="rgba(34,197,94,0.45)" />
-      </g>
-    </svg>
-  );
-}
-
-// ── FIG 3: Learning from Every Job ───────────────────────────────────
-
-function KnowledgeNetworkIllustration() {
-  const P = "k";
-  const CX = 140, CY = 108;
-
-  const nodes = [
-    { x: 55,  y: 68,  r: 11, green: false },
-    { x: 225, y: 60,  r: 10, green: true },
-    { x: 40,  y: 155, r: 9,  green: false },
-    { x: 105, y: 178, r: 10, green: true },
-    { x: 195, y: 180, r: 11, green: false },
-    { x: 245, y: 138, r: 9,  green: true },
-    { x: 82,  y: 40,  r: 8,  green: false },
+  const rows = [
+    { checked: true, textW: 70 },
+    { checked: true, textW: 58 },
+    { checked: true, textW: 65 },
+    { checked: false, textW: 50 },
   ];
 
   return (
-    <svg viewBox="0 0 280 220" className="w-full h-full iso-animate" fill="none">
-      <IsoDefs p={P} />
+    <svg viewBox="0 0 280 220" className="w-full h-full" fill="none">
       <defs>
-        <filter id={`${P}-edge`}>
+        <filter id="c-sh">
+          <feDropShadow dx="0" dy="2" stdDeviation="5" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+        <filter id="c-stamp">
           <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#f97316" floodOpacity="0.15" />
         </filter>
       </defs>
 
-      {/* Connection lines — monochromatic dark gray, 2 nearest have faint orange tint */}
+      {/* Ghost clipboard behind */}
+      <rect x={x + 4} y={y - 4} width={w} height={h} rx="6" fill="#1e1e22" opacity="0.08" />
+
+      {/* Main clipboard */}
+      <g filter="url(#c-sh)">
+        <rect x={x} y={y} width={w} height={h} rx="6" fill="#1e1e22" />
+
+        {/* Header bar */}
+        <rect x={x} y={y} width={w} height="16" rx="6" fill="#252528" />
+        {/* Flatten bottom corners of header */}
+        <rect x={x} y={y + 10} width={w} height="6" fill="#252528" />
+
+        {/* Checklist rows */}
+        {rows.map((row, i) => (
+          <g key={i}>
+            {row.checked ? (
+              <>
+                <circle cx={x + 18} cy={rowY(i)} r="5" fill="rgba(34,197,94,0.6)" />
+                <path
+                  d={`M${x + 15},${rowY(i)} l2,2 4,-4`}
+                  stroke="#fff" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.7"
+                />
+              </>
+            ) : (
+              <circle cx={x + 18} cy={rowY(i)} r="5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+            )}
+            <rect x={x + 30} y={rowY(i) - 2} width={row.textW} height="4" rx="2" fill="#2a2a2e" />
+          </g>
+        ))}
+      </g>
+
+      {/* Orange "verified" stamp — bottom right */}
+      <g filter="url(#c-stamp)">
+        <circle cx={x + w - 8} cy={y + h - 8} r="12" fill="#1e1e22" stroke="rgba(249,115,22,0.5)" strokeWidth="1" />
+        <path
+          d={`M${x + w - 12},${y + h - 8} l2.5,2.5 5,-5`}
+          stroke="rgba(249,115,22,0.6)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"
+        />
+      </g>
+    </svg>
+  );
+}
+
+// ── FIG 2: Automatic Documentation — Large Phone Screen ──────────────
+
+function DocumentationIllustration() {
+  // Phone dimensions centered in 280×220 viewBox
+  const pw = 96, ph = 152;
+  const px = (280 - pw) / 2, py = (220 - ph) / 2;
+  // Screen inset
+  const sx = px + 6, sy = py + 14, sw = pw - 12, sh = ph - 28;
+
+  const rowY = (i: number) => sy + 16 + i * 34;
+
+  return (
+    <svg viewBox="0 0 280 220" className="w-full h-full" fill="none">
+      <defs>
+        <filter id="d-sh">
+          <feDropShadow dx="0" dy="2" stdDeviation="5" floodColor="#000" floodOpacity="0.3" />
+        </filter>
+      </defs>
+
+      {/* Phone frame */}
+      <g filter="url(#d-sh)">
+        <rect x={px} y={py} width={pw} height={ph} rx="12" fill="#1e1e22" stroke="#2a2a2e" strokeWidth="1" />
+
+        {/* Screen */}
+        <rect x={sx} y={sy} width={sw} height={sh} rx="4" fill="#161618" />
+
+        {/* Row 1 — current/latest (orange dot) */}
+        <circle cx={sx + 10} cy={rowY(0)} r="3" fill="rgba(249,115,22,0.5)" />
+        <rect x={sx + 20} y={rowY(0) - 2} width="42" height="4" rx="2" fill="#2a2a2e" />
+        <rect x={sx + sw - 20} y={rowY(0) - 1.5} width="14" height="3" rx="1.5" fill="#222225" />
+
+        {/* Separator */}
+        <line x1={sx + 4} y1={rowY(0) + 15} x2={sx + sw - 4} y2={rowY(0) + 15} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+
+        {/* Row 2 — completed (green dot) */}
+        <circle cx={sx + 10} cy={rowY(1)} r="3" fill="rgba(34,197,94,0.5)" />
+        <rect x={sx + 20} y={rowY(1) - 2} width="38" height="4" rx="2" fill="#2a2a2e" />
+        <rect x={sx + sw - 20} y={rowY(1) - 1.5} width="14" height="3" rx="1.5" fill="#222225" />
+
+        {/* Separator */}
+        <line x1={sx + 4} y1={rowY(1) + 15} x2={sx + sw - 4} y2={rowY(1) + 15} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+
+        {/* Row 3 — photo capture placeholder */}
+        <circle cx={sx + 10} cy={rowY(2)} r="3" fill="rgba(34,197,94,0.5)" />
+        <rect x={sx + 20} y={rowY(2) - 6} width="22" height="14" rx="2" fill="#19191c" stroke="#2a2a2e" strokeWidth="0.5" />
+        <rect x={sx + 48} y={rowY(2) - 2} width="24" height="4" rx="2" fill="#2a2a2e" />
+
+        {/* Home indicator */}
+        <line x1={px + pw / 2 - 14} y1={py + ph - 8} x2={px + pw / 2 + 14} y2={py + ph - 8} stroke="rgba(255,255,255,0.12)" strokeWidth="2" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
+
+// ── FIG 3: Learning from Every Job — Clean Network ───────────────────
+
+function KnowledgeNetworkIllustration() {
+  const CX = 140, CY = 110, CR = 28;
+
+  const nodes = [
+    { x: 55,  y: 55,  r: 14, green: false },
+    { x: 230, y: 65,  r: 13, green: true },
+    { x: 50,  y: 170, r: 13, green: false },
+    { x: 220, y: 175, r: 7,  green: true },
+    { x: 140, y: 195, r: 8,  green: false },
+  ];
+
+  return (
+    <svg viewBox="0 0 280 220" className="w-full h-full" fill="none">
+      <defs>
+        <filter id="k-glow">
+          <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#f97316" floodOpacity="0.2" />
+        </filter>
+        <radialGradient id="k-node" cx="0.4" cy="0.35" r="0.6">
+          <stop offset="0%" stopColor="#2a2a2e" />
+          <stop offset="100%" stopColor="#1e1e22" />
+        </radialGradient>
+      </defs>
+
+      {/* Connection lines — center to satellites only */}
       {nodes.map((node, i) => (
         <line
           key={`line-${i}`}
           x1={CX} y1={CY} x2={node.x} y2={node.y}
-          stroke={i < 2 ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.04)"}
-          strokeWidth={node.r > 9 ? 1.5 : 1}
+          stroke="#2a2a2e" strokeWidth={node.r > 10 ? 2 : 1}
         />
       ))}
 
-      {/* Satellite nodes — static, monochromatic */}
+      {/* Satellite nodes */}
       {nodes.map((node, i) => (
         <g key={`node-${i}`}>
-          {/* Shadow */}
-          <ellipse cx={node.x} cy={node.y + node.r * 0.6} rx={node.r * 0.8} ry={node.r * 0.25} fill="#000" opacity="0.15" />
-          {/* Node body */}
-          <circle cx={node.x} cy={node.y} r={node.r} fill={`url(#${P}-front)`} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-          {/* Highlight (top-left light source) */}
-          <circle cx={node.x - node.r * 0.25} cy={node.y - node.r * 0.25} r={node.r * 0.4} fill="rgba(255,255,255,0.04)" />
+          <circle cx={node.x} cy={node.y} r={node.r} fill="url(#k-node)" />
+          {/* Top-light highlight */}
+          <circle cx={node.x - node.r * 0.2} cy={node.y - node.r * 0.2} r={node.r * 0.45} fill="rgba(255,255,255,0.03)" />
           {/* Green activity dot */}
           {node.green && (
-            <circle cx={node.x + node.r * 0.5} cy={node.y - node.r * 0.5} r="2" fill="rgba(34,197,94,0.5)" />
+            <circle cx={node.x + node.r * 0.55} cy={node.y - node.r * 0.65} r="3" fill="rgba(34,197,94,0.6)" />
           )}
         </g>
       ))}
 
-      {/* ── Central hex core — dark gray prism, thin orange edge highlight ── */}
-      <g>
-        {/* Top hexagon face — dark gray with thin orange stroke + edge glow */}
-        <polygon
-          points={`${CX},${CY - 18} ${CX + 20},${CY - 10} ${CX + 20},${CY + 2} ${CX},${CY + 10} ${CX - 20},${CY + 2} ${CX - 20},${CY - 10}`}
-          fill={`url(#${P}-top)`}
-          stroke="rgba(249,115,22,0.3)" strokeWidth="1"
-          filter={`url(#${P}-edge)`}
-          style={{ animation: "isoBreath 10s ease-in-out infinite" }}
-        />
-
-        {/* Left front face */}
-        <polygon
-          points={`${CX - 20},${CY + 2} ${CX},${CY + 10} ${CX},${CY + 28} ${CX - 20},${CY + 20}`}
-          fill={`url(#${P}-side)`} stroke="rgba(255,255,255,0.03)" strokeWidth="1"
-        />
-        {/* Right front face */}
-        <polygon
-          points={`${CX},${CY + 10} ${CX + 20},${CY + 2} ${CX + 20},${CY + 20} ${CX},${CY + 28}`}
-          fill={`url(#${P}-front)`} stroke="rgba(255,255,255,0.03)" strokeWidth="1"
-        />
-      </g>
+      {/* Center node — dominant AI core */}
+      <circle cx={CX} cy={CY} r={CR} fill="#1e1e22" stroke="rgba(249,115,22,0.35)" strokeWidth="1" filter="url(#k-glow)" />
+      {/* Inner highlight */}
+      <circle cx={CX - 4} cy={CY - 6} r={CR * 0.4} fill="rgba(255,255,255,0.03)" />
     </svg>
   );
 }
@@ -299,7 +245,7 @@ export function IsometricFeatures() {
           <div
             key={fig.id}
             className="
-              flex flex-col items-center text-center
+              flex flex-col
               w-[78vw] flex-shrink-0 snap-start
               md:w-auto md:flex-shrink
               bg-[#111113] border border-[#1e1e22] rounded-2xl p-6 md:p-8
@@ -309,7 +255,7 @@ export function IsometricFeatures() {
             <span className="text-[11px] font-mono text-zinc-600 mb-3 tracking-wider">{fig.id}</span>
 
             {/* Illustration container */}
-            <div className="w-full max-w-[280px] aspect-[14/11] mb-4">
+            <div className="w-full max-w-[280px] aspect-[14/11] mb-4 mx-auto">
               <fig.Illustration />
             </div>
 

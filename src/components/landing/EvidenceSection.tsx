@@ -111,7 +111,7 @@ export function EvidenceSection() {
     <section className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
-          <div>
+          <div className="md:order-last">
             <AnimatedEyebrow label="Evidence & Accountability" colorClass="text-orange-500" className="mb-3" />
             <ScrollReveal delay={0.05}>
               <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
