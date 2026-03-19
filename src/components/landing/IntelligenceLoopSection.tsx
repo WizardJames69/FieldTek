@@ -4,25 +4,6 @@ import { CheckCircle2 } from "lucide-react";
 
 // ── Loop Illustration ──────────────────────────────────────────
 
-const loopStyles = `
-  @keyframes loopDotTravel {
-    0% { offset-distance: 0%; opacity: 0; }
-    5% { opacity: 1; }
-    95% { opacity: 1; }
-    100% { offset-distance: 100%; opacity: 0; }
-  }
-  @keyframes loopNodePulse {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 1; }
-  }
-  @keyframes loopDataFlow {
-    to { stroke-dashoffset: -120; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .loop-animate * { animation: none !important; }
-  }
-`;
-
 const loopSteps = [
   { label: "Job\nCompleted", x: 170, y: 42 },
   { label: "Outcome\nRecorded", x: 296, y: 106 },
@@ -32,93 +13,87 @@ const loopSteps = [
   { label: "Next\nJob", x: 44, y: 106 },
 ];
 
+// Node visual hierarchy by role
+const loopNodeStyle = [
+  { fill: "#161618", stroke: "rgba(249,115,22,0.4)", sw: 1.5, text: "#e4e4e7" },   // Job Completed — entry
+  { fill: "#161618", stroke: "#1e1e22", sw: 1, text: "#a1a1a6" },                   // Outcome Recorded — processing
+  { fill: "#161618", stroke: "#1e1e22", sw: 1, text: "#a1a1a6" },                   // Statistics Computed — processing
+  { fill: "#1a1a1d", stroke: "#222225", sw: 1, text: "#b4b4b9" },                   // Patterns Discovered — intelligence
+  { fill: "#1a1a1d", stroke: "#222225", sw: 1, text: "#b4b4b9" },                   // Better Guidance — intelligence
+  { fill: "#161618", stroke: "#1e1e22", sw: 1, text: "#a1a1a6" },                   // Next Job — output
+];
+
 function IntelligenceLoopIllustration() {
-  // Build a closed loop path through all nodes
-  const pathPoints = loopSteps.map((s) => `${s.x},${s.y}`).join(" L");
-  const closedPath = `M${pathPoints} L${loopSteps[0].x},${loopSteps[0].y}`;
-
-  // Build individual segment paths for traveling dots
-  const segments = loopSteps.map((s, i) => {
-    const next = loopSteps[(i + 1) % loopSteps.length];
-    return `M${s.x},${s.y} L${next.x},${next.y}`;
-  });
-
   return (
-    <svg viewBox="0 0 340 320" className="w-full h-full loop-animate" fill="none">
-      <style>{loopStyles}</style>
+    <svg viewBox="0 0 340 320" className="w-full h-full" fill="none">
+      <defs>
+        <filter id="loop-sh">
+          <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#000" floodOpacity="0.2" />
+        </filter>
+      </defs>
 
-      {/* Static connection lines */}
-      <path
-        d={closedPath}
-        stroke="rgba(255,255,255,0.06)"
-        strokeWidth="1.5"
-        fill="none"
-      />
+      {/* Connection lines — closed loop */}
+      {loopSteps.map((step, i) => {
+        const next = loopSteps[(i + 1) % loopSteps.length];
+        const isLoopBack = i === loopSteps.length - 1;
+        return (
+          <line
+            key={`conn-${i}`}
+            x1={step.x} y1={step.y} x2={next.x} y2={next.y}
+            stroke="#2a2a2e" strokeWidth="1.5"
+            strokeDasharray={isLoopBack ? "6 4" : undefined}
+          />
+        );
+      })}
 
-      {/* Flowing data pulse along the loop */}
-      <path
-        d={closedPath}
-        stroke="rgba(249,115,22,0.12)"
-        strokeWidth="1.5"
-        fill="none"
-        strokeDasharray="6 14"
-        style={{ animation: "loopDataFlow 8s linear infinite" }}
-      />
-
-      {/* Traveling dots */}
-      {segments.map((seg, i) => (
-        <circle
-          key={`dot-${i}`}
-          r="3.5"
-          fill="#f97316"
-          opacity="0.8"
-          style={{
-            offsetPath: `path('${seg}')`,
-            animation: `loopDotTravel 3s ease-in-out infinite ${i * 0.5}s`,
-          }}
-        />
-      ))}
+      {/* Directional chevrons at segment midpoints */}
+      {loopSteps.map((step, i) => {
+        const next = loopSteps[(i + 1) % loopSteps.length];
+        const mx = (step.x + next.x) / 2;
+        const my = (step.y + next.y) / 2;
+        const dx = next.x - step.x;
+        const dy = next.y - step.y;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const nx = dx / len, ny = dy / len;
+        const px = -ny, py = nx; // perpendicular
+        const s = 4; // chevron size
+        return (
+          <polygon
+            key={`chev-${i}`}
+            points={`${mx + nx * s},${my + ny * s} ${mx - nx * s + px * s},${my - ny * s + py * s} ${mx - nx * s - px * s},${my - ny * s - py * s}`}
+            fill="#2a2a2e"
+          />
+        );
+      })}
 
       {/* Nodes */}
-      {loopSteps.map((step, i) => (
-        <g key={i} style={{ animation: `loopNodePulse ${3 + i * 0.3}s ease-in-out infinite` }}>
-          {/* Glow behind Job Completed node */}
-          {i === 0 && (
-            <circle
-              cx={step.x}
-              cy={step.y}
-              r="36"
-              fill="#f97316"
-              opacity="0.04"
+      {loopSteps.map((step, i) => {
+        const ns = loopNodeStyle[i];
+        const hw = 42, hh = 18;
+        return (
+          <g key={i} filter="url(#loop-sh)">
+            {/* Orange glow behind Job Completed */}
+            {i === 0 && <circle cx={step.x} cy={step.y} r="36" fill="#f97316" opacity="0.06" />}
+
+            <rect
+              x={step.x - hw} y={step.y - hh}
+              width={hw * 2} height={hh * 2}
+              rx="6" fill={ns.fill} stroke={ns.stroke} strokeWidth={ns.sw}
             />
-          )}
-          {/* Node background */}
-          <rect
-            x={step.x - 44}
-            y={step.y - 20}
-            width="88"
-            height="40"
-            rx="10"
-            fill="#161819"
-            stroke={i === 0 ? "rgba(249,115,22,0.45)" : "rgba(255,255,255,0.08)"}
-            strokeWidth={i === 0 ? 1.5 : 1}
-          />
-          {/* Node label */}
-          {step.label.split("\n").map((line, li) => (
-            <text
-              key={li}
-              x={step.x}
-              y={step.y + (li === 0 ? -4 : 10)}
-              textAnchor="middle"
-              fill={i === 0 ? "rgba(249,115,22,0.7)" : "rgba(255,255,255,0.4)"}
-              fontSize="10"
-              fontFamily="system-ui, sans-serif"
-            >
-              {line}
-            </text>
-          ))}
-        </g>
-      ))}
+
+            {step.label.split("\n").map((line, li) => (
+              <text
+                key={li}
+                x={step.x} y={step.y + (li === 0 ? -3 : 10)}
+                textAnchor="middle" fill={ns.text}
+                fontSize="11" fontFamily="system-ui, sans-serif"
+              >
+                {line}
+              </text>
+            ))}
+          </g>
+        );
+      })}
     </svg>
   );
 }

@@ -3,141 +3,92 @@ import { ScrollReveal } from "./ScrollReveal";
 
 // ── Pipeline Illustration ──────────────────────────────────────
 
-const pipelineStyles = `
-  @keyframes pipelineDot {
-    0% { offset-distance: 0%; opacity: 0; }
-    8% { opacity: 1; }
-    92% { opacity: 1; }
-    100% { offset-distance: 100%; opacity: 0; }
-  }
-  @keyframes pipelineNodeGlow {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .pipeline-animate * { animation: none !important; }
-  }
-`;
-
 const pipelineStages = [
-  { label: "Technician\nQuestion", y: 28 },
-  { label: "Manual\nRetrieval", y: 76 },
-  { label: "Diagnostic\nGraph", y: 124 },
-  { label: "Workflow\nStatistics", y: 172 },
-  { label: "Pattern\nAdvisory", y: 220 },
-  { label: "Context\nFusion", y: 268 },
-  { label: "Ranked\nHypotheses", y: 328 },
+  { label: "Technician\nQuestion",  y: 24 },
+  { label: "Manual\nRetrieval",     y: 68 },
+  { label: "Diagnostic\nGraph",     y: 112 },
+  { label: "Workflow\nStatistics",  y: 156 },
+  { label: "Pattern\nAdvisory",     y: 200 },
+  { label: "Context\nFusion",       y: 248 },
+  { label: "Ranked\nHypotheses",    y: 310 },
+];
+
+// Progressive escalation: width, fill, border, text color
+const pipelineNodeStyle = [
+  { w: 106, fill: "#151517", stroke: "#1a1a1d", sw: 1,   text: "#909095", fw: "400" as const },
+  { w: 110, fill: "#161618", stroke: "#1e1e22", sw: 1,   text: "#a1a1a6", fw: "400" as const },
+  { w: 114, fill: "#161618", stroke: "#1e1e22", sw: 1,   text: "#a1a1a6", fw: "400" as const },
+  { w: 118, fill: "#171719", stroke: "#202024", sw: 1,   text: "#a8a8ad", fw: "400" as const },
+  { w: 122, fill: "#171719", stroke: "#222225", sw: 1,   text: "#a8a8ad", fw: "400" as const },
+  { w: 128, fill: "#181a1c", stroke: "rgba(249,115,22,0.15)", sw: 1,   text: "#b8b8bd", fw: "400" as const },
+  { w: 134, fill: "#1e1e22", stroke: "rgba(249,115,22,0.45)", sw: 1.5, text: "#e4e4e7", fw: "600" as const },
 ];
 
 function SentinelPipelineIllustration() {
   const cx = 170;
 
+  // Progressive connection line styles
+  const connStyle = (i: number) => {
+    if (i >= 5) return { stroke: "rgba(249,115,22,0.1)", sw: 1.5 };
+    if (i >= 3) return { stroke: "rgba(255,255,255,0.06)", sw: 1.2 };
+    return { stroke: "rgba(255,255,255,0.05)", sw: 1 };
+  };
+
   return (
-    <svg viewBox="0 0 340 370" className="w-full h-full pipeline-animate" fill="none">
-      <style>{pipelineStyles}</style>
+    <svg viewBox="0 0 340 350" className="w-full h-full" fill="none">
+      <defs>
+        <filter id="pipe-sh">
+          <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#000" floodOpacity="0.2" />
+        </filter>
+      </defs>
 
-      {/* Vertical connecting line */}
-      <line
-        x1={cx}
-        y1={pipelineStages[0].y + 18}
-        x2={cx}
-        y2={pipelineStages[pipelineStages.length - 1].y - 18}
-        stroke="rgba(255,255,255,0.06)"
-        strokeWidth="1.5"
-        strokeDasharray="4 3"
-      />
-
-      {/* Traveling dots between stages */}
+      {/* Connection lines + chevrons between nodes */}
       {pipelineStages.slice(0, -1).map((stage, i) => {
         const next = pipelineStages[i + 1];
-        const segPath = `M${cx},${stage.y + 18} L${cx},${next.y - 18}`;
+        const y1 = stage.y + 16; // bottom of current node
+        const y2 = next.y - 16;  // top of next node
+        const cs = connStyle(i);
+        const my = (y1 + y2) / 2;
         return (
-          <circle
-            key={`dot-${i}`}
-            r="3"
-            fill="#f97316"
-            opacity="0.7"
-            style={{
-              offsetPath: `path('${segPath}')`,
-              animation: `pipelineDot 2s ease-in-out infinite ${i * 0.35}s`,
-            }}
-          />
+          <g key={`conn-${i}`}>
+            <line x1={cx} y1={y1} x2={cx} y2={y2} stroke={cs.stroke} strokeWidth={cs.sw} />
+            {/* Downward chevron */}
+            <polygon
+              points={`${cx - 3},${my - 2} ${cx + 3},${my - 2} ${cx},${my + 3}`}
+              fill={cs.stroke}
+            />
+          </g>
         );
       })}
 
       {/* Stage nodes */}
       {pipelineStages.map((stage, i) => {
-        const isFirst = i === 0;
+        const ns = pipelineNodeStyle[i];
         const isLast = i === pipelineStages.length - 1;
-        const isFusion = stage.label.includes("Fusion");
-
+        const hw = ns.w / 2;
         return (
-          <g
-            key={i}
-            style={{
-              animation: `pipelineNodeGlow ${3 + i * 0.2}s ease-in-out infinite`,
-            }}
-          >
-            {/* Glow behind Context Fusion and Ranked Hypotheses */}
-            {(isFusion || isLast) && (
-              <circle
-                cx={cx}
-                cy={stage.y}
-                r="38"
-                fill="#f97316"
-                opacity={isLast ? "0.04" : "0.03"}
-              />
-            )}
+          <g key={i} filter="url(#pipe-sh)">
+            {/* Orange glow behind Ranked Hypotheses */}
+            {isLast && <circle cx={cx} cy={stage.y} r="40" fill="#f97316" opacity="0.04" />}
 
-            {/* Node box */}
             <rect
-              x={cx - 62}
-              y={stage.y - 16}
-              width="124"
-              height="32"
-              rx="7"
-              fill={isLast ? "#1a1412" : "#161819"}
-              stroke={
-                isFirst
-                  ? "rgba(255,255,255,0.12)"
-                  : isFusion
-                    ? "rgba(249,115,22,0.35)"
-                    : isLast
-                      ? "rgba(249,115,22,0.45)"
-                      : "rgba(255,255,255,0.06)"
-              }
-              strokeWidth={isLast ? 2 : 1}
+              x={cx - hw} y={stage.y - 16}
+              width={ns.w} height="32"
+              rx="6" fill={ns.fill} stroke={ns.stroke} strokeWidth={ns.sw}
             />
 
-            {/* Label */}
             {stage.label.split("\n").map((line, li) => (
               <text
                 key={li}
-                x={cx}
-                y={stage.y + (li === 0 ? -2 : 10)}
-                textAnchor="middle"
-                fill={
-                  isLast
-                    ? "rgba(249,115,22,0.9)"
-                    : isFusion
-                      ? "rgba(249,115,22,0.7)"
-                      : "rgba(255,255,255,0.45)"
-                }
-                fontSize="10"
+                x={cx} y={stage.y + (li === 0 ? -2 : 10)}
+                textAnchor="middle" fill={ns.text}
+                fontSize={isLast ? "12" : "11"}
                 fontFamily="system-ui, sans-serif"
-                fontWeight={isLast ? "600" : "400"}
+                fontWeight={ns.fw}
               >
                 {line}
               </text>
             ))}
-
-            {/* Arrow indicator between nodes */}
-            {i < pipelineStages.length - 1 && (
-              <polygon
-                points={`${cx - 3},${stage.y + 20} ${cx + 3},${stage.y + 20} ${cx},${stage.y + 24}`}
-                fill="rgba(255,255,255,0.08)"
-              />
-            )}
           </g>
         );
       })}
