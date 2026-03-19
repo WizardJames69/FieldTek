@@ -298,8 +298,8 @@ export function IsometricFeatures() {
         ref={scrollRef}
         onScroll={handleScroll}
         className="
-          flex gap-3 px-4 overflow-x-auto snap-x snap-mandatory pillar-scroll
-          md:grid md:grid-cols-3 md:gap-6 md:px-0 md:overflow-visible
+          flex gap-3 px-4 overflow-x-auto snap-x snap-mandatory scroll-pl-4 pillar-scroll
+          md:grid md:grid-cols-3 md:gap-6 md:px-0 md:overflow-visible md:scroll-pl-0
         "
       >
         {figures.map((fig) => (
@@ -307,7 +307,7 @@ export function IsometricFeatures() {
             key={fig.id}
             className="
               flex flex-col items-center text-center
-              w-[85vw] flex-shrink-0 snap-center
+              w-[78vw] flex-shrink-0 snap-start
               md:w-auto md:flex-shrink
               bg-[#111113] border border-[#1e1e22] rounded-2xl p-6 md:p-8
             "
