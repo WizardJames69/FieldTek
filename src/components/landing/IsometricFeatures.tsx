@@ -14,26 +14,12 @@ const styles = `
     50% { opacity: 0.4; }
   }
   @keyframes isoNodePulse {
-    0%, 100% { opacity: 0.6; }
+    0%, 100% { opacity: 0.7; }
     50% { opacity: 1; }
-  }
-  @keyframes isoDotTravel {
-    0% { offset-distance: 0%; opacity: 0; }
-    8% { opacity: 1; }
-    92% { opacity: 1; }
-    100% { offset-distance: 100%; opacity: 0; }
   }
   @keyframes isoFloat {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-3px); }
-  }
-  @keyframes isoDocShift {
-    0%, 100% { transform: translateY(0); opacity: 0.7; }
-    50% { transform: translateY(-2px); opacity: 1; }
-  }
-  @keyframes isoFlash {
-    0%, 85%, 100% { opacity: 0.4; }
-    90% { opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -43,214 +29,256 @@ const styles = `
   }
 `;
 
-/** FIG 1: AI-Powered Compliance — documents → AI node → verified docs */
+// ── Shared isometric defs (unique IDs per SVG via prefix) ────────────
+
+function IsoDefs({ p }: { p: string }) {
+  return (
+    <defs>
+      <linearGradient id={`${p}-top`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#2e2e32" />
+        <stop offset="100%" stopColor="#242427" />
+      </linearGradient>
+      <linearGradient id={`${p}-front`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#222225" />
+        <stop offset="100%" stopColor="#1a1a1d" />
+      </linearGradient>
+      <linearGradient id={`${p}-side`} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#19191c" />
+        <stop offset="100%" stopColor="#141416" />
+      </linearGradient>
+      <filter id={`${p}-sh`}>
+        <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000" floodOpacity="0.25" />
+      </filter>
+    </defs>
+  );
+}
+
+// ── Isometric box helper ─────────────────────────────────────────────
+// Draws a 3-face isometric box. Iso angle: slope 0.29 (~16°).
+// (x,y) = top-left of front face. W = width, H = height, D = depth.
+// Depth direction goes upper-right: (+D, -D*0.5).
+
+function IsoBox({ x, y, w, h, d, p, opacity }: {
+  x: number; y: number; w: number; h: number; d: number; p: string; opacity?: number;
+}) {
+  const s = 0.29; // iso slope
+  const ds = 0.5; // depth slope
+  return (
+    <g opacity={opacity}>
+      {/* Front face */}
+      <polygon
+        points={`${x},${y} ${x + w},${y + w * s} ${x + w},${y + w * s + h} ${x},${y + h}`}
+        fill={`url(#${p}-front)`}
+      />
+      {/* Top face */}
+      <polygon
+        points={`${x},${y} ${x + w},${y + w * s} ${x + w + d},${y + w * s - d * ds} ${x + d},${y - d * ds}`}
+        fill={`url(#${p}-top)`}
+      />
+      {/* Right side */}
+      <polygon
+        points={`${x + w},${y + w * s} ${x + w + d},${y + w * s - d * ds} ${x + w + d},${y + w * s - d * ds + h} ${x + w},${y + w * s + h}`}
+        fill={`url(#${p}-side)`}
+      />
+    </g>
+  );
+}
+
+// ── FIG 1: AI-Powered Compliance ─────────────────────────────────────
+
 function ComplianceIllustration() {
+  const P = "c";
   return (
-    <svg viewBox="0 0 320 240" className="w-full h-full iso-animate" fill="none">
-      {/* Input document stack (left) */}
-      <g>
-        {/* Doc 3 (back) */}
-        <rect x="30" y="100" width="60" height="75" rx="4" fill="#1E1F22" stroke="rgba(255,255,255,0.06)" strokeWidth="1"
-          style={{ animation: "isoDocShift 4.5s ease-in-out infinite 0.3s" }} />
-        {/* Doc 2 */}
-        <rect x="38" y="92" width="60" height="75" rx="4" fill="#1A1C1E" stroke="rgba(255,255,255,0.06)" strokeWidth="1"
-          style={{ animation: "isoDocShift 4s ease-in-out infinite 0.15s" }} />
-        {/* Doc 1 (front) */}
-        <rect x="46" y="84" width="60" height="75" rx="4" fill="#161819" stroke="rgba(255,255,255,0.08)" strokeWidth="1"
-          style={{ animation: "isoDocShift 3.5s ease-in-out infinite" }} />
-        {/* Doc lines */}
-        <line x1="54" y1="98" x2="94" y2="98" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-        <line x1="54" y1="108" x2="88" y2="108" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-        <line x1="54" y1="118" x2="92" y2="118" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-        <line x1="54" y1="128" x2="80" y2="128" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+    <svg viewBox="0 0 280 220" className="w-full h-full iso-animate" fill="none">
+      <IsoDefs p={P} />
+
+      {/* Ghost documents behind (stacked specs) */}
+      <IsoBox x={82} y={52} w={85} h={100} d={10} p={P} opacity={0.07} />
+      <IsoBox x={87} y={47} w={85} h={100} d={10} p={P} opacity={0.13} />
+
+      {/* Main isometric document */}
+      <g filter={`url(#${P}-sh)`} style={{ animation: "isoFloat 6s ease-in-out infinite" }}>
+        <IsoBox x={92} y={42} w={85} h={100} d={10} p={P} />
+
+        {/* Header bar on document face */}
+        <polygon points="98,50 168,72 168,78 98,56" fill="rgba(249,115,22,0.08)" />
+
+        {/* Text lines (parallel to top edge, slope 0.29) */}
+        <line x1="98" y1="64" x2="164" y2="83" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="98" y1="74" x2="158" y2="91" stroke="rgba(255,255,255,0.07)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="98" y1="84" x2="162" y2="103" stroke="rgba(255,255,255,0.07)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="98" y1="94" x2="145" y2="108" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
       </g>
 
-      {/* Central AI node */}
-      <g style={{ animation: "isoFloat 5s ease-in-out infinite" }}>
-        {/* Glow */}
-        <circle cx="160" cy="120" r="32" fill="#f97316" opacity="0.06"
+      {/* Orange shield with checkmark (accent) */}
+      <g style={{ animation: "isoNodePulse 3.5s ease-in-out infinite" }}>
+        <circle cx="192" cy="138" r="24" fill="#f97316" opacity="0.06"
           style={{ animation: "isoGlow 4s ease-in-out infinite" }} />
-        {/* Hexagon-ish shape */}
-        <polygon points="160,88 185,104 185,136 160,152 135,136 135,104"
-          fill="#161819" stroke="rgba(249,115,22,0.25)" strokeWidth="1.5" />
-        {/* AI icon lines */}
-        <circle cx="160" cy="115" r="8" stroke="rgba(249,115,22,0.5)" strokeWidth="1.5" fill="none" />
-        <line x1="155" y1="130" x2="160" y2="138" stroke="rgba(249,115,22,0.4)" strokeWidth="1.5" />
-        <line x1="165" y1="130" x2="160" y2="138" stroke="rgba(249,115,22,0.4)" strokeWidth="1.5" />
+        <path
+          d="M192,118 L210,127 L210,148 Q210,158 192,166 Q174,158 174,148 L174,127 Z"
+          fill="rgba(249,115,22,0.12)" stroke="rgba(249,115,22,0.4)" strokeWidth="1.5"
+        />
+        <path d="M185,140 l4,4 8,-8" stroke="#f97316" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </g>
 
-      {/* Connection lines — left to center */}
-      <line x1="106" y1="120" x2="135" y2="120" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 3" />
-      {/* Data dot traveling left→center */}
-      <circle r="2.5" fill="#f97316" opacity="0.7"
-        style={{
-          offsetPath: "path('M106,120 L135,120')",
-          animation: "isoDotTravel 2.5s ease-in-out infinite",
-        }} />
-
-      {/* Connection lines — center to right */}
-      <line x1="185" y1="120" x2="214" y2="120" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 3" />
-      {/* Data dot traveling center→right */}
-      <circle r="2.5" fill="#f97316" opacity="0.7"
-        style={{
-          offsetPath: "path('M185,120 L214,120')",
-          animation: "isoDotTravel 2.5s ease-in-out infinite 1.2s",
-        }} />
-
-      {/* Output verified documents (right) */}
-      <g>
-        <rect x="214" y="84" width="60" height="75" rx="4" fill="#161819" stroke="rgba(255,255,255,0.08)" strokeWidth="1"
-          style={{ animation: "isoDocShift 4s ease-in-out infinite 0.5s" }} />
-        {/* Doc lines */}
-        <line x1="222" y1="98" x2="262" y2="98" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-        <line x1="222" y1="108" x2="256" y2="108" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-        <line x1="222" y1="118" x2="260" y2="118" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-        {/* Checkmark */}
-        <circle cx="258" cy="140" r="8" fill="rgba(34,197,94,0.12)" />
-        <path d="M253 140l3 3 6-6" stroke="rgba(34,197,94,0.6)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </g>
+      {/* Green verification badge */}
+      <circle cx="104" cy="136" r="11" fill="rgba(34,197,94,0.1)" />
+      <circle cx="104" cy="136" r="7" fill="rgba(34,197,94,0.06)" />
+      <path d="M100,136 l2.5,2.5 5,-5" stroke="rgba(34,197,94,0.65)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-/** FIG 2: Automatic Documentation — mobile → pipeline → cloud storage */
+// ── FIG 2: Automatic Documentation ───────────────────────────────────
+
 function DocumentationIllustration() {
+  const P = "d";
   return (
-    <svg viewBox="0 0 320 240" className="w-full h-full iso-animate" fill="none">
-      {/* Mobile device (left) */}
-      <g style={{ animation: "isoNodePulse 3s ease-in-out infinite" }}>
-        <rect x="30" y="72" width="50" height="90" rx="8" fill="#161819" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5" />
-        {/* Screen */}
-        <rect x="36" y="82" width="38" height="64" rx="3" fill="#111113" />
+    <svg viewBox="0 0 280 220" className="w-full h-full iso-animate" fill="none">
+      <IsoDefs p={P} />
+
+      {/* ── Isometric phone/tablet (left) ── */}
+      <g filter={`url(#${P}-sh)`} style={{ animation: "isoNodePulse 4s ease-in-out infinite" }}>
+        <IsoBox x={38} y={58} w={40} h={82} d={8} p={P} />
+
+        {/* Screen (inset from front face) */}
+        <polygon points="43,66 73,75 73,130 43,121" fill="#111113" />
+
         {/* Screen content lines */}
-        <line x1="42" y1="94" x2="68" y2="94" stroke="rgba(249,115,22,0.3)" strokeWidth="1.5" />
-        <line x1="42" y1="104" x2="64" y2="104" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-        <line x1="42" y1="114" x2="66" y2="114" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" />
-        <line x1="42" y1="124" x2="60" y2="124" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
-        {/* Home indicator */}
-        <line x1="48" y1="155" x2="62" y2="155" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="47" y1="76" x2="69" y2="82" stroke="rgba(249,115,22,0.35)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="47" y1="86" x2="67" y2="92" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="47" y1="94" x2="68" y2="100" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="47" y1="102" x2="63" y2="107" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" strokeLinecap="round" />
+
+        {/* Orange status dot */}
+        <circle cx="69" cy="126" r="2" fill="#f97316" opacity="0.5" />
       </g>
 
-      {/* Pipeline — 3 stage arrows */}
-      {/* Stage 1: Capture */}
-      <rect x="100" y="100" width="40" height="36" rx="6" fill="#1A1C1E" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-      <text x="120" y="122" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="8" fontFamily="monospace">CAP</text>
-
-      {/* Stage 2: Process */}
-      <rect x="156" y="100" width="40" height="36" rx="6" fill="#1A1C1E" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-      <text x="176" y="122" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="8" fontFamily="monospace">PRO</text>
-
-      {/* Stage 3: Store */}
-      <rect x="212" y="100" width="40" height="36" rx="6" fill="#1A1C1E" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-      <text x="232" y="122" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="8" fontFamily="monospace">STO</text>
-
-      {/* Connection paths */}
-      <line x1="80" y1="118" x2="100" y2="118" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 3" />
-      <line x1="140" y1="118" x2="156" y2="118" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 3" />
-      <line x1="196" y1="118" x2="212" y2="118" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 3" />
-      <line x1="252" y1="118" x2="270" y2="118" stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="4 3" />
-
-      {/* Data dots traveling along pipeline */}
-      <circle r="2.5" fill="#f97316" opacity="0.7"
-        style={{
-          offsetPath: "path('M80,118 L100,118')",
-          animation: "isoDotTravel 2s ease-in-out infinite",
-        }} />
-      <circle r="2.5" fill="#f97316" opacity="0.7"
-        style={{
-          offsetPath: "path('M140,118 L156,118')",
-          animation: "isoDotTravel 2s ease-in-out infinite 0.7s",
-        }} />
-      <circle r="2.5" fill="#f97316" opacity="0.7"
-        style={{
-          offsetPath: "path('M196,118 L212,118')",
-          animation: "isoDotTravel 2s ease-in-out infinite 1.4s",
-        }} />
-      <circle r="2.5" fill="#f97316" opacity="0.7"
-        style={{
-          offsetPath: "path('M252,118 L270,118')",
-          animation: "isoDotTravel 2s ease-in-out infinite 2.1s",
-        }} />
-
-      {/* Cloud storage (right) */}
-      <g style={{ animation: "isoFlash 5s ease-in-out infinite" }}>
-        <rect x="270" y="88" width="36" height="60" rx="6" fill="#161819" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-        {/* Cloud icon simplified */}
-        <ellipse cx="288" cy="110" rx="10" ry="7" fill="none" stroke="rgba(249,115,22,0.3)" strokeWidth="1.5" />
-        <line x1="282" y1="126" x2="294" y2="126" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-        <line x1="284" y1="132" x2="292" y2="132" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-      </g>
-    </svg>
-  );
-}
-
-/** FIG 3: Knowledge Network — connected nodes */
-function KnowledgeNetworkIllustration() {
-  // Node positions
-  const nodes = [
-    { cx: 160, cy: 120, r: 14, label: "AI", primary: true, pulse: 3 },
-    { cx: 80, cy: 80, r: 10, label: "", primary: false, pulse: 4 },
-    { cx: 240, cy: 80, r: 10, label: "", primary: false, pulse: 5 },
-    { cx: 60, cy: 150, r: 8, label: "", primary: false, pulse: 3.5 },
-    { cx: 120, cy: 180, r: 9, label: "", primary: false, pulse: 4.5 },
-    { cx: 200, cy: 180, r: 9, label: "", primary: false, pulse: 2.5 },
-    { cx: 260, cy: 150, r: 8, label: "", primary: false, pulse: 4.2 },
-    { cx: 100, cy: 50, r: 7, label: "", primary: false, pulse: 3.8 },
-    { cx: 220, cy: 50, r: 7, label: "", primary: false, pulse: 4.8 },
-  ];
-
-  // Connections (index pairs)
-  const connections = [
-    [0, 1], [0, 2], [0, 3], [0, 4], [0, 5], [0, 6],
-    [1, 7], [2, 8], [1, 3], [2, 6], [4, 5],
-  ];
-
-  return (
-    <svg viewBox="0 0 320 240" className="w-full h-full iso-animate" fill="none">
-      {/* Connection lines */}
-      {connections.map(([a, b], i) => (
-        <g key={`conn-${i}`}>
-          <line
-            x1={nodes[a].cx} y1={nodes[a].cy}
-            x2={nodes[b].cx} y2={nodes[b].cy}
-            stroke="rgba(255,255,255,0.05)"
-            strokeWidth="1"
+      {/* ── Floating data cards (in motion) ── */}
+      {[
+        { x: 100, y: 72, w: 24, h: 14, delay: 0.2, dur: 3 },
+        { x: 118, y: 100, w: 22, h: 12, delay: 0.8, dur: 3.5 },
+        { x: 132, y: 60, w: 20, h: 11, delay: 1.4, dur: 2.8 },
+      ].map((c, i) => (
+        <g key={i} style={{ animation: `isoFloat ${c.dur}s ease-in-out infinite ${c.delay}s` }}>
+          {/* Motion trail */}
+          <polygon
+            points={`${c.x - 3},${c.y + 2} ${c.x - 3},${c.y + 2 - c.h} ${c.x - 3 + c.w},${c.y + 2 - c.h + c.w * 0.29} ${c.x - 3 + c.w},${c.y + 2 + c.w * 0.29}`}
+            fill="rgba(249,115,22,0.04)"
           />
-          {/* Traveling dot on some connections */}
-          {i < 6 && (
-            <circle r="2" fill="#f97316" opacity="0.6"
-              style={{
-                offsetPath: `path('M${nodes[a].cx},${nodes[a].cy} L${nodes[b].cx},${nodes[b].cy}')`,
-                animation: `isoDotTravel ${2.5 + i * 0.3}s ease-in-out infinite ${i * 0.5}s`,
-              }} />
-          )}
+          {/* Card */}
+          <polygon
+            points={`${c.x},${c.y} ${c.x},${c.y - c.h} ${c.x + c.w},${c.y - c.h + c.w * 0.29} ${c.x + c.w},${c.y + c.w * 0.29}`}
+            fill="rgba(249,115,22,0.1)" stroke="rgba(249,115,22,0.25)" strokeWidth="1"
+          />
         </g>
       ))}
 
-      {/* Nodes */}
+      {/* ── Storage block stack (right) ── */}
+      {/* Block 1 (bottom) */}
+      <g filter={`url(#${P}-sh)`}>
+        <IsoBox x={172} y={140} w={58} h={22} d={10} p={P} />
+      </g>
+      {/* Block 2 (middle) */}
+      <g filter={`url(#${P}-sh)`}>
+        <IsoBox x={174} y={112} w={56} h={20} d={10} p={P} />
+      </g>
+      {/* Block 3 (top — with green indicator) */}
+      <g filter={`url(#${P}-sh)`}>
+        <IsoBox x={176} y={86} w={54} h={18} d={10} p={P} />
+        <circle cx="183" cy="94" r="3" fill="rgba(34,197,94,0.35)" />
+        <circle cx="183" cy="94" r="1.5" fill="rgba(34,197,94,0.7)" />
+      </g>
+    </svg>
+  );
+}
+
+// ── FIG 3: Learning from Every Job ───────────────────────────────────
+
+function KnowledgeNetworkIllustration() {
+  const P = "k";
+  const CX = 140, CY = 108;
+
+  // Satellite nodes: position, radius, pulse duration, green activity dot
+  const nodes = [
+    { x: 55,  y: 68,  r: 11, pulse: 4,   green: false },
+    { x: 225, y: 60,  r: 10, pulse: 5,   green: true },
+    { x: 40,  y: 155, r: 9,  pulse: 3.5, green: false },
+    { x: 105, y: 178, r: 10, pulse: 4.5, green: true },
+    { x: 195, y: 180, r: 11, pulse: 2.8, green: false },
+    { x: 245, y: 138, r: 9,  pulse: 4.2, green: true },
+    { x: 82,  y: 40,  r: 8,  pulse: 3.8, green: false },
+  ];
+
+  return (
+    <svg viewBox="0 0 280 220" className="w-full h-full iso-animate" fill="none">
+      <IsoDefs p={P} />
+      <defs>
+        {/* Radial gradient for connection lines: orange near center, fading out */}
+        <radialGradient id={`${P}-line`} cx={CX} cy={CY} r="110" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.03" />
+        </radialGradient>
+      </defs>
+
+      {/* Connection lines (varying thickness) */}
+      {nodes.map((node, i) => (
+        <line
+          key={`line-${i}`}
+          x1={CX} y1={CY} x2={node.x} y2={node.y}
+          stroke={`url(#${P}-line)`}
+          strokeWidth={node.r > 9 ? 1.5 : 1}
+        />
+      ))}
+
+      {/* Satellite nodes */}
       {nodes.map((node, i) => (
         <g key={`node-${i}`} style={{ animation: `isoNodePulse ${node.pulse}s ease-in-out infinite` }}>
-          {node.primary && (
-            <circle cx={node.cx} cy={node.cy} r={node.r + 8} fill="#f97316" opacity="0.05"
-              style={{ animation: "isoGlow 4s ease-in-out infinite" }} />
-          )}
-          <circle
-            cx={node.cx} cy={node.cy} r={node.r}
-            fill={node.primary ? "#161819" : "#1A1C1E"}
-            stroke={node.primary ? "rgba(249,115,22,0.3)" : "rgba(255,255,255,0.06)"}
-            strokeWidth={node.primary ? 1.5 : 1}
-          />
-          {node.primary && (
-            <text x={node.cx} y={node.cy + 3.5} textAnchor="middle" fill="rgba(249,115,22,0.5)" fontSize="9" fontFamily="monospace" fontWeight="bold">
-              AI
-            </text>
-          )}
-          {/* Small inner dot for non-primary nodes */}
-          {!node.primary && (
-            <circle cx={node.cx} cy={node.cy} r={2} fill="rgba(255,255,255,0.1)" />
+          {/* Shadow */}
+          <ellipse cx={node.x} cy={node.y + node.r * 0.6} rx={node.r * 0.8} ry={node.r * 0.25} fill="#000" opacity="0.15" />
+          {/* Node body with gradient suggesting volume */}
+          <circle cx={node.x} cy={node.y} r={node.r} fill={`url(#${P}-front)`} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+          {/* Highlight (top-left light source) */}
+          <circle cx={node.x - node.r * 0.25} cy={node.y - node.r * 0.25} r={node.r * 0.4} fill="rgba(255,255,255,0.04)" />
+          {/* Green activity dot */}
+          {node.green && (
+            <>
+              <circle cx={node.x + node.r * 0.5} cy={node.y - node.r * 0.5} r="3" fill="rgba(34,197,94,0.3)" />
+              <circle cx={node.x + node.r * 0.5} cy={node.y - node.r * 0.5} r="1.5" fill="rgba(34,197,94,0.7)" />
+            </>
           )}
         </g>
       ))}
+
+      {/* ── Central AI core (isometric hexagonal prism) ── */}
+      <g style={{ animation: "isoFloat 5s ease-in-out infinite" }}>
+        {/* Outer glow rings */}
+        <circle cx={CX} cy={CY} r="38" fill="#f97316" opacity="0.03"
+          style={{ animation: "isoGlow 4s ease-in-out infinite" }} />
+        <circle cx={CX} cy={CY} r="28" fill="#f97316" opacity="0.05"
+          style={{ animation: "isoGlow 4s ease-in-out infinite 0.5s" }} />
+
+        {/* Hexagonal prism — 3 visible front faces */}
+        {/* Top hexagon face (squashed for isometric perspective) */}
+        <polygon
+          points={`${CX},${CY - 18} ${CX + 20},${CY - 10} ${CX + 20},${CY + 2} ${CX},${CY + 10} ${CX - 20},${CY + 2} ${CX - 20},${CY - 10}`}
+          fill="rgba(249,115,22,0.12)" stroke="rgba(249,115,22,0.35)" strokeWidth="1.5"
+        />
+
+        {/* Left front face */}
+        <polygon
+          points={`${CX - 20},${CY + 2} ${CX},${CY + 10} ${CX},${CY + 28} ${CX - 20},${CY + 20}`}
+          fill="rgba(249,115,22,0.06)" stroke="rgba(249,115,22,0.15)" strokeWidth="1"
+        />
+        {/* Center front face */}
+        <polygon
+          points={`${CX},${CY + 10} ${CX + 20},${CY + 2} ${CX + 20},${CY + 20} ${CX},${CY + 28}`}
+          fill="rgba(249,115,22,0.08)" stroke="rgba(249,115,22,0.15)" strokeWidth="1"
+        />
+
+        {/* Inner glow on top face */}
+        <circle cx={CX} cy={CY - 4} r="8" fill="#f97316" opacity="0.1" />
+      </g>
     </svg>
   );
 }
@@ -316,7 +344,7 @@ export function IsometricFeatures() {
             <span className="text-[11px] font-mono text-zinc-600 mb-3 tracking-wider">{fig.id}</span>
 
             {/* Illustration container */}
-            <div className="w-full max-w-[280px] aspect-[4/3] mb-4">
+            <div className="w-full max-w-[280px] aspect-[14/11] mb-4">
               <fig.Illustration />
             </div>
 
