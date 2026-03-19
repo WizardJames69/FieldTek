@@ -9,17 +9,9 @@ const styles = `
   .pillar-scroll::-webkit-scrollbar { display: none; }
   .pillar-scroll { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 
-  @keyframes isoGlow {
-    0%, 100% { opacity: 0.15; }
-    50% { opacity: 0.4; }
-  }
-  @keyframes isoNodePulse {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 1; }
-  }
-  @keyframes isoFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
+  @keyframes isoBreath {
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 0.35; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -97,34 +89,31 @@ function ComplianceIllustration() {
       <IsoBox x={87} y={47} w={85} h={100} d={10} p={P} opacity={0.13} />
 
       {/* Main isometric document */}
-      <g filter={`url(#${P}-sh)`} style={{ animation: "isoFloat 6s ease-in-out infinite" }}>
+      <g filter={`url(#${P}-sh)`}>
         <IsoBox x={92} y={42} w={85} h={100} d={10} p={P} />
 
         {/* Header bar on document face */}
-        <polygon points="98,50 168,72 168,78 98,56" fill="rgba(249,115,22,0.08)" />
+        <polygon points="98,50 168,72 168,78 98,56" fill="rgba(255,255,255,0.03)" />
 
         {/* Text lines (parallel to top edge, slope 0.29) */}
-        <line x1="98" y1="64" x2="164" y2="83" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="98" y1="74" x2="158" y2="91" stroke="rgba(255,255,255,0.07)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="98" y1="84" x2="162" y2="103" stroke="rgba(255,255,255,0.07)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="98" y1="94" x2="145" y2="108" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="98" y1="64" x2="164" y2="83" stroke="rgba(255,255,255,0.07)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="98" y1="74" x2="158" y2="91" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="98" y1="84" x2="162" y2="103" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="98" y1="94" x2="145" y2="108" stroke="rgba(255,255,255,0.04)" strokeWidth="2" strokeLinecap="round" />
       </g>
 
-      {/* Orange shield with checkmark (accent) */}
-      <g style={{ animation: "isoNodePulse 3.5s ease-in-out infinite" }}>
-        <circle cx="192" cy="138" r="24" fill="#f97316" opacity="0.06"
-          style={{ animation: "isoGlow 4s ease-in-out infinite" }} />
+      {/* Shield — dark gray body, thin orange outline */}
+      <g>
         <path
           d="M192,118 L210,127 L210,148 Q210,158 192,166 Q174,158 174,148 L174,127 Z"
-          fill="rgba(249,115,22,0.12)" stroke="rgba(249,115,22,0.4)" strokeWidth="1.5"
+          fill={`url(#${P}-front)`} stroke="rgba(249,115,22,0.3)" strokeWidth="1"
         />
-        <path d="M185,140 l4,4 8,-8" stroke="#f97316" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Orange checkmark inside */}
+        <path d="M185,140 l4,4 8,-8" stroke="rgba(249,115,22,0.5)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
       </g>
 
-      {/* Green verification badge */}
-      <circle cx="104" cy="136" r="11" fill="rgba(34,197,94,0.1)" />
-      <circle cx="104" cy="136" r="7" fill="rgba(34,197,94,0.06)" />
-      <path d="M100,136 l2.5,2.5 5,-5" stroke="rgba(34,197,94,0.65)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Green verification dot */}
+      <circle cx="104" cy="136" r="3" fill="rgba(34,197,94,0.5)" />
     </svg>
   );
 }
@@ -138,56 +127,45 @@ function DocumentationIllustration() {
       <IsoDefs p={P} />
 
       {/* ── Isometric phone/tablet (left) ── */}
-      <g filter={`url(#${P}-sh)`} style={{ animation: "isoNodePulse 4s ease-in-out infinite" }}>
+      <g filter={`url(#${P}-sh)`}>
         <IsoBox x={38} y={58} w={40} h={82} d={8} p={P} />
 
         {/* Screen (inset from front face) */}
         <polygon points="43,66 73,75 73,130 43,121" fill="#111113" />
 
         {/* Screen content lines */}
-        <line x1="47" y1="76" x2="69" y2="82" stroke="rgba(249,115,22,0.35)" strokeWidth="2" strokeLinecap="round" />
-        <line x1="47" y1="86" x2="67" y2="92" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="47" y1="94" x2="68" y2="100" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1="47" y1="102" x2="63" y2="107" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="47" y1="76" x2="69" y2="82" stroke="rgba(255,255,255,0.1)" strokeWidth="2" strokeLinecap="round" />
+        <line x1="47" y1="86" x2="67" y2="92" stroke="rgba(255,255,255,0.06)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="47" y1="94" x2="68" y2="100" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" strokeLinecap="round" />
+        <line x1="47" y1="102" x2="63" y2="107" stroke="rgba(255,255,255,0.04)" strokeWidth="1.5" strokeLinecap="round" />
 
         {/* Orange status dot */}
-        <circle cx="69" cy="126" r="2" fill="#f97316" opacity="0.5" />
+        <circle cx="69" cy="126" r="1.5" fill="#f97316" opacity="0.4" />
       </g>
 
-      {/* ── Floating data cards (in motion) ── */}
-      {[
-        { x: 100, y: 72, w: 24, h: 14, delay: 0.2, dur: 3 },
-        { x: 118, y: 100, w: 22, h: 12, delay: 0.8, dur: 3.5 },
-        { x: 132, y: 60, w: 20, h: 11, delay: 1.4, dur: 2.8 },
-      ].map((c, i) => (
-        <g key={i} style={{ animation: `isoFloat ${c.dur}s ease-in-out infinite ${c.delay}s` }}>
-          {/* Motion trail */}
-          <polygon
-            points={`${c.x - 3},${c.y + 2} ${c.x - 3},${c.y + 2 - c.h} ${c.x - 3 + c.w},${c.y + 2 - c.h + c.w * 0.29} ${c.x - 3 + c.w},${c.y + 2 + c.w * 0.29}`}
-            fill="rgba(249,115,22,0.04)"
-          />
-          {/* Card */}
-          <polygon
-            points={`${c.x},${c.y} ${c.x},${c.y - c.h} ${c.x + c.w},${c.y - c.h + c.w * 0.29} ${c.x + c.w},${c.y + c.w * 0.29}`}
-            fill="rgba(249,115,22,0.1)" stroke="rgba(249,115,22,0.25)" strokeWidth="1"
-          />
-        </g>
-      ))}
+      {/* ── Data cards in transit (dark gray, static) ── */}
+      <IsoBox x={102} y={68} w={24} h={14} d={5} p={P} opacity={0.9} />
+      <g>
+        <IsoBox x={120} y={95} w={22} h={12} d={5} p={P} opacity={0.85} />
+        {/* Faint orange edge on right side of middle card */}
+        <polygon
+          points={`${120 + 22},${95 + 22 * 0.29} ${120 + 22 + 5},${95 + 22 * 0.29 - 5 * 0.5} ${120 + 22 + 5},${95 + 22 * 0.29 - 5 * 0.5 + 12} ${120 + 22},${95 + 22 * 0.29 + 12}`}
+          fill="none" stroke="rgba(249,115,22,0.15)" strokeWidth="1"
+        />
+      </g>
+      <IsoBox x={136} y={56} w={20} h={11} d={5} p={P} opacity={0.8} />
 
       {/* ── Storage block stack (right) ── */}
-      {/* Block 1 (bottom) */}
       <g filter={`url(#${P}-sh)`}>
         <IsoBox x={172} y={140} w={58} h={22} d={10} p={P} />
       </g>
-      {/* Block 2 (middle) */}
       <g filter={`url(#${P}-sh)`}>
         <IsoBox x={174} y={112} w={56} h={20} d={10} p={P} />
       </g>
-      {/* Block 3 (top — with green indicator) */}
       <g filter={`url(#${P}-sh)`}>
         <IsoBox x={176} y={86} w={54} h={18} d={10} p={P} />
-        <circle cx="183" cy="94" r="3" fill="rgba(34,197,94,0.35)" />
-        <circle cx="183" cy="94" r="1.5" fill="rgba(34,197,94,0.7)" />
+        {/* Green indicator — single small dot */}
+        <circle cx="183" cy="94" r="2" fill="rgba(34,197,94,0.45)" />
       </g>
     </svg>
   );
@@ -199,85 +177,72 @@ function KnowledgeNetworkIllustration() {
   const P = "k";
   const CX = 140, CY = 108;
 
-  // Satellite nodes: position, radius, pulse duration, green activity dot
   const nodes = [
-    { x: 55,  y: 68,  r: 11, pulse: 4,   green: false },
-    { x: 225, y: 60,  r: 10, pulse: 5,   green: true },
-    { x: 40,  y: 155, r: 9,  pulse: 3.5, green: false },
-    { x: 105, y: 178, r: 10, pulse: 4.5, green: true },
-    { x: 195, y: 180, r: 11, pulse: 2.8, green: false },
-    { x: 245, y: 138, r: 9,  pulse: 4.2, green: true },
-    { x: 82,  y: 40,  r: 8,  pulse: 3.8, green: false },
+    { x: 55,  y: 68,  r: 11, green: false },
+    { x: 225, y: 60,  r: 10, green: true },
+    { x: 40,  y: 155, r: 9,  green: false },
+    { x: 105, y: 178, r: 10, green: true },
+    { x: 195, y: 180, r: 11, green: false },
+    { x: 245, y: 138, r: 9,  green: true },
+    { x: 82,  y: 40,  r: 8,  green: false },
   ];
 
   return (
     <svg viewBox="0 0 280 220" className="w-full h-full iso-animate" fill="none">
       <IsoDefs p={P} />
       <defs>
-        {/* Radial gradient for connection lines: orange near center, fading out */}
-        <radialGradient id={`${P}-line`} cx={CX} cy={CY} r="110" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#f97316" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.03" />
-        </radialGradient>
+        <filter id={`${P}-edge`}>
+          <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#f97316" floodOpacity="0.15" />
+        </filter>
       </defs>
 
-      {/* Connection lines (varying thickness) */}
+      {/* Connection lines — monochromatic dark gray, 2 nearest have faint orange tint */}
       {nodes.map((node, i) => (
         <line
           key={`line-${i}`}
           x1={CX} y1={CY} x2={node.x} y2={node.y}
-          stroke={`url(#${P}-line)`}
+          stroke={i < 2 ? "rgba(249,115,22,0.06)" : "rgba(255,255,255,0.04)"}
           strokeWidth={node.r > 9 ? 1.5 : 1}
         />
       ))}
 
-      {/* Satellite nodes */}
+      {/* Satellite nodes — static, monochromatic */}
       {nodes.map((node, i) => (
-        <g key={`node-${i}`} style={{ animation: `isoNodePulse ${node.pulse}s ease-in-out infinite` }}>
+        <g key={`node-${i}`}>
           {/* Shadow */}
           <ellipse cx={node.x} cy={node.y + node.r * 0.6} rx={node.r * 0.8} ry={node.r * 0.25} fill="#000" opacity="0.15" />
-          {/* Node body with gradient suggesting volume */}
+          {/* Node body */}
           <circle cx={node.x} cy={node.y} r={node.r} fill={`url(#${P}-front)`} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
           {/* Highlight (top-left light source) */}
           <circle cx={node.x - node.r * 0.25} cy={node.y - node.r * 0.25} r={node.r * 0.4} fill="rgba(255,255,255,0.04)" />
           {/* Green activity dot */}
           {node.green && (
-            <>
-              <circle cx={node.x + node.r * 0.5} cy={node.y - node.r * 0.5} r="3" fill="rgba(34,197,94,0.3)" />
-              <circle cx={node.x + node.r * 0.5} cy={node.y - node.r * 0.5} r="1.5" fill="rgba(34,197,94,0.7)" />
-            </>
+            <circle cx={node.x + node.r * 0.5} cy={node.y - node.r * 0.5} r="2" fill="rgba(34,197,94,0.5)" />
           )}
         </g>
       ))}
 
-      {/* ── Central AI core (isometric hexagonal prism) ── */}
-      <g style={{ animation: "isoFloat 5s ease-in-out infinite" }}>
-        {/* Outer glow rings */}
-        <circle cx={CX} cy={CY} r="38" fill="#f97316" opacity="0.03"
-          style={{ animation: "isoGlow 4s ease-in-out infinite" }} />
-        <circle cx={CX} cy={CY} r="28" fill="#f97316" opacity="0.05"
-          style={{ animation: "isoGlow 4s ease-in-out infinite 0.5s" }} />
-
-        {/* Hexagonal prism — 3 visible front faces */}
-        {/* Top hexagon face (squashed for isometric perspective) */}
+      {/* ── Central hex core — dark gray prism, thin orange edge highlight ── */}
+      <g>
+        {/* Top hexagon face — dark gray with thin orange stroke + edge glow */}
         <polygon
           points={`${CX},${CY - 18} ${CX + 20},${CY - 10} ${CX + 20},${CY + 2} ${CX},${CY + 10} ${CX - 20},${CY + 2} ${CX - 20},${CY - 10}`}
-          fill="rgba(249,115,22,0.12)" stroke="rgba(249,115,22,0.35)" strokeWidth="1.5"
+          fill={`url(#${P}-top)`}
+          stroke="rgba(249,115,22,0.3)" strokeWidth="1"
+          filter={`url(#${P}-edge)`}
+          style={{ animation: "isoBreath 10s ease-in-out infinite" }}
         />
 
         {/* Left front face */}
         <polygon
           points={`${CX - 20},${CY + 2} ${CX},${CY + 10} ${CX},${CY + 28} ${CX - 20},${CY + 20}`}
-          fill="rgba(249,115,22,0.06)" stroke="rgba(249,115,22,0.15)" strokeWidth="1"
+          fill={`url(#${P}-side)`} stroke="rgba(255,255,255,0.03)" strokeWidth="1"
         />
-        {/* Center front face */}
+        {/* Right front face */}
         <polygon
           points={`${CX},${CY + 10} ${CX + 20},${CY + 2} ${CX + 20},${CY + 20} ${CX},${CY + 28}`}
-          fill="rgba(249,115,22,0.08)" stroke="rgba(249,115,22,0.15)" strokeWidth="1"
+          fill={`url(#${P}-front)`} stroke="rgba(255,255,255,0.03)" strokeWidth="1"
         />
-
-        {/* Inner glow on top face */}
-        <circle cx={CX} cy={CY - 4} r="8" fill="#f97316" opacity="0.1" />
       </g>
     </svg>
   );
