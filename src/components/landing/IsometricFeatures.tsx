@@ -3,7 +3,12 @@
  * CSS-only animations — no JS loops. Respects prefers-reduced-motion.
  */
 
+import { useState, useRef, useCallback } from "react";
+
 const styles = `
+  .pillar-scroll::-webkit-scrollbar { display: none; }
+  .pillar-scroll { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+
   @keyframes isoGlow {
     0%, 100% { opacity: 0.15; }
     50% { opacity: 0.4; }
@@ -272,28 +277,66 @@ const figures = [
 ];
 
 export function IsometricFeatures() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollLeft = el.scrollLeft;
+    const cardWidth = el.scrollWidth / figures.length;
+    const index = Math.round(scrollLeft / cardWidth);
+    setActiveIndex(Math.min(index, figures.length - 1));
+  }, []);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-0">
+    <div>
       <style>{styles}</style>
-      {figures.map((fig, i) => (
-        <div
-          key={fig.id}
-          className={`flex flex-col items-center text-center px-6 py-4 ${
-            i < figures.length - 1 ? "md:border-r md:border-white/[0.06]" : ""
-          }`}
-        >
-          {/* FIG label */}
-          <span className="text-[11px] font-mono text-zinc-600 mb-3 tracking-wider">{fig.id}</span>
 
-          {/* Illustration container */}
-          <div className="w-full max-w-[280px] aspect-[4/3] mb-4">
-            <fig.Illustration />
+      {/* Mobile: horizontal scroll carousel / Desktop: 3-column grid */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="
+          flex gap-3 px-4 overflow-x-auto snap-x snap-mandatory pillar-scroll
+          md:grid md:grid-cols-3 md:gap-6 md:px-0 md:overflow-visible
+        "
+      >
+        {figures.map((fig) => (
+          <div
+            key={fig.id}
+            className="
+              flex flex-col items-center text-center
+              w-[85vw] flex-shrink-0 snap-center
+              md:w-auto md:flex-shrink
+              bg-[#111113] border border-[#1e1e22] rounded-2xl p-6 md:p-8
+            "
+          >
+            {/* FIG label */}
+            <span className="text-[11px] font-mono text-zinc-600 mb-3 tracking-wider">{fig.id}</span>
+
+            {/* Illustration container */}
+            <div className="w-full max-w-[280px] aspect-[4/3] mb-4">
+              <fig.Illustration />
+            </div>
+
+            <h3 className="text-base font-semibold text-white mb-1.5">{fig.title}</h3>
+            <p className="text-sm text-zinc-500 leading-relaxed max-w-[260px]">{fig.description}</p>
           </div>
+        ))}
+      </div>
 
-          <h3 className="text-base font-semibold text-white mb-1.5">{fig.title}</h3>
-          <p className="text-sm text-zinc-500 leading-relaxed max-w-[260px]">{fig.description}</p>
-        </div>
-      ))}
+      {/* Dot indicators — mobile only */}
+      <div className="flex justify-center gap-2 mt-4 md:hidden">
+        {figures.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 w-1.5 rounded-full transition-colors duration-200 ${
+              i === activeIndex ? "bg-orange-500" : "bg-zinc-600"
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 }

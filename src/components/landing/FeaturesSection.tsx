@@ -17,9 +17,7 @@ export const FeaturesSection = memo(function FeaturesSection() {
         </div>
 
         <ScrollReveal delay={0.1}>
-          <div className="rounded-2xl border border-white/[0.04] bg-[#161819] py-8 md:py-10">
-            <IsometricFeatures />
-          </div>
+          <IsometricFeatures />
         </ScrollReveal>
       </div>
     </section>
