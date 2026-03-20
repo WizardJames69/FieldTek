@@ -1,55 +1,8 @@
 import { memo } from "react";
-import { motion } from "framer-motion";
 import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import { HeroProductShot } from "./HeroProductShot";
 import { AnimatedGroup } from "@/components/ui/animated-group";
 import { Button } from "@/components/ui/button";
-
-// ── Animated background paths — mobile only ──────────────────────
-
-function FloatingPaths({ position }: { position: number }) {
-  const paths = Array.from({ length: 10 }, (_, i) => ({
-    id: i,
-    d: `M-${380 - i * 5 * position} -${300 + i * 8}C-${
-      380 - i * 5 * position
-    } -${300 + i * 8} -${312 - i * 5 * position} ${100 - i * 6} ${
-      152 - i * 5 * position
-    } ${300 - i * 6}C${616 - i * 5 * position} ${500 - i * 6} ${
-      684 - i * 5 * position
-    } ${800 - i * 6} ${684 - i * 5 * position} ${800 - i * 6}`,
-    color:
-      i % 3 === 0
-        ? `rgba(255, 255, 255, ${0.06 + i * 0.01})`
-        : `rgba(249, 115, 22, ${0.1 + i * 0.02})`,
-    width: 0.8 + i * 0.15,
-  }));
-
-  return (
-    <div className="absolute inset-0 pointer-events-none">
-      <svg className="w-full h-full" viewBox="0 0 696 800" preserveAspectRatio="xMidYMid slice" fill="none">
-        {paths.map((path) => (
-          <motion.path
-            key={path.id}
-            d={path.d}
-            stroke={path.color}
-            strokeWidth={path.width}
-            initial={{ pathLength: 0.3, opacity: 0.6 }}
-            animate={{
-              pathLength: 1,
-              opacity: [0.3, 0.6, 0.3],
-              pathOffset: [0, 1, 0],
-            }}
-            transition={{
-              duration: 20 + Math.random() * 10,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-          />
-        ))}
-      </svg>
-    </div>
-  );
-}
 
 const heroVariants = {
   container: {
@@ -82,16 +35,47 @@ interface HeroSectionProps {
 
 export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionProps) {
   return (
-    <section className="landing-section-dark landing-hero-glow relative overflow-hidden min-h-[80svh] md:min-h-0">
-      {/* Animated background paths — mobile only */}
-      <div className="md:hidden absolute inset-0 z-0">
-        <FloatingPaths position={1} />
-        <FloatingPaths position={-1} />
+    <section className="landing-section-dark landing-hero-glow relative overflow-hidden">
+      {/* Static background curves — mobile only */}
+      <style>{`
+        @keyframes subtle-drift {
+          0% { transform: translateX(0px) translateY(0px); }
+          50% { transform: translateX(8px) translateY(-5px); }
+          100% { transform: translateX(0px) translateY(0px); }
+        }
+      `}</style>
+      <div className="absolute inset-0 pointer-events-none overflow-hidden md:hidden">
+        <svg
+          className="absolute inset-0 w-full h-full"
+          style={{ animation: "subtle-drift 20s ease-in-out infinite" }}
+          viewBox="0 0 400 800"
+          preserveAspectRatio="xMidYMid slice"
+          fill="none"
+        >
+          {/* Upper curves — behind the headline */}
+          <path d="M-50 200 Q200 100 450 250" stroke="#f97316" strokeWidth="0.8" strokeOpacity="0.12" />
+          <path d="M-30 230 Q180 130 430 280" stroke="#f97316" strokeWidth="0.6" strokeOpacity="0.08" />
+          <path d="M-70 170 Q220 70 470 220" stroke="#f97316" strokeWidth="1.0" strokeOpacity="0.06" />
+          {/* Mid curves — behind subtitle and CTA area */}
+          <path d="M-100 400 Q150 300 450 420" stroke="#f97316" strokeWidth="1.2" strokeOpacity="0.10" />
+          <path d="M-80 430 Q170 330 470 450" stroke="#f97316" strokeWidth="0.7" strokeOpacity="0.07" />
+          <path d="M-120 370 Q130 270 430 390" stroke="#f97316" strokeWidth="0.9" strokeOpacity="0.09" />
+          {/* Lower sweeping curves */}
+          <path d="M-50 550 Q200 480 450 600" stroke="#f97316" strokeWidth="1.5" strokeOpacity="0.12" />
+          <path d="M-30 580 Q220 510 470 630" stroke="#f97316" strokeWidth="0.8" strokeOpacity="0.08" />
+          <path d="M-80 520 Q180 450 430 570" stroke="#f97316" strokeWidth="1.0" strokeOpacity="0.06" />
+          {/* Wide sweeping accent curves */}
+          <path d="M-100 100 Q200 400 450 700" stroke="#f97316" strokeWidth="1.2" strokeOpacity="0.05" />
+          <path d="M450 50 Q200 350 -50 650" stroke="#f97316" strokeWidth="1.0" strokeOpacity="0.04" />
+          {/* Subtle gray curves for depth */}
+          <path d="M-60 300 Q190 200 440 350" stroke="#ffffff" strokeWidth="0.5" strokeOpacity="0.03" />
+          <path d="M-40 500 Q210 430 460 550" stroke="#ffffff" strokeWidth="0.5" strokeOpacity="0.02" />
+        </svg>
       </div>
 
       <ContainerScroll
         titleComponent={
-          <div className="max-w-4xl mx-auto pt-20 md:pt-32 lg:pt-40">
+          <div className="max-w-4xl mx-auto pt-24 pb-16 md:pt-32 md:pb-0 lg:pt-40">
             <AnimatedGroup variants={heroVariants}>
               {/* H1 */}
               <h1 className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-6 text-balance">
