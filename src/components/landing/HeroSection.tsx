@@ -18,8 +18,8 @@ function FloatingPaths({ position }: { position: number }) {
     } ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`,
     color:
       i % 3 === 0
-        ? `rgba(255, 255, 255, ${0.02 + i * 0.003})`
-        : `rgba(249, 115, 22, ${0.03 + i * 0.007})`,
+        ? `rgba(255, 255, 255, ${0.03 + i * 0.005})`
+        : `rgba(249, 115, 22, ${0.06 + i * 0.012})`,
     width: 0.5 + i * 0.03,
   }));
 
@@ -77,7 +77,7 @@ const heroVariants = {
 
 export const HeroSection = memo(function HeroSection() {
   return (
-    <section className="landing-section-dark landing-hero-glow relative overflow-hidden min-h-[100svh] md:min-h-0">
+    <section className="landing-section-dark landing-hero-glow relative overflow-hidden min-h-[80svh] md:min-h-0">
       {/* Animated background paths — mobile only */}
       <div className="md:hidden absolute inset-0 z-0">
         <FloatingPaths position={1} />
