@@ -121,7 +121,7 @@ export default function Landing() {
       {/* Dark hero zone */}
       <div className="landing-section-dark">
         <Navbar onApply={openBetaModal} />
-        <HeroSection />
+        <HeroSection onApply={openBetaModal} />
       </div>
 
       <main>

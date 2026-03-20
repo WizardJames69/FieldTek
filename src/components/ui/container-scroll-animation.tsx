@@ -44,11 +44,11 @@ export function ContainerScroll({
         }}
       >
         <Header translate={translate} titleComponent={titleComponent} />
-        <div className="hidden md:block">
+        {!isMobile && (
           <Card rotate={rotate} translate={translate} scale={scale}>
             {children}
           </Card>
-        </div>
+        )}
       </div>
     </div>
   );
