@@ -7,25 +7,25 @@ import { AnimatedGroup } from "@/components/ui/animated-group";
 // ── Animated background paths — mobile only ──────────────────────
 
 function FloatingPaths({ position }: { position: number }) {
-  const paths = Array.from({ length: 8 }, (_, i) => ({
+  const paths = Array.from({ length: 10 }, (_, i) => ({
     id: i,
-    d: `M-${380 - i * 5 * position} -${189 + i * 6}C-${
+    d: `M-${380 - i * 5 * position} -${189 + i * 8}C-${
       380 - i * 5 * position
-    } -${189 + i * 6} -${312 - i * 5 * position} ${216 - i * 6} ${
+    } -${189 + i * 8} -${312 - i * 5 * position} ${316 - i * 8} ${
       152 - i * 5 * position
-    } ${343 - i * 6}C${616 - i * 5 * position} ${470 - i * 6} ${
+    } ${500 - i * 8}C${616 - i * 5 * position} ${684 - i * 8} ${
       684 - i * 5 * position
-    } ${875 - i * 6} ${684 - i * 5 * position} ${875 - i * 6}`,
+    } ${1050 - i * 8} ${684 - i * 5 * position} ${1050 - i * 8}`,
     color:
       i % 3 === 0
-        ? `rgba(255, 255, 255, ${0.03 + i * 0.005})`
-        : `rgba(249, 115, 22, ${0.06 + i * 0.012})`,
-    width: 0.5 + i * 0.03,
+        ? `rgba(255, 255, 255, ${0.06 + i * 0.01})`
+        : `rgba(249, 115, 22, ${0.1 + i * 0.02})`,
+    width: 0.8 + i * 0.15,
   }));
 
   return (
     <div className="absolute inset-0 pointer-events-none">
-      <svg className="w-full h-full" viewBox="0 0 696 316" fill="none">
+      <svg className="w-full h-full" viewBox="0 0 696 800" preserveAspectRatio="xMidYMid slice" fill="none">
         {paths.map((path) => (
           <motion.path
             key={path.id}
