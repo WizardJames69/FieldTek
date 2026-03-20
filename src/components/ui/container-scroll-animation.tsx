@@ -44,9 +44,11 @@ export function ContainerScroll({
         }}
       >
         <Header translate={translate} titleComponent={titleComponent} />
-        <Card rotate={rotate} translate={translate} scale={scale}>
-          {children}
-        </Card>
+        <div className="hidden md:block">
+          <Card rotate={rotate} translate={translate} scale={scale}>
+            {children}
+          </Card>
+        </div>
       </div>
     </div>
   );
