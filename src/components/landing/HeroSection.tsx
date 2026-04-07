@@ -86,7 +86,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
 
               {/* Subtitle */}
               <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-6 md:mb-14 leading-relaxed">
-                AI-guided diagnostics. Workflow enforcement. Automatic documentation. Compliance protection. All getting smarter with every repair.
+                The AI-native operating system for service teams. Grounded in your manuals, your equipment data, and your repair history. Gets smarter with every job.
               </p>
 
               {/* CTA buttons */}

@@ -11,7 +11,7 @@ export const FeaturesSection = memo(function FeaturesSection() {
           <AnimatedEyebrow label="The Solution" center />
           <ScrollReveal delay={0.05}>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15]">
-              Three pillars of reliable field service
+              Three pillars of smarter field execution
             </h2>
           </ScrollReveal>
         </div>

@@ -21,9 +21,9 @@ const features = [
   },
   {
     eyebrow: "Job Management",
-    title: "Dispatch, schedule, and track every job",
+    title: "Jobs that run the way you designed them",
     description:
-      "Smart job management with recurring maintenance scheduling, technician assignment, and real-time status tracking. Auto-generates jobs for preventive maintenance so nothing slips through the cracks.",
+      "Define your workflows once. FieldTek enforces the right steps, assigns the right people, and auto-generates recurring maintenance jobs. Your process becomes your standard, not a suggestion.",
     bullets: [
       "Drag-and-drop scheduling",
       "Recurring maintenance automation",

@@ -198,13 +198,13 @@ const figures = [
   {
     id: "FIG 1",
     title: "AI-Powered Compliance",
-    description: "Every install is verified against manufacturer specs in real-time.",
+    description: "Every install verified against manufacturer specs in real-time. Fewer callbacks. Fewer warranty disputes.",
     Illustration: ComplianceIllustration,
   },
   {
     id: "FIG 2",
     title: "Automatic Documentation",
-    description: "Every step captured, timestamped, and stored, without lifting a pen.",
+    description: "Every step captured, timestamped, and stored, without lifting a pen. Ready for inspectors, audits, or warranty claims.",
     Illustration: DocumentationIllustration,
   },
   {

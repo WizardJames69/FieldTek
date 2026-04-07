@@ -64,10 +64,10 @@ export const ComparisonSection = memo(function ComparisonSection() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
-            Built Different
+            Why FieldTek
           </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            FieldTek Fixes What Traditional Field Software Misses
+            What Changes When AI Is Built In, Not Bolted On
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Standardize installs, reduce callbacks, and protect warranties, without months of setup or retraining.

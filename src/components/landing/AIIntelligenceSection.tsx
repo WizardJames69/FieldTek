@@ -8,25 +8,25 @@ import { ScrollReveal } from "./ScrollReveal";
 const capabilities = [
   {
     icon: BookOpen,
-    title: "RAG over Documentation",
+    title: "Manual-Grounded Guidance",
     description:
       "Upload manuals. AI retrieves the exact procedure, page, and paragraph, verified by a quality judge before reaching your tech.",
   },
   {
     icon: Network,
-    title: "Equipment Knowledge Graph",
+    title: "Equipment Context",
     description:
       "Maps every equipment model, its components, known failure modes, and which repairs actually worked. Updated with every job.",
   },
   {
     icon: GitBranch,
-    title: "Workflow Intelligence",
+    title: "Pattern Recognition",
     description:
       "Detects repair patterns from completed jobs and suggests new workflows. Your best technicians' methods become your company standard.",
   },
   {
     icon: Brain,
-    title: "Diagnostic Learning Loop",
+    title: "Compounding Intelligence",
     description:
       "Tracks every diagnostic outcome. Discovers which symptom-to-repair sequences have the highest success rates. Ranks hypotheses by confidence.",
   },
@@ -43,13 +43,12 @@ export function AIIntelligenceSection() {
             <AnimatedEyebrow label="FieldTek Intelligence" />
             <ScrollReveal delay={0.05}>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] mb-4">
-                Real-time diagnostics. Powered by FieldTek Intelligence.
+                Your documentation. Your history. Grounded answers on every job.
               </h2>
             </ScrollReveal>
             <ScrollReveal delay={0.1}>
               <p className="text-lg text-zinc-400 leading-relaxed mb-10">
-                FieldTek is powered by our proprietary AI system, FieldTek Intelligence. At the core is Sentinel AI,
-                a compliance and diagnostic engine trained on technical documentation, equipment data, and field workflows.
+                Sentinel AI reads your uploaded manuals, cross-references your repair history, and delivers guidance grounded in real equipment data. Every completed job makes the next diagnosis more accurate.
               </p>
             </ScrollReveal>
 

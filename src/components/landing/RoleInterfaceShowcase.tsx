@@ -576,11 +576,10 @@ export function RoleInterfaceShowcase() {
             Built for Every Role
           </Badge>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
-            Benefits for Your Entire Team
+            One Platform. Office, Field, and Customer.
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            From technicians in the field to leadership in the office, FieldTek delivers 
-            value at every level of your organization.
+            Dispatchers get context before assigning. Technicians get guidance on site. Customers see progress without calling.
           </p>
         </div>
 
