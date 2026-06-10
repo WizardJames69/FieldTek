@@ -1,64 +1,106 @@
 -- ============================================================
--- Security Advisor Fixes
+-- Re-issue: Security Advisor Fixes (Phase 0)
 -- ============================================================
--- Addresses all 18 Supabase Security Advisor findings:
---   A. tenant_usage: Enable RLS + add policies (1 error)
---   B. increment_job_usage: SET search_path (1 warning)
---   C. 3 views: Recreate with security_invoker=on (3 errors)
---   D. 12 functions: SET search_path = public (12 warnings)
+-- Supersedes the never-applied 20260511000000_security_advisor_fixes.sql,
+-- which was stranded behind the deferred workflow-template migration
+-- stream (20260425000000–20260513000000) and therefore never reached
+-- staging or production.
+--
+-- This re-issue contains ONLY the fixes whose target objects exist in
+-- currently-deployed environments:
+--   A. tenant_usage: enable RLS + policies (advisor ERROR).
+--      The table exists only in remote environments (created via
+--      dashboard, no local CREATE TABLE migration), so this section is
+--      guarded and no-ops where the table is absent (e.g. fresh local).
+--   B. increment_job_usage: SET search_path (advisor warning)
+--   C. 3 intelligence views recreated WITH (security_invoker=on)
+--      (advisor ERRORs — views otherwise execute with owner privileges
+--      and bypass RLS). Views originate from applied migrations
+--      20260410200000 / 20260415000000.
+--   D. 9 functions: SET search_path = public (advisor warnings).
+--      Functions originate from applied migrations 20260221140000,
+--      20260225000000, 20260410200000, 20260415000000.
+--
+-- EXCLUDED from the original on purpose: search_path fixes for
+-- upsert_workflow_step_statistic, fetch_clusterable_chains and
+-- convert_suggestion_to_template — those functions are created by the
+-- deferred workflow stream (20260501000000 / 20260510000000) and do not
+-- exist in deployed environments. Their search_path fix must ship with
+-- that stream when it is applied (tracked in docs/RUNBOOK.md).
 --
 -- All statements are idempotent.
 -- ============================================================
 
 
 -- ────────────────────────────────────────────────────────────
--- A. tenant_usage: Enable RLS + Policies
+-- A. tenant_usage: Enable RLS + Policies (guarded)
 -- ────────────────────────────────────────────────────────────
 
-ALTER TABLE public.tenant_usage ENABLE ROW LEVEL SECURITY;
-
--- Tenant members can view their own usage
-CREATE POLICY "Tenant members can view own usage"
-  ON public.tenant_usage FOR SELECT
-  TO authenticated
-  USING (tenant_id = public.get_user_tenant_id());
-
--- Service role full access (edge functions insert/update usage)
-CREATE POLICY "Service role full access to tenant_usage"
-  ON public.tenant_usage FOR ALL
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
-
--- Deny anonymous access
-CREATE POLICY "Deny anon access to tenant_usage"
-  ON public.tenant_usage FOR ALL
-  TO anon
-  USING (false);
-
-
--- ────────────────────────────────────────────────────────────
--- B. increment_job_usage: SET search_path
--- ────────────────────────────────────────────────────────────
-
-CREATE OR REPLACE FUNCTION public.increment_job_usage()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path = public
-AS $$
-DECLARE
-  v_subscription_status TEXT;
+DO $$
 BEGIN
-  SELECT subscription_status
-  INTO v_subscription_status
-  FROM public.tenants
-  WHERE id = NEW.tenant_id;
+  IF to_regclass('public.tenant_usage') IS NOT NULL THEN
+    EXECUTE 'ALTER TABLE public.tenant_usage ENABLE ROW LEVEL SECURITY';
 
-  IF v_subscription_status NOT IN ('active', 'trialing') THEN
-    RAISE EXCEPTION 'Subscription inactive. Please update billing.';
+    EXECUTE 'DROP POLICY IF EXISTS "Tenant members can view own usage" ON public.tenant_usage';
+    EXECUTE 'CREATE POLICY "Tenant members can view own usage"
+      ON public.tenant_usage FOR SELECT
+      TO authenticated
+      USING (tenant_id = public.get_user_tenant_id())';
+
+    EXECUTE 'DROP POLICY IF EXISTS "Service role full access to tenant_usage" ON public.tenant_usage';
+    EXECUTE 'CREATE POLICY "Service role full access to tenant_usage"
+      ON public.tenant_usage FOR ALL
+      TO service_role
+      USING (true)
+      WITH CHECK (true)';
+
+    EXECUTE 'DROP POLICY IF EXISTS "Deny anon access to tenant_usage" ON public.tenant_usage';
+    EXECUTE 'CREATE POLICY "Deny anon access to tenant_usage"
+      ON public.tenant_usage FOR ALL
+      TO anon
+      USING (false)';
+  ELSE
+    RAISE NOTICE 'tenant_usage does not exist in this environment; skipping RLS enablement';
   END IF;
+END;
+$$;
 
-  RETURN NEW;
+
+-- ────────────────────────────────────────────────────────────
+-- B. increment_job_usage: SET search_path (guarded)
+-- ────────────────────────────────────────────────────────────
+-- The function exists only in remote environments (no local CREATE in
+-- migrations). Patch it where present; do not create an orphan where
+-- it is absent.
+
+DO $$
+BEGIN
+  IF to_regprocedure('public.increment_job_usage()') IS NOT NULL THEN
+    EXECUTE $fn$
+      CREATE OR REPLACE FUNCTION public.increment_job_usage()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      SET search_path = public
+      AS $body$
+      DECLARE
+        v_subscription_status TEXT;
+      BEGIN
+        SELECT subscription_status
+        INTO v_subscription_status
+        FROM public.tenants
+        WHERE id = NEW.tenant_id;
+
+        IF v_subscription_status NOT IN ('active', 'trialing') THEN
+          RAISE EXCEPTION 'Subscription inactive. Please update billing.';
+        END IF;
+
+        RETURN NEW;
+      END;
+      $body$
+    $fn$;
+  ELSE
+    RAISE NOTICE 'increment_job_usage() does not exist in this environment; skipping search_path fix';
+  END IF;
 END;
 $$;
 
@@ -154,7 +196,7 @@ GRANT SELECT ON public.workflow_repair_effectiveness TO authenticated, anon, ser
 -- D. Functions: SET search_path = public
 -- ────────────────────────────────────────────────────────────
 
--- D1. set_tenant_ai_policies_updated_at
+-- D1. set_tenant_ai_policies_updated_at (origin: 20260221140000)
 CREATE OR REPLACE FUNCTION public.set_tenant_ai_policies_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -163,7 +205,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- D2. document_chunks_search_vector_trigger
+-- D2. document_chunks_search_vector_trigger (origin: 20260225000000)
 CREATE OR REPLACE FUNCTION public.document_chunks_search_vector_trigger()
 RETURNS trigger AS $$
 BEGIN
@@ -172,7 +214,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SET search_path = public;
 
--- D3. upsert_workflow_symptom
+-- D3. upsert_workflow_symptom (origin: 20260410200000)
 CREATE OR REPLACE FUNCTION public.upsert_workflow_symptom(
   p_tenant_id UUID, p_symptom_key TEXT, p_symptom_label TEXT,
   p_equipment_type TEXT, p_category TEXT
@@ -185,7 +227,7 @@ CREATE OR REPLACE FUNCTION public.upsert_workflow_symptom(
   RETURNING id;
 $$;
 
--- D4. upsert_workflow_failure
+-- D4. upsert_workflow_failure (origin: 20260410200000)
 CREATE OR REPLACE FUNCTION public.upsert_workflow_failure(
   p_tenant_id UUID, p_failure_key TEXT, p_failure_label TEXT,
   p_equipment_type TEXT
@@ -198,7 +240,7 @@ CREATE OR REPLACE FUNCTION public.upsert_workflow_failure(
   RETURNING id;
 $$;
 
--- D5. upsert_workflow_diagnostic
+-- D5. upsert_workflow_diagnostic (origin: 20260410200000)
 CREATE OR REPLACE FUNCTION public.upsert_workflow_diagnostic(
   p_tenant_id UUID, p_diagnostic_key TEXT, p_diagnostic_label TEXT,
   p_equipment_type TEXT, p_success BOOLEAN
@@ -212,7 +254,7 @@ CREATE OR REPLACE FUNCTION public.upsert_workflow_diagnostic(
   RETURNING id;
 $$;
 
--- D6. upsert_workflow_repair
+-- D6. upsert_workflow_repair (origin: 20260410200000)
 CREATE OR REPLACE FUNCTION public.upsert_workflow_repair(
   p_tenant_id UUID, p_repair_key TEXT, p_repair_label TEXT,
   p_equipment_type TEXT
@@ -225,7 +267,7 @@ CREATE OR REPLACE FUNCTION public.upsert_workflow_repair(
   RETURNING id;
 $$;
 
--- D7. upsert_workflow_outcome
+-- D7. upsert_workflow_outcome (origin: 20260410200000)
 CREATE OR REPLACE FUNCTION public.upsert_workflow_outcome(
   p_tenant_id UUID, p_outcome_key TEXT, p_outcome_label TEXT,
   p_outcome_type TEXT
@@ -238,7 +280,7 @@ CREATE OR REPLACE FUNCTION public.upsert_workflow_outcome(
   RETURNING id;
 $$;
 
--- D8. upsert_workflow_edge
+-- D8. upsert_workflow_edge (origin: 20260410200000)
 CREATE OR REPLACE FUNCTION public.upsert_workflow_edge(
   p_tenant_id UUID, p_source_type TEXT, p_source_id UUID,
   p_target_type TEXT, p_target_id UUID, p_edge_type TEXT
@@ -252,7 +294,7 @@ CREATE OR REPLACE FUNCTION public.upsert_workflow_edge(
   RETURNING id;
 $$;
 
--- D9. aggregate_diagnostic_patterns
+-- D9. aggregate_diagnostic_patterns (origin: 20260415000000)
 CREATE OR REPLACE FUNCTION public.aggregate_diagnostic_patterns(p_tenant_id UUID)
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -311,152 +353,5 @@ BEGIN
 
   GET DIAGNOSTICS row_count = ROW_COUNT;
   RETURN row_count;
-END;
-$$;
-
--- D10. upsert_workflow_step_statistic
-CREATE OR REPLACE FUNCTION public.upsert_workflow_step_statistic(
-  p_tenant_id UUID,
-  p_workflow_id UUID,
-  p_step_id UUID,
-  p_equipment_type TEXT,
-  p_equipment_model TEXT,
-  p_outcome_type TEXT,
-  p_duration_seconds DOUBLE PRECISION
-) RETURNS void LANGUAGE plpgsql SET search_path = public AS $$
-DECLARE
-  v_equip TEXT := COALESCE(p_equipment_type, '');
-  v_model TEXT := COALESCE(p_equipment_model, '');
-BEGIN
-  INSERT INTO workflow_step_statistics (
-    tenant_id, workflow_id, step_id, equipment_type, equipment_model,
-    total_executions, resolved_count, improved_count, no_change_count, worsened_count,
-    success_rate, avg_duration_seconds)
-  VALUES (
-    p_tenant_id, p_workflow_id, p_step_id, v_equip, v_model,
-    1,
-    (p_outcome_type = 'resolved')::int,
-    (p_outcome_type = 'improved')::int,
-    (p_outcome_type = 'no_change')::int,
-    (p_outcome_type = 'worsened')::int,
-    (p_outcome_type = 'resolved')::int::float,
-    p_duration_seconds)
-  ON CONFLICT (tenant_id, workflow_id, step_id, equipment_type, equipment_model)
-  DO UPDATE SET
-    total_executions = workflow_step_statistics.total_executions + 1,
-    resolved_count   = workflow_step_statistics.resolved_count + (p_outcome_type = 'resolved')::int,
-    improved_count   = workflow_step_statistics.improved_count + (p_outcome_type = 'improved')::int,
-    no_change_count  = workflow_step_statistics.no_change_count + (p_outcome_type = 'no_change')::int,
-    worsened_count   = workflow_step_statistics.worsened_count + (p_outcome_type = 'worsened')::int,
-    success_rate     = (workflow_step_statistics.resolved_count + (p_outcome_type = 'resolved')::int)::float
-                       / (workflow_step_statistics.total_executions + 1),
-    avg_duration_seconds = CASE
-      WHEN p_duration_seconds IS NOT NULL THEN
-        COALESCE(workflow_step_statistics.avg_duration_seconds, 0)
-        + (p_duration_seconds - COALESCE(workflow_step_statistics.avg_duration_seconds, 0))
-        / (workflow_step_statistics.total_executions + 1)
-      ELSE workflow_step_statistics.avg_duration_seconds END,
-    last_updated = now();
-END;
-$$;
-
--- D11. fetch_clusterable_chains
-CREATE OR REPLACE FUNCTION public.fetch_clusterable_chains(
-  p_tenant_id UUID,
-  p_min_occurrences INTEGER DEFAULT 5,
-  p_min_confidence DOUBLE PRECISION DEFAULT 0.3
-) RETURNS TABLE (
-  symptom TEXT,
-  failure_component TEXT,
-  repair_action TEXT,
-  equipment_type TEXT,
-  occurrence_count INTEGER,
-  success_count INTEGER,
-  success_rate DOUBLE PRECISION,
-  confidence_score DOUBLE PRECISION,
-  last_calculated_at TIMESTAMPTZ
-) LANGUAGE sql STABLE SET search_path = public AS $$
-  SELECT symptom, failure_component, repair_action, equipment_type,
-    occurrence_count, success_count, success_rate, confidence_score, last_calculated_at
-  FROM public.workflow_diagnostic_statistics
-  WHERE tenant_id = p_tenant_id
-    AND occurrence_count >= p_min_occurrences
-    AND confidence_score >= p_min_confidence
-  ORDER BY equipment_type NULLS LAST, symptom, success_rate DESC;
-$$;
-
--- D12. convert_suggestion_to_template
-CREATE OR REPLACE FUNCTION public.convert_suggestion_to_template(
-  p_suggestion_id UUID,
-  p_reviewed_by UUID
-) RETURNS UUID LANGUAGE plpgsql SET search_path = public AS $$
-DECLARE
-  v_suggestion RECORD;
-  v_template_id UUID;
-  v_step JSONB;
-  v_step_number INTEGER;
-BEGIN
-  -- Lock and fetch the suggestion
-  SELECT * INTO v_suggestion
-  FROM public.workflow_pattern_suggestions
-  WHERE id = p_suggestion_id
-    AND review_status IN ('approved', 'edited')
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Suggestion not found or not in approved/edited status';
-  END IF;
-
-  -- Create the workflow template
-  INSERT INTO public.workflow_templates (
-    tenant_id, name, description, category,
-    equipment_type, equipment_model,
-    source, is_active, is_published, created_by
-  ) VALUES (
-    v_suggestion.tenant_id,
-    v_suggestion.suggested_name,
-    v_suggestion.suggested_description,
-    v_suggestion.suggested_category,
-    v_suggestion.equipment_type,
-    v_suggestion.equipment_model,
-    'ai_suggested',
-    true,
-    false,
-    p_reviewed_by
-  ) RETURNING id INTO v_template_id;
-
-  -- Insert template steps from suggested_steps JSONB
-  FOR v_step IN SELECT * FROM jsonb_array_elements(v_suggestion.suggested_steps)
-  LOOP
-    v_step_number := (v_step->>'step_number')::INTEGER;
-
-    INSERT INTO public.workflow_template_steps (
-      workflow_id, step_number, stage_name, title, instruction,
-      step_type, evidence_requirements, validation_rules,
-      estimated_minutes, safety_warning
-    ) VALUES (
-      v_template_id,
-      v_step_number,
-      COALESCE(v_step->>'stage_name', 'Service'),
-      COALESCE(v_step->>'title', 'Step ' || v_step_number),
-      COALESCE(v_step->>'instruction', ''),
-      COALESCE(v_step->>'step_type', 'action'),
-      COALESCE(v_step->'evidence_requirements', '{}'::JSONB),
-      COALESCE(v_step->'validation_rules', '{}'::JSONB),
-      (v_step->>'estimated_minutes')::INTEGER,
-      v_step->>'safety_warning'
-    );
-  END LOOP;
-
-  -- Mark suggestion as converted
-  UPDATE public.workflow_pattern_suggestions
-  SET review_status = 'converted',
-      converted_template_id = v_template_id,
-      reviewed_by = p_reviewed_by,
-      reviewed_at = now(),
-      updated_at = now()
-  WHERE id = p_suggestion_id;
-
-  RETURN v_template_id;
 END;
 $$;
