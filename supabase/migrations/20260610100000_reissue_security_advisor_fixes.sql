@@ -67,37 +67,22 @@ $$;
 
 
 -- ────────────────────────────────────────────────────────────
--- B. increment_job_usage: SET search_path (guarded)
+-- B. increment_job_usage: SET search_path (guarded, ALTER only)
 -- ────────────────────────────────────────────────────────────
--- The function exists only in remote environments (no local CREATE in
--- migrations). Patch it where present; do not create an orphan where
--- it is absent.
+-- The function was created in the Supabase dashboard and has NO
+-- versioned source in this repo. We therefore must NOT reconstruct its
+-- body: guessing it and running CREATE OR REPLACE would silently
+-- overwrite the real deployed billing/usage logic if production differs
+-- from our guess. ALTER FUNCTION ... SET search_path changes only the
+-- search_path GUC and leaves the function body completely untouched —
+-- which is exactly (and only) what the advisor warning asks for.
+-- Guarded by to_regprocedure so it no-ops where the function is absent
+-- (e.g. a fresh local DB) and never creates an orphan.
 
 DO $$
 BEGIN
   IF to_regprocedure('public.increment_job_usage()') IS NOT NULL THEN
-    EXECUTE $fn$
-      CREATE OR REPLACE FUNCTION public.increment_job_usage()
-      RETURNS trigger
-      LANGUAGE plpgsql
-      SET search_path = public
-      AS $body$
-      DECLARE
-        v_subscription_status TEXT;
-      BEGIN
-        SELECT subscription_status
-        INTO v_subscription_status
-        FROM public.tenants
-        WHERE id = NEW.tenant_id;
-
-        IF v_subscription_status NOT IN ('active', 'trialing') THEN
-          RAISE EXCEPTION 'Subscription inactive. Please update billing.';
-        END IF;
-
-        RETURN NEW;
-      END;
-      $body$
-    $fn$;
+    EXECUTE 'ALTER FUNCTION public.increment_job_usage() SET search_path = public';
   ELSE
     RAISE NOTICE 'increment_job_usage() does not exist in this environment; skipping search_path fix';
   END IF;
