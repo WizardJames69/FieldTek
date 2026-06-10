@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -6,7 +6,15 @@ import { VitePWA } from "vite-plugin-pwa";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // The service-worker cache rule must target the Supabase project this
+  // build actually talks to (staging/local/prod differ per environment).
+  const env = loadEnv(mode, process.cwd(), "");
+  const supabaseUrl = env.VITE_SUPABASE_URL || "https://dlrhobkrjfegtbdsqdsa.supabase.co";
+  const supabaseOrigin = new URL(supabaseUrl).origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const supabaseCachePattern = new RegExp(`^${supabaseOrigin}/.*`, "i");
+
+  return {
   server: {
     host: "::",
     port: 8080,
@@ -94,7 +102,7 @@ export default defineConfig(({ mode }) => ({
       globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/dlrhobkrjfegtbdsqdsa\.supabase\.co\/.*/i,
+            urlPattern: supabaseCachePattern,
             handler: "NetworkFirst",
             options: {
               cacheName: "supabase-cache",
@@ -168,4 +176,5 @@ export default defineConfig(({ mode }) => ({
     target: 'esnext',
     modulePreload: { polyfill: false },
   },
-}));
+  };
+});
