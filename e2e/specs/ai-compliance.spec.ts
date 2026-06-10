@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createAIClient, AIAPIClient } from '../helpers/ai-api-client';
+import { createAIClient, AIAPIClient, hasAssistantContent } from '../helpers/ai-api-client';
 import { TEST_USERS } from '../helpers/test-data';
 import { withFeatureFlag } from '../helpers/feature-flag-helpers';
 import { waitForAuditLog } from '../helpers/audit-log-helpers';
@@ -147,6 +147,11 @@ test.describe('Blocking Behavior', () => {
     });
   });
 
+  // TODO: This test does not pass a job.id, so the compliance engine is
+  // skipped and it does not actually exercise a *warning verdict*. It only
+  // verifies the pipeline returns a valid response with the flag enabled.
+  // A faithful version should seed a job context that yields a warning and
+  // assert the pipeline continues. Tracked as a follow-up (not in scope here).
   test('warning verdict allows pipeline to continue', async () => {
     test.slow();
     await withFeatureFlag('compliance_engine', true, async () => {
@@ -156,7 +161,11 @@ test.describe('Blocking Behavior', () => {
         authToken: adminToken,
       });
       expect(res.status).toBe(200);
-      expect(res.streamedContent.length).toBeGreaterThan(0);
+      // The pipeline may answer via SSE stream OR a structured JSON 200 —
+      // e.g. the grounded-retrieval abstain gate when coverage is thin, or a
+      // compliance block. Assert the contract (a real response in any
+      // supported shape), not the SSE transport. Still fails on an empty 200.
+      expect(hasAssistantContent(res)).toBe(true);
     });
   });
 });

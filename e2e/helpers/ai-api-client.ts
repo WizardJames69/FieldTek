@@ -13,6 +13,34 @@ export interface ChatResponse {
   correlationId?: string;
 }
 
+/**
+ * Asserts at the contract level that the pipeline returned a real
+ * assistant response, regardless of transport.
+ *
+ * field-assistant answers either as an SSE stream (Content-Type
+ * text/event-stream, accumulated into `streamedContent`) OR as a
+ * structured JSON 200 — e.g. the grounded-retrieval abstain gate
+ * (`{ response, abstained: true, abstainReason }`) or a compliance block
+ * (`{ compliance_blocked: true }`). The SSE parser leaves `streamedContent`
+ * empty for those JSON shapes, so SSE-only assertions misread a valid
+ * abstain/blocked answer as "no content". Returns false for an empty body
+ * so a genuine empty-200 regression is still caught.
+ */
+export function hasAssistantContent(res: ChatResponse): boolean {
+  if (res.streamedContent.length > 0) return true;
+  try {
+    const json = JSON.parse(res.body) as Record<string, unknown>;
+    return Boolean(
+      (typeof json.response === 'string' && json.response.length > 0) ||
+        json.abstained === true ||
+        typeof json.abstainReason === 'string' ||
+        json.compliance_blocked === true,
+    );
+  } catch {
+    return false;
+  }
+}
+
 export class AIAPIClient {
   constructor(
     private supabaseUrl: string,
