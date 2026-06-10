@@ -43,6 +43,8 @@ export interface RetrievalResult {
   brand: string | null;
   model: string | null;
   embeddingModel: string;
+  pageNumber: number | null;
+  sectionName: string | null;
 }
 
 export interface RetrievalResponse {

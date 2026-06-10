@@ -5,10 +5,12 @@ import {
   assertNotMatch,
   assertStringIncludes,
 } from "https://deno.land/std@0.168.0/testing/asserts.ts";
+import { MIN_RELEVANT_CHUNKS } from "./constants.ts";
 
 // NOTE: This test file intentionally duplicates a small subset of helper logic
 // from index.ts so we can unit test security guardrails without importing
 // index.ts (which starts the HTTP server at module load time).
+// constants.ts is side-effect-free, so real thresholds are imported from there.
 
 // ----------------------------
 // Constants (mirroring index.ts)
@@ -1027,4 +1029,148 @@ Deno.test("Failure mode - technical response without citation is blocked", () =>
   // With citation → should pass
   const result3 = validateAIResponse("Operating pressure is 350 PSI [Source: Service Manual].", true);
   assertEquals(result3.valid, true, "Pressure with citation must pass");
+});
+
+// ----------------------------
+// Insufficient-coverage abstain gate
+// ----------------------------
+// Mirrors the boolean in index.ts: tenant has at least one indexed document,
+// retrieval actually ran, and it returned fewer than MIN_RELEVANT_CHUNKS
+// relevant chunks. The handler short-circuits to an abstain response before
+// calling the LLM so the model does not hallucinate citations from training
+// data. When retrieval never ran (short query, embedding failure, adapter
+// error, semantic search disabled) the request must fall through to the
+// pre-existing full-document-context path instead of abstaining.
+// MIN_RELEVANT_CHUNKS is imported from constants.ts (side-effect-free) so
+// these tests cannot drift from the deployed threshold.
+
+function shouldAbstainForCoverage(params: {
+  docsWithEmbeddingsCount: number;
+  retrievalRan: boolean;
+  semanticSearchResultsCount: number;
+}): boolean {
+  const tenantHasIndexedDocs = params.docsWithEmbeddingsCount > 0;
+  const retrievalBelowMinimum = params.semanticSearchResultsCount < MIN_RELEVANT_CHUNKS;
+  return tenantHasIndexedDocs && params.retrievalRan && retrievalBelowMinimum;
+}
+
+Deno.test("Abstain gate - tenant has docs, retrieval returned zero chunks", () => {
+  assert(shouldAbstainForCoverage({
+    docsWithEmbeddingsCount: 5,
+    retrievalRan: true,
+    semanticSearchResultsCount: 0,
+  }), "Zero-result with indexed docs must abstain");
+});
+
+Deno.test("Abstain gate - tenant has docs, retrieval returned exactly one chunk", () => {
+  assert(shouldAbstainForCoverage({
+    docsWithEmbeddingsCount: 5,
+    retrievalRan: true,
+    semanticSearchResultsCount: 1,
+  }), "Single-chunk retrieval with indexed docs must abstain");
+});
+
+Deno.test("Abstain gate - tenant has docs, retrieval returned MIN chunks", () => {
+  assertEquals(
+    shouldAbstainForCoverage({
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: true,
+      semanticSearchResultsCount: MIN_RELEVANT_CHUNKS,
+    }),
+    false,
+    "Meeting MIN_RELEVANT_CHUNKS must NOT abstain",
+  );
+});
+
+Deno.test("Abstain gate - tenant has no indexed docs, zero chunks is legitimate", () => {
+  // Degraded mode: no docs uploaded yet. The model should answer from general
+  // knowledge, not abstain with a "need more context" message.
+  assertEquals(
+    shouldAbstainForCoverage({
+      docsWithEmbeddingsCount: 0,
+      retrievalRan: false,
+      semanticSearchResultsCount: 0,
+    }),
+    false,
+    "Zero-result WITHOUT indexed docs must NOT abstain — fall through to degraded mode",
+  );
+});
+
+Deno.test("Abstain gate - tenant has no docs, legacy degraded mode untouched", () => {
+  // Even if the documents table has rows, nothing with embedding_status=completed
+  // means retrieval has nothing to search and the user is implicitly in degraded mode.
+  assertEquals(
+    shouldAbstainForCoverage({
+      docsWithEmbeddingsCount: 0,
+      retrievalRan: true,
+      semanticSearchResultsCount: 3,
+    }),
+    false,
+    "No indexed docs always falls through to degraded mode regardless of retrieval count",
+  );
+});
+
+Deno.test("Abstain gate - retrieval skipped (short query) must NOT abstain", () => {
+  // Queries of <= 10 chars skip semantic search entirely. The empty result
+  // set means "never searched", not "nothing relevant exists" — falling
+  // through keeps the pre-existing full-document-context behavior.
+  assertEquals(
+    shouldAbstainForCoverage({
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: false,
+      semanticSearchResultsCount: 0,
+    }),
+    false,
+    "Skipped retrieval must NOT abstain even with indexed docs",
+  );
+});
+
+Deno.test("Abstain gate - retrieval failure (embedding/adapter error) must NOT abstain", () => {
+  // Infra failures (query-embedding generation, adapter exception) leave
+  // retrievalRan=false. Abstaining here would tell users to "rephrase"
+  // during an outage and pollute the abstain_count rollout metric.
+  assertEquals(
+    shouldAbstainForCoverage({
+      docsWithEmbeddingsCount: 12,
+      retrievalRan: false,
+      semanticSearchResultsCount: 0,
+    }),
+    false,
+    "Failed retrieval must NOT abstain — fall through to degraded answer",
+  );
+});
+
+// ----------------------------
+// Zero-result-with-docs signal
+// ----------------------------
+// Operators can alert on this log line prefix when retrieval goes cold for
+// tenants that have content indexed. Distinct from the abstain decision
+// because we want the signal even if MIN_RELEVANT_CHUNKS changes.
+
+function shouldLogZeroResultsWithDocs(params: {
+  docsWithEmbeddingsCount: number;
+  semanticSearchResultsCount: number;
+}): boolean {
+  return params.semanticSearchResultsCount === 0 && params.docsWithEmbeddingsCount > 0;
+}
+
+Deno.test("Zero-result signal - fires when tenant has docs but search returns nothing", () => {
+  assert(shouldLogZeroResultsWithDocs({
+    docsWithEmbeddingsCount: 3,
+    semanticSearchResultsCount: 0,
+  }));
+});
+
+Deno.test("Zero-result signal - does NOT fire when retrieval returned results", () => {
+  assertEquals(shouldLogZeroResultsWithDocs({
+    docsWithEmbeddingsCount: 3,
+    semanticSearchResultsCount: 7,
+  }), false);
+});
+
+Deno.test("Zero-result signal - does NOT fire when tenant has no indexed docs", () => {
+  assertEquals(shouldLogZeroResultsWithDocs({
+    docsWithEmbeddingsCount: 0,
+    semanticSearchResultsCount: 0,
+  }), false);
 });

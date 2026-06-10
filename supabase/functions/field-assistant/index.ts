@@ -465,9 +465,16 @@ serve(async (req) => {
       id: string; chunk_text: string; document_name: string; document_category: string;
       similarity: number; keyword_rank?: number | null; chunk_type?: string;
       brand?: string | null; model?: string | null; embedding_model?: string;
+      page_number?: number | null; section_name?: string | null;
     }> = [];
 
     let retrievalBackend = "pgvector";
+    // True only when the retrieval adapter actually executed and returned.
+    // Distinguishes "retrieval found nothing" (abstain-worthy) from
+    // "retrieval never ran" (short query, embedding failure, adapter error,
+    // semantic search disabled) — the latter must keep the pre-existing
+    // full-document-context fallback instead of abstaining.
+    let retrievalRan = false;
     let rerankModel: string | null = null;
     let rerankLatencyMs: number | null = null;
     let rerankScores: number[] | null = null;
@@ -540,6 +547,7 @@ serve(async (req) => {
             };
 
             const retrievalResponse = await retrievalAdapter.retrieve(retrievalQuery);
+            retrievalRan = true;
             retrievalBackend = retrievalResponse.backend;
             rerankModel = retrievalResponse.rerankModel;
             rerankLatencyMs = retrievalResponse.rerankLatencyMs;
@@ -551,6 +559,7 @@ serve(async (req) => {
                 document_category: r.documentCategory, similarity: r.similarity,
                 keyword_rank: r.keywordRank, chunk_type: r.chunkType,
                 brand: r.brand, model: r.model, embedding_model: r.embeddingModel,
+                page_number: r.pageNumber, section_name: r.sectionName,
               }));
               console.log(`Semantic search found ${retrievalResponse.results.length} relevant chunks (backend=${retrievalBackend}, latency=${retrievalResponse.latencyMs}ms)`);
             }
@@ -578,12 +587,25 @@ serve(async (req) => {
           graphExpansionResult,
           GRAPH_SCORING_WEIGHT,
         );
-        semanticSearchResults = scored.map(r => ({
-          id: r.id, chunk_text: r.chunk_text, document_name: r.document_name,
-          document_category: r.document_category, similarity: r.similarity,
-          keyword_rank: r.keyword_rank, chunk_type: r.chunk_type,
-          brand: r.brand, model: r.model, embedding_model: r.embedding_model,
-        }));
+        // Graph scoring can reorder chunks. Look up page/section by chunk id
+        // from the pre-graph list since applyGraphScoring's projection drops them.
+        const pageSectionByChunkId = new Map<string, { page_number: number | null; section_name: string | null }>(
+          semanticSearchResults.map(r => [r.id, {
+            page_number: r.page_number ?? null,
+            section_name: r.section_name ?? null,
+          }]),
+        );
+        semanticSearchResults = scored.map(r => {
+          const extras = pageSectionByChunkId.get(r.id) ?? { page_number: null, section_name: null };
+          return {
+            id: r.id, chunk_text: r.chunk_text, document_name: r.document_name,
+            document_category: r.document_category, similarity: r.similarity,
+            keyword_rank: r.keyword_rank, chunk_type: r.chunk_type,
+            brand: r.brand, model: r.model, embedding_model: r.embedding_model,
+            page_number: extras.page_number,
+            section_name: extras.section_name,
+          };
+        });
         graphScoringApplied = true;
         maxGraphScore = Math.max(...scored.map(r => r.graphScore), 0);
         console.log(`[graph-scoring] Applied to ${scored.length} results, max_graph_score=${maxGraphScore.toFixed(3)}`);
@@ -721,6 +743,16 @@ serve(async (req) => {
       console.warn(`Insufficient retrieval coverage: ${semanticSearchResults.length} chunk(s) below minimum ${MIN_RELEVANT_CHUNKS}`);
     }
 
+    // Zero-result signal: tenant has indexed docs but retrieval returned nothing.
+    // Logged with a stable prefix so operators can alert on this pattern.
+    // Gated on retrievalRan so skipped/failed retrieval doesn't pollute the alert.
+    if (retrievalRan && semanticSearchResults.length === 0 && docsWithEmbeddings.length > 0) {
+      console.warn(
+        `[retrieval] zero_results_with_docs tenant_id=${tenantUser.tenant_id} ` +
+        `correlation_id=${correlationId} docs_completed=${docsWithEmbeddings.length}`,
+      );
+    }
+
     // Chunk deduplication
     if (semanticSearchResults.length > 1) {
       const deduped: typeof semanticSearchResults = [];
@@ -763,7 +795,9 @@ serve(async (req) => {
 
         for (const chunk of chunks) {
           const relevancePercent = Math.round(chunk.similarity * 100);
-          const chunkText = `<retrieved-document-chunk source="${safeDocName}" category="${safeCategory}" relevance="${relevancePercent}" chunk-id="${chunk.id}">\n${chunk.chunk_text}\n</retrieved-document-chunk>\n\n`;
+          const pageAttr = chunk.page_number != null ? ` page="${chunk.page_number}"` : "";
+          const sectionAttr = chunk.section_name ? ` section="${escapeXmlAttr(chunk.section_name)}"` : "";
+          const chunkText = `<retrieved-document-chunk source="${safeDocName}" category="${safeCategory}" relevance="${relevancePercent}" chunk-id="${chunk.id}"${pageAttr}${sectionAttr}>\n${chunk.chunk_text}\n</retrieved-document-chunk>\n\n`;
           if (totalContentLength + chunkText.length <= MAX_TOTAL_CONTENT) {
             extractedContentContext += chunkText;
             totalContentLength += chunkText.length;
@@ -1036,6 +1070,64 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: refusalText }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // ── 14b. Insufficient-Coverage Abstain Gate ───────────────
+    // If the tenant has indexed documents but retrieval could not find
+    // enough relevant chunks, refuse to answer rather than let the model
+    // hallucinate citations from training data. This is the single
+    // biggest trust lever: "Sentinel doesn't guess when grounding is thin."
+    const tenantHasIndexedDocs = docsWithEmbeddings.length > 0;
+    const retrievalBelowMinimum = semanticSearchResults.length < MIN_RELEVANT_CHUNKS;
+    if (tenantHasIndexedDocs && retrievalRan && retrievalBelowMinimum) {
+      const abstainText =
+        "I couldn't find enough grounded context in your uploaded documents to answer that confidently. " +
+        "Try rephrasing the question with more specific terminology (e.g. model numbers, fault codes), " +
+        "or upload additional reference material covering this topic.";
+      const abstainHashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(abstainText));
+      const abstainOutputHash = Array.from(new Uint8Array(abstainHashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+      console.warn(
+        `[abstain] insufficient_retrieval_coverage tenant_id=${tenantUser.tenant_id} ` +
+        `correlation_id=${correlationId} semantic_results=${semanticSearchResults.length} ` +
+        `docs_indexed=${docsWithEmbeddings.length}`,
+      );
+
+      try {
+        await serviceRoleClient.from("ai_audit_logs").insert({
+          tenant_id: tenantUser.tenant_id, user_id: user.id,
+          user_message: queryText.slice(0, 10000), ai_response: abstainText,
+          response_blocked: false, block_reason: null,
+          documents_available: tenantDocs?.length || 0, documents_with_content: docsWithContent.length,
+          document_names: docNames, validation_patterns_matched: null,
+          had_citations: false, response_time_ms: 0, model_used: AI_CHAT_MODEL,
+          chunk_ids: semanticSearchResults.map(r => r.id),
+          similarity_scores: semanticSearchResults.map(r => r.similarity),
+          system_prompt_hash: systemPromptHash, retrieval_quality_score: 0,
+          token_count_prompt: 0, token_count_response: abstainText.length,
+          injection_detected: injectionDetected, semantic_search_count: semanticSearchResults.length,
+          response_modified: false, human_review_required: false, refusal_flag: false,
+          enforcement_rules_triggered: ["INSUFFICIENT_RETRIEVAL_COVERAGE"],
+          model_output_hash: abstainOutputHash,
+          correlation_id: correlationId,
+          abstain_flag: true,
+          retrieval_backend: retrievalBackend,
+        });
+      } catch (auditErr) { console.error("Failed to log abstain:", auditErr); }
+
+      return new Response(
+        JSON.stringify({
+          response: abstainText,
+          abstained: true,
+          abstainReason: "insufficient_retrieval_coverage",
+          metadata: {
+            semantic_search_count: semanticSearchResults.length,
+            required_chunks: MIN_RELEVANT_CHUNKS,
+            docs_indexed: docsWithEmbeddings.length,
+          },
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // ── 15. LLM Call ──────────────────────────────────────────

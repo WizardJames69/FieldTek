@@ -62,6 +62,8 @@ export class PgVectorAdapter implements RetrievalAdapter {
         brand: r.brand ?? null,
         model: r.model ?? null,
         embeddingModel: r.embedding_model ?? "text-embedding-3-small",
+        pageNumber: r.page_number ?? null,
+        sectionName: r.section_name ?? null,
       })
     );
 
@@ -148,6 +150,8 @@ export class ExternalRetrievalAdapter implements RetrievalAdapter {
         brand: r.brand ?? null,
         model: r.model ?? null,
         embeddingModel: r.embedding_model ?? "unknown",
+        pageNumber: r.page_number ?? null,
+        sectionName: r.section_name ?? null,
       })
     );
 

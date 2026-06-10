@@ -210,8 +210,14 @@ serve(async (req) => {
       const totalChunks = rawChunks.length;
       console.log(`[generate-embeddings] [correlation_id=${correlationId}] Document split into ${totalChunks} structured chunks`);
 
-      // Store chunk boundaries + types, then free the full text and raw chunks
-      const chunkMeta: { text: string; type: string }[] = rawChunks.map(c => ({ text: c.text, type: c.type }));
+      // Store chunk boundaries + types + page/section, then free the full text and raw chunks
+      const chunkMeta: { text: string; type: string; page_number: number | null; section_name: string | null }[] =
+        rawChunks.map(c => ({
+          text: c.text,
+          type: c.type,
+          page_number: c.page_number,
+          section_name: c.section_name,
+        }));
       // deno-lint-ignore no-explicit-any
       (rawChunks as any).length = 0; // Free raw chunk objects
       // deno-lint-ignore no-explicit-any
@@ -251,6 +257,8 @@ serve(async (req) => {
           correlation_id: correlationId,
           embedding_model: EMBEDDING_MODEL,
           embedding_dimensions: EMBEDDING_DIMENSION,
+          page_number: chunk.page_number,
+          section_name: chunk.section_name,
         });
 
         insertedChunkCount++;
@@ -267,6 +275,30 @@ serve(async (req) => {
         if (i < totalChunks - 1) {
           await new Promise(resolve => setTimeout(resolve, 200));
         }
+      }
+
+      // Reconcile: count what actually landed before declaring completion.
+      // != (not <) so duplicate rows from overlapping runs also fail loudly.
+      const persisted = await restSelect<{ id: string }>(
+        "document_chunks",
+        `document_id=eq.${documentId}&select=id`,
+      );
+      if (persisted.length !== totalChunks) {
+        const reconErr = `Chunk count mismatch: expected ${totalChunks}, found ${persisted.length}`;
+        console.error(`[generate-embeddings] [correlation_id=${correlationId}] ${reconErr}`);
+        // Clear the inconsistent chunk set so retrieval can't serve a
+        // partial document and a retry starts clean (mirrors the catch path).
+        try {
+          await restDelete("document_chunks", `document_id=eq.${documentId}`);
+        } catch (_) { /* best-effort; retry worker will re-try later */ }
+        await restUpdate("documents", `id=eq.${documentId}`, {
+          embedding_status: "failed",
+          last_error: reconErr.substring(0, 500),
+        });
+        return new Response(
+          JSON.stringify({ success: false, error: reconErr }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
 
       // Update document embedding status
@@ -286,6 +318,11 @@ serve(async (req) => {
 
     } catch (embeddingError) {
       console.error("Embedding generation failed:", embeddingError);
+
+      // Clear any partially-inserted chunks so a subsequent retry starts clean.
+      try {
+        await restDelete("document_chunks", `document_id=eq.${documentId}`);
+      } catch (_) { /* best-effort; retry worker will re-try later */ }
 
       // Update status to failed with error detail
       const errMsg = embeddingError instanceof Error ? embeddingError.message : String(embeddingError);

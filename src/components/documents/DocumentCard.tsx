@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Trash2, ExternalLink, Loader2 } from 'lucide-react';
+import { FileText, Download, Trash2, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useUserRole } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -27,6 +33,9 @@ interface Document {
   file_type: string;
   file_size: number;
   created_at: string;
+  extraction_status?: string | null;
+  embedding_status?: string | null;
+  last_error?: string | null;
 }
 
 interface DocumentCardProps {
@@ -126,10 +135,11 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
                 {document.description}
               </p>
             )}
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               <Badge variant="secondary" className="text-xs">
                 {document.category}
               </Badge>
+              <DocumentStatusBadge document={document} />
               <span className="text-xs text-muted-foreground">
                 {formatFileSize(document.file_size)}
               </span>
@@ -203,4 +213,46 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
       </CardContent>
     </Card>
   );
+}
+
+function DocumentStatusBadge({ document }: { document: Document }) {
+  const ext = document.extraction_status;
+  const emb = document.embedding_status;
+  const hasFailed = ext === 'failed' || emb === 'failed';
+  const isReady = ext === 'completed' && emb === 'completed';
+  const isProcessing =
+    !hasFailed &&
+    !isReady &&
+    (ext === 'pending' || ext === 'processing' || emb === 'pending' || emb === 'processing');
+
+  if (hasFailed) {
+    const errorText = document.last_error || 'Processing failed. Re-upload or contact support.';
+    return (
+      <TooltipProvider delayDuration={100}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge variant="destructive" className="text-xs gap-1 cursor-help">
+              <AlertCircle className="h-3 w-3" />
+              Failed
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs break-words">
+            {errorText}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  if (isProcessing) {
+    return (
+      <Badge variant="outline" className="text-xs gap-1">
+        <Loader2 className="h-3 w-3 animate-spin" />
+        Processing
+      </Badge>
+    );
+  }
+
+  // Ready: no badge (lowest-churn). ext/emb are null for legacy rows — same.
+  return null;
 }

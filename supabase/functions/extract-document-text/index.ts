@@ -104,6 +104,12 @@ async function runInlineEmbedding(documentId: string, text: string, correlationI
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
       console.error("[extract-document-text] No OPENAI_API_KEY, skipping embeddings");
+      // Mark failed rather than silently leaving 'pending' — the retry cron
+      // only watches 'processing', so 'pending' would be stranded forever.
+      await embRestUpdate("documents", `id=eq.${documentId}`, {
+        embedding_status: "failed",
+        last_error: "OPENAI_API_KEY not configured for embedding generation",
+      });
       return;
     }
 
@@ -170,6 +176,8 @@ async function runInlineEmbedding(documentId: string, text: string, correlationI
         correlation_id: correlationId,
         embedding_model: EMBEDDING_MODEL,
         embedding_dimensions: EMBEDDING_DIMENSION,
+        page_number: chunk.page_number,
+        section_name: chunk.section_name,
       });
 
       insertedCount++;
@@ -184,11 +192,39 @@ async function runInlineEmbedding(documentId: string, text: string, correlationI
       }
     }
 
+    // Reconcile: confirm every chunk actually landed in the DB before
+    // declaring success. Guards against REST inserts that silently dropped
+    // (e.g. 202 Accepted then DB backpressure). != (not <) so duplicate
+    // rows from overlapping runs also fail loudly.
+    const persisted = await embRestSelect<{ id: string }>(
+      "document_chunks",
+      `document_id=eq.${documentId}&select=id`,
+    );
+    if (persisted.length !== totalChunks) {
+      const msg = `Chunk count mismatch: expected ${totalChunks}, found ${persisted.length}`;
+      console.error(`[extract-document-text] [correlation_id=${correlationId}] ${msg}`);
+      // Clear the inconsistent chunk set so retrieval can't serve a partial
+      // document and the retry worker starts clean (mirrors the catch path).
+      try {
+        await embRestDelete("document_chunks", `document_id=eq.${documentId}`);
+      } catch (_) { /* ignore; next retry will re-delete */ }
+      await embRestUpdate("documents", `id=eq.${documentId}`, {
+        embedding_status: "failed",
+        last_error: msg.substring(0, 500),
+      });
+      return;
+    }
+
     await embRestUpdate("documents", `id=eq.${documentId}`, { embedding_status: "completed" });
     console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding completed: ${insertedCount} chunks, ${totalTokens} tokens`);
   } catch (embErr) {
     const errMsg = embErr instanceof Error ? embErr.message : String(embErr);
     console.error(`[extract-document-text] [correlation_id=${correlationId}] Inline embedding failed:`, errMsg);
+    // Clear any partial chunks so the retry worker's generate-embeddings
+    // call starts from a clean slate.
+    try {
+      await embRestDelete("document_chunks", `document_id=eq.${documentId}`);
+    } catch (_) { /* ignore; next retry will re-delete */ }
     try {
       await embRestUpdate("documents", `id=eq.${documentId}`, {
         embedding_status: "failed",
@@ -345,16 +381,24 @@ async function extractTextFromPDFLocal(base64Data: string): Promise<string | nul
   try {
     const pdfBytes = decodeBase64(base64Data);
     const { text, totalPages } = await extractPdfText(pdfBytes);
-    const fullText = Array.isArray(text) ? text.join("\n") : text;
-
-    console.log(`[extract-document-text] Local PDF extraction: ${fullText.length} chars, ${totalPages} pages`);
-
-    if (fullText && fullText.trim().length >= MIN_LOCAL_TEXT_LENGTH) {
-      return fullText.trim();
+    // Judge the scanned-PDF heuristic on the raw page text only —
+    // [[PAGE:N]] markers add ~15 chars per page and would let a
+    // multi-page scanned PDF with an empty text layer pass the check
+    // and skip the vision fallback.
+    const rawContentLength = (Array.isArray(text) ? text.join("\n") : text).trim().length;
+    if (rawContentLength < MIN_LOCAL_TEXT_LENGTH) {
+      console.log(`[extract-document-text] Local PDF extraction too sparse (${rawContentLength} chars, ${totalPages} pages) — falling back to vision`);
+      return null;
     }
 
-    // Too little text — likely a scanned/image PDF
-    return null;
+    // Preserve page boundaries via inline markers so the chunker can stamp
+    // page_number on each chunk. Markers are stripped inside the chunker.
+    const fullText = Array.isArray(text)
+      ? text.map((t, i) => `\n\n[[PAGE:${i + 1}]]\n\n${t}`).join("")
+      : text;
+
+    console.log(`[extract-document-text] Local PDF extraction: ${fullText.length} chars, ${totalPages} pages`);
+    return fullText.trim();
   } catch (err) {
     console.warn("[extract-document-text] Local PDF extraction failed, falling back to OpenAI:", err);
     return null;
@@ -445,6 +489,10 @@ serve(async (req) => {
       documentId?: string;
     };
 
+    // Capture documentId immediately so any subsequent throw in this handler
+    // surfaces as extraction_status='failed' via the catch block at the end.
+    // Without this, crashes between parse and storage download (or after)
+    // would leave the row stranded at 'pending'.
     reqDocumentId = documentId;
 
     // ── Generate correlation ID for end-to-end tracing ──────
@@ -496,6 +544,23 @@ serve(async (req) => {
         );
       }
 
+      // Mark as processing BEFORE any expensive work (storage download,
+      // base64 conversion, unpdf/vision). If we crash past this point, the
+      // retry worker (retry_stuck_documents) can see the 'processing' state
+      // and recover or mark failed. If we crash before this point, the catch
+      // handler at the bottom of the function writes 'failed' + last_error.
+      // Only overwrite if the row hasn't already completed extraction.
+      if (doc.extraction_status !== "completed") {
+        await supabaseAdmin
+          .from("documents")
+          .update({
+            extraction_status: "processing",
+            processing_started_at: new Date().toISOString(),
+            correlation_id: correlationId,
+          })
+          .eq("id", documentId);
+      }
+
       // Prevent duplicate extraction — but retry embeddings if needed
       if (doc.extraction_status === "completed") {
         const needsEmbedding = !doc.embedding_status ||
@@ -524,16 +589,6 @@ serve(async (req) => {
 
         return jsonResponse({ success: true, status: "already_extracted" });
       }
-
-      // Mark as processing
-      await supabaseAdmin
-        .from("documents")
-        .update({
-          extraction_status: "processing",
-          processing_started_at: new Date().toISOString(),
-          correlation_id: correlationId,
-        })
-        .eq("id", documentId);
 
       // Download file from storage
       const { data: fileData, error: downloadError } = await supabaseAdmin
@@ -581,10 +636,10 @@ serve(async (req) => {
         extractedText = await extractTextFromPDF(resolvedBase64, resolvedFileName, prompt);
       }
     } else {
-      return jsonResponse(
-        { success: false, extractedText: "", structuredData: null, error: `Unsupported file type: ${resolvedMimeType}` },
-        400
-      );
+      // Throw instead of returning 400 directly: the bottom catch writes
+      // extraction_status='failed' + last_error, so the document doesn't
+      // sit at 'processing' until the retry cron times it out.
+      throw new Error(`Unsupported file type: ${resolvedMimeType}`);
     }
 
     // ── Truncate ────────────────────────────────────────────
@@ -609,34 +664,36 @@ serve(async (req) => {
 
     // ── DB write-back for document mode ─────────────────────
     if (mode === "document" && documentId) {
-      try {
-        const supabaseAdmin = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
 
-        await supabaseAdmin
-          .from("documents")
-          .update({
-            extracted_text: sanitized,
-            extraction_status: "completed",
-          })
-          .eq("id", documentId);
+      // postgrest-js reports failures via { error }, it does not throw.
+      // An unsaved extraction must not look successful (and must not get
+      // embeddings generated against it) — throw to the bottom catch,
+      // which marks the document failed with last_error.
+      const { error: writeBackError } = await supabaseAdmin
+        .from("documents")
+        .update({
+          extracted_text: sanitized,
+          extraction_status: "completed",
+        })
+        .eq("id", documentId);
+      if (writeBackError) {
+        throw new Error(`Failed to save extracted text: ${writeBackError.message}`);
+      }
 
-        console.log("[extract-document-text] Saved to DB for document:", documentId);
+      console.log("[extract-document-text] Saved to DB for document:", documentId);
 
-        // Generate embeddings inline (background task via waitUntil)
-        const embeddingPromise = runInlineEmbedding(documentId, sanitized, correlationId);
-        const waitUntilFn = (globalThis as any).EdgeRuntime?.waitUntil;
-        if (waitUntilFn) {
-          waitUntilFn.call((globalThis as any).EdgeRuntime, embeddingPromise);
-        } else {
-          console.warn("[extract-document-text] EdgeRuntime.waitUntil unavailable, awaiting inline");
-          await embeddingPromise;
-        }
-      } catch (dbErr) {
-        // Don't fail the response — text was extracted successfully
-        console.error("[extract-document-text] DB write-back failed:", dbErr);
+      // Generate embeddings inline (background task via waitUntil)
+      const embeddingPromise = runInlineEmbedding(documentId, sanitized, correlationId);
+      const waitUntilFn = (globalThis as any).EdgeRuntime?.waitUntil;
+      if (waitUntilFn) {
+        waitUntilFn.call((globalThis as any).EdgeRuntime, embeddingPromise);
+      } else {
+        console.warn("[extract-document-text] EdgeRuntime.waitUntil unavailable, awaiting inline");
+        await embeddingPromise;
       }
     }
 

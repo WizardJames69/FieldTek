@@ -22,7 +22,13 @@ export const MAX_SERVICE_HISTORY_CONTEXT = 10000; // 10KB limit for service hist
 
 export const SEMANTIC_SEARCH_ENABLED = true;
 export const SEMANTIC_SEARCH_TOP_K = 15;
-export const SEMANTIC_SEARCH_THRESHOLD = 0.55;
+// Baseline similarity floor for text-embedding-3-small. 0.55 was too close to
+// noise for technical queries (part numbers, fault codes); 0.6 eliminates the
+// worst low-quality matches while keeping sparse-coverage queries useful.
+// Per-tenant overrides via tenant_ai_policies.similarity_threshold take
+// precedence — this is only the fallback when no policy is set.
+export const SEMANTIC_SEARCH_THRESHOLD = 0.6;
+export const DEFAULT_MATCH_THRESHOLD = SEMANTIC_SEARCH_THRESHOLD;
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 export const EMBEDDING_DIMENSION = 1536;
 
@@ -161,10 +167,15 @@ export {
   formatLabel,
 } from "../_shared/symptomVocabulary.ts";
 export type { IndustryType, SymptomCategory } from "../_shared/symptomVocabulary.ts";
+// A re-export does not bring the name into this module's own scope;
+// the Record below needs a real (type-only, erased at runtime) import.
+import type { IndustryType } from "../_shared/symptomVocabulary.ts";
 
 // ── Industry Safety Prompts ─────────────────────────────────
 
-export const INDUSTRY_SAFETY_PROMPTS: Record<IndustryType, string> = {
+// Partial: only industries with bespoke safety language have entries; the
+// consumer (prompt.ts) checks for presence before appending.
+export const INDUSTRY_SAFETY_PROMPTS: Partial<Record<IndustryType, string>> = {
   hvac: `
 ## INDUSTRY-SPECIFIC SAFETY REQUIREMENTS (HVAC):
 ⚠️ REFRIGERANT HANDLING: EPA Section 608 certification required. Never vent refrigerants to atmosphere.

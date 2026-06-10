@@ -350,6 +350,25 @@ export default function Assistant() {
       });
     }
 
+    // Non-streaming JSON replies (abstain gate, human-review refusal)
+    // arrive as a 200 application/json body. Without this branch they
+    // would fall into the SSE parser below and be silently discarded.
+    const contentType = resp.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const body = await resp.json().catch(() => ({}));
+      const text: string | undefined = body.response || body.error;
+      if (!text) throw new Error("Empty response from assistant");
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: text,
+          metadata: body.metadata as ResponseMetadata | undefined,
+        },
+      ]);
+      return;
+    }
+
     if (!resp.body) throw new Error("No response body");
 
     const reader = resp.body.getReader();

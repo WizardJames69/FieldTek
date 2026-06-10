@@ -12,35 +12,56 @@ export const CHUNK_OVERLAP = 200; // Overlap between narrative chunks for contex
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 export const EMBEDDING_DIMENSION = 1536;
 
+// Page boundary marker injected by extractors that preserve per-page text
+// (e.g. unpdf in extract-document-text). Not part of document content.
+// Format: [[PAGE:<N>]] on its own line or inline — stripped before emission.
+const PAGE_MARKER_REGEX = /\[\[PAGE:(\d+)\]\]/g;
+
 // ── Types ───────────────────────────────────────────────────
 
 export interface StructuredChunk {
   text: string;
   type: 'narrative' | 'table' | 'procedure' | 'specification';
+  page_number: number | null;
+  section_name: string | null;
+}
+
+interface AnnotatedLine {
+  text: string;
+  page: number | null;
+}
+
+interface AnnotatedSection {
+  lines: AnnotatedLine[];
+  section_name: string | null;
 }
 
 // ── Main Entry Point ────────────────────────────────────────
 
 export function chunkTextStructured(text: string): StructuredChunk[] {
+  const annotatedLines = parseAndStripPageMarkers(text);
+  const sections = splitIntoSections(annotatedLines);
   const chunks: StructuredChunk[] = [];
-  const sections = splitIntoSections(text);
 
   for (const section of sections) {
-    const type = classifyChunkType(section);
+    const sectionText = section.lines.map(l => l.text).join('\n');
+    const sectionPage = firstNonNullPage(section.lines);
+    const sectionName = section.section_name;
+    const type = classifyChunkType(sectionText);
 
     if (type === 'table' || type === 'procedure' || type === 'specification') {
-      if (section.length <= MAX_CHUNK_SIZE) {
-        chunks.push({ text: section.trim(), type });
+      if (sectionText.length <= MAX_CHUNK_SIZE) {
+        chunks.push({ text: sectionText.trim(), type, page_number: sectionPage, section_name: sectionName });
       } else {
-        const subChunks = splitStructuredContent(section, type);
+        const subChunks = splitStructuredContent(sectionText, type);
         for (const sub of subChunks) {
-          chunks.push({ text: sub.trim(), type });
+          chunks.push({ text: sub.trim(), type, page_number: sectionPage, section_name: sectionName });
         }
       }
     } else {
-      const narrativeChunks = chunkTextSliding(section, DEFAULT_CHUNK_SIZE, CHUNK_OVERLAP);
+      const narrativeChunks = chunkTextSliding(sectionText, DEFAULT_CHUNK_SIZE, CHUNK_OVERLAP);
       for (const nc of narrativeChunks) {
-        chunks.push({ text: nc.trim(), type: 'narrative' });
+        chunks.push({ text: nc.trim(), type: 'narrative', page_number: sectionPage, section_name: sectionName });
       }
     }
   }
@@ -57,47 +78,92 @@ export function chunkTextStructured(text: string): StructuredChunk[] {
   return result;
 }
 
+// ── Page marker parsing ─────────────────────────────────────
+
+function parseAndStripPageMarkers(text: string): AnnotatedLine[] {
+  let currentPage: number | null = null;
+  const rawLines = text.split('\n');
+  const annotated: AnnotatedLine[] = [];
+
+  for (const rawLine of rawLines) {
+    PAGE_MARKER_REGEX.lastIndex = 0;
+    const matches = [...rawLine.matchAll(PAGE_MARKER_REGEX)];
+    if (matches.length > 0) {
+      // The last marker on the line wins for subsequent content on this line
+      // and all following lines until overridden.
+      const lastMatch = matches[matches.length - 1];
+      const n = parseInt(lastMatch[1], 10);
+      if (!Number.isNaN(n)) currentPage = n;
+    }
+    const cleaned = rawLine.replace(PAGE_MARKER_REGEX, '').trimEnd();
+    // Drop lines that were only page markers (avoid double-blank lines messing
+    // up section detection).
+    if (matches.length > 0 && cleaned.trim() === '') continue;
+    annotated.push({ text: cleaned, page: currentPage });
+  }
+
+  return annotated;
+}
+
+function firstNonNullPage(lines: AnnotatedLine[]): number | null {
+  for (const l of lines) {
+    if (l.page !== null) return l.page;
+  }
+  return null;
+}
+
 // ── Section Splitting ───────────────────────────────────────
 
-function splitIntoSections(text: string): string[] {
-  const lines = text.split('\n');
-  const sections: string[] = [];
-  let currentSection: string[] = [];
+function splitIntoSections(lines: AnnotatedLine[]): AnnotatedSection[] {
+  const sections: AnnotatedSection[] = [];
+  let currentLines: AnnotatedLine[] = [];
   let currentType: string | null = null;
+  let currentSectionName: string | null = null;
+  let pendingHeading: string | null = null;
+
+  const flush = () => {
+    if (currentLines.length === 0) return;
+    const joined = currentLines.map(l => l.text).join('\n');
+    if (joined.trim().length > 0) {
+      sections.push({ lines: currentLines, section_name: currentSectionName });
+    }
+    currentLines = [];
+    currentType = null;
+    // currentSectionName intentionally persists across flushes: every
+    // section until the next heading belongs to the nearest preceding
+    // heading, not just the first paragraph after it.
+  };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const { text: line, page } = lines[i];
     const lineType = getLineType(line);
 
     const isBlankLine = line.trim() === '';
     const isHeading = /^#{1,6}\s/.test(line) || /^[A-Z][A-Z\s]{3,}:?\s*$/.test(line.trim());
     const typeChanged = currentType !== null && lineType !== 'neutral' && lineType !== currentType;
 
-    if ((isBlankLine && currentSection.length > 0) || isHeading || typeChanged) {
-      if (currentSection.length > 0) {
-        const sectionText = currentSection.join('\n');
-        if (sectionText.trim().length > 0) {
-          sections.push(sectionText);
-        }
-        currentSection = [];
-        currentType = null;
+    if ((isBlankLine && currentLines.length > 0) || isHeading || typeChanged) {
+      flush();
+      // If the boundary is a heading, the heading itself starts the next section
+      // and also becomes the section_name.
+      if (isHeading) {
+        pendingHeading = line.trim().replace(/^#+\s*/, '').replace(/:$/, '').trim() || null;
       }
     }
 
-    if (!isBlankLine || currentSection.length > 0) {
-      currentSection.push(line);
+    if (!isBlankLine || currentLines.length > 0) {
+      if (currentLines.length === 0 && pendingHeading !== null) {
+        currentSectionName = pendingHeading;
+        pendingHeading = null;
+      }
+      currentLines.push({ text: line, page });
       if (lineType !== 'neutral') {
         currentType = lineType;
       }
     }
   }
 
-  if (currentSection.length > 0) {
-    const sectionText = currentSection.join('\n');
-    if (sectionText.trim().length > 0) {
-      sections.push(sectionText);
-    }
-  }
+  flush();
 
   return mergeTinySections(sections, 100);
 }
@@ -113,34 +179,36 @@ function getLineType(line: string): 'table' | 'procedure' | 'specification' | 'n
   return 'neutral';
 }
 
-function mergeTinySections(sections: string[], minLength: number): string[] {
+function mergeTinySections(sections: AnnotatedSection[], minLength: number): AnnotatedSection[] {
   if (sections.length <= 1) return sections;
 
-  const merged: string[] = [];
-  let buffer = '';
+  const merged: AnnotatedSection[] = [];
+  let buffer: AnnotatedSection | null = null;
+
+  const lenOf = (s: AnnotatedSection) => s.lines.map(l => l.text).join('\n').length;
 
   for (const section of sections) {
-    if (buffer.length > 0) {
-      if (section.length < minLength) {
-        buffer += '\n' + section;
-      } else if (buffer.length < minLength) {
-        buffer += '\n' + section;
+    if (buffer) {
+      if (lenOf(section) < minLength) {
+        buffer.lines.push(...section.lines);
+      } else if (lenOf(buffer) < minLength) {
+        buffer.lines.push(...section.lines);
         merged.push(buffer);
-        buffer = '';
+        buffer = null;
       } else {
         merged.push(buffer);
         buffer = section;
       }
-    } else if (section.length < minLength) {
-      buffer = section;
+    } else if (lenOf(section) < minLength) {
+      buffer = { lines: [...section.lines], section_name: section.section_name };
     } else {
       merged.push(section);
     }
   }
 
-  if (buffer.length > 0) {
-    if (merged.length > 0 && buffer.length < minLength) {
-      merged[merged.length - 1] += '\n' + buffer;
+  if (buffer) {
+    if (merged.length > 0 && lenOf(buffer) < minLength) {
+      merged[merged.length - 1].lines.push(...buffer.lines);
     } else {
       merged.push(buffer);
     }
@@ -212,9 +280,13 @@ function chunkTextSliding(text: string, chunkSize: number, overlap: number): str
     }
 
     chunks.push(chunk.trim());
-    start = start + chunk.length - overlap;
+    const advance = chunk.length - overlap;
+    // Always advance strictly forward. Without this, a section shorter than
+    // chunkSize (so the breakpoint path is skipped) would loop forever once
+    // the overlap consumes the net advance.
+    start += advance > 0 ? advance : chunk.length;
 
-    if (start >= text.length) break;
+    if (end >= text.length) break;
   }
 
   return chunks.filter(c => c.length > 50);

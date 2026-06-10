@@ -44,6 +44,20 @@ export default function Documents() {
       return data;
     },
     enabled: !!tenant?.id,
+    // Refresh every 10s while any document is still in a non-terminal state
+    // (pending / processing extraction or embedding). Stops polling once
+    // everything has reached completed/failed.
+    refetchInterval: (query) => {
+      const rows = (query.state.data as Array<{ extraction_status?: string | null; embedding_status?: string | null }> | undefined) ?? [];
+      const inFlight = rows.some((d) => {
+        const ext = d.extraction_status;
+        const emb = d.embedding_status;
+        const extInFlight = ext === 'pending' || ext === 'processing';
+        const embInFlight = emb === 'pending' || emb === 'processing';
+        return extInFlight || (ext === 'completed' && embInFlight);
+      });
+      return inFlight ? 10_000 : false;
+    },
   });
 
   // Extract file path from URL or return as-is if already a path

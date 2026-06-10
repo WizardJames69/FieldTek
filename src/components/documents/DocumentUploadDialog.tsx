@@ -90,10 +90,21 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
       if (error) {
         console.error('Extraction error:', error);
         setExtractionStatus('error');
+        // Non-2xx responses surface as FunctionsHttpError whose .message is
+        // a generic "Edge Function returned a non-2xx status code" — the
+        // server's actual { error } detail is only available on .context.
+        let detail = (error as { message?: string })?.message;
+        try {
+          const ctx = (error as { context?: Response }).context;
+          const body = ctx ? await ctx.json() : null;
+          if (body?.error) detail = body.error;
+        } catch { /* keep the generic message */ }
         toast({
-          title: 'Document uploaded',
-          description: 'Text extraction failed, but the document was saved. AI features may be limited.',
-          variant: 'default',
+          title: 'Text extraction failed',
+          description: detail
+            ? `${detail}. The file was saved; AI features will not work until this is resolved.`
+            : 'The file was saved but text could not be extracted. AI features will be unavailable.',
+          variant: 'destructive',
         });
       } else if (data?.success) {
         setExtractionStatus('done');
@@ -104,7 +115,13 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
         });
       } else {
         setExtractionStatus('error');
-        console.error('Extraction returned failure:', data?.error);
+        const detail = data?.error || 'Unknown extraction failure.';
+        console.error('Extraction returned failure:', detail);
+        toast({
+          title: 'Text extraction failed',
+          description: `${detail} The file was saved; AI features will not work until this is resolved.`,
+          variant: 'destructive',
+        });
       }
     } catch (err) {
       console.error('Extraction trigger error:', err);
@@ -209,7 +226,10 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
     }
   };
 
-  const MAX_FILE_SIZE_MB = 250;
+  // Aligned with the `documents` Storage bucket limit (50MB, see migration
+  // 20251225011230_*). Bumping both requires a bucket policy change and
+  // consideration of edge-function base64-inflation + timeout impact.
+  const MAX_FILE_SIZE_MB = 50;
 
   const validateFileSize = (file: File): boolean => {
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
@@ -294,7 +314,7 @@ export function DocumentUploadDialog({ open, onOpenChange }: DocumentUploadDialo
                     </label>
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Upload PDF or image files up to 250MB
+                    Upload PDF or image files up to {MAX_FILE_SIZE_MB}MB
                   </p>
                 </>
               )}
