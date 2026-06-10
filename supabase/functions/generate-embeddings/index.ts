@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import { chunkTextStructured, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
+import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
 
 // Raw Supabase REST helpers (no supabase-js SDK to save ~100MB heap)
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -117,7 +118,11 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const isServiceRole = token === SUPABASE_SERVICE_ROLE_KEY;
+    // Exact match covers the runtime-injected key; the retry cron's
+    // Vault-held legacy service_role JWT is validated via its role claim
+    // + GoTrue signature check (see _shared/serviceAuth.ts). Anon/user
+    // JWTs fall through to the user path below.
+    const isServiceRole = await isServiceRoleBearer(token);
 
     if (!isServiceRole) {
       // Verify user JWT via GoTrue API (no SDK needed)

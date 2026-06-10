@@ -5,6 +5,7 @@ import OpenAI from "https://esm.sh/openai@4.96.0";
 import { extractText as extractPdfText } from "npm:unpdf";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import { chunkTextStructured, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
+import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
 
 // ── Constants ───────────────────────────────────────────────
 const corsHeaders = {
@@ -458,13 +459,17 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    const isServiceRole = token === serviceRoleKey;
+    // Service-role callers come in two forms: the runtime-injected key
+    // (exact match) and the retry cron's Vault-held legacy service_role
+    // JWT, which is validated via its role claim + GoTrue signature check
+    // instead of string equality. Anything else (anon/user JWTs) falls
+    // through to the user path below.
+    const isServiceRole = await isServiceRoleBearer(token);
 
     if (!isServiceRole) {
       const supabaseAuth = createClient(
         Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY") ?? serviceRoleKey,
+        Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
         { global: { headers: { Authorization: authHeader } } }
       );
       const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
