@@ -33,3 +33,12 @@ jobs:
 
       - name: Unit tests
         run: npm run test
+
+      - name: Production build
+        run: npm run build
+        env:
+          # Non-secret placeholders so the static build resolves import.meta.env.*
+          # Supabase client + service-worker generation are exercised; these values
+          # are never used to reach a real project from CI.
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key

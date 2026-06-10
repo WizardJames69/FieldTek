@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -7,13 +7,6 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // The service-worker cache rule must target the Supabase project this
-  // build actually talks to (staging/local/prod differ per environment).
-  const env = loadEnv(mode, process.cwd(), "");
-  const supabaseUrl = env.VITE_SUPABASE_URL || "https://dlrhobkrjfegtbdsqdsa.supabase.co";
-  const supabaseOrigin = new URL(supabaseUrl).origin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const supabaseCachePattern = new RegExp(`^${supabaseOrigin}/.*`, "i");
-
   return {
   server: {
     host: "::",
@@ -100,21 +93,13 @@ export default defineConfig(({ mode }) => {
       navigateFallback: null,
       navigateFallbackDenylist: [/^\/~oauth/, /^\/admin/, /^\/api/],
       globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+        // NOTE: Supabase API responses (/rest/v1, /auth/v1, /functions/v1,
+        // and signed/private storage URLs) are deliberately NOT cached by the
+        // service worker. Workbox cache keys ignore the Authorization header,
+        // so a shared device could serve one user's cached tenant data to the
+        // next. Offline behavior for technicians is handled by the explicit
+        // IndexedDB/offline-sync layer, not by caching authenticated requests.
         runtimeCaching: [
-          {
-            urlPattern: supabaseCachePattern,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase-cache",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
             handler: "CacheFirst",
