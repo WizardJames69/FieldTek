@@ -124,6 +124,6 @@ If the deterministic compliance engine incorrectly blocks a job (`scheduled_jobs
 
 ## 8. Quality gates
 
-- CI (`.github/workflows/ci.yml`): lint, typecheck, unit tests on push/PR to main.
+- CI (`.github/workflows/ci.yml`): lint, typecheck, unit tests, production build on push/PR to main.
 - E2E (`.github/workflows/e2e.yml`): full Playwright suite (~311 tests, sequential) against staging.
-- Husky pre-commit (lint+typecheck) and pre-push (unit) still active; **husky removal is a separate planned workstream — do not remove it before CI gates are confirmed green on main.**
+- Local git hooks: **none**. Husky pre-commit (lint+typecheck) and pre-push (unit) were removed once the CI gates above were confirmed green on main; quality enforcement now lives entirely in CI.

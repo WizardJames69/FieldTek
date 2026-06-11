@@ -13,7 +13,7 @@ npm run test         # Vitest unit tests
 npm run test:e2e     # Playwright E2E (~210 tests, sequential, 1 worker)
 ```
 
-Pre-commit hook (husky): runs `lint` then `typecheck`. lint-staged runs `eslint --max-warnings 0` on `*.{ts,tsx}`.
+No local git hooks. Quality gates (lint, typecheck, unit tests, production build) run in CI via `.github/workflows/ci.yml` on push/PR to main. Husky was removed once those CI gates were green on main.
 
 Run a single unit test: `npx vitest run src/path/to/file.test.ts`
 Run a single E2E spec: `npx playwright test e2e/specs/dashboard.spec.ts`
