@@ -16,7 +16,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "generate:og": "npx tsx scripts/generate-og.ts"
+    "generate:og": "npx tsx scripts/generate-og.ts",
+    "generate:e2e-embeddings": "npx tsx scripts/generate-e2e-embeddings.ts"
   },
   "dependencies": {
     "@elevenlabs/react": "^0.12.3",

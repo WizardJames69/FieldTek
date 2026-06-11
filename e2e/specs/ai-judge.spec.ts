@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createAIClient, AIAPIClient } from '../helpers/ai-api-client';
+import { createAIClient, AIAPIClient, hasAssistantContent } from '../helpers/ai-api-client';
 import { TEST_USERS } from '../helpers/test-data';
 import { waitForAuditLog } from '../helpers/audit-log-helpers';
 import { withFeatureFlag, setFeatureFlag } from '../helpers/feature-flag-helpers';
@@ -157,8 +157,13 @@ test.describe('Full Blocking Mode', () => {
             authToken: adminToken,
           });
           expect(res.status).toBe(200);
-          // Response should be either a normal grounded response or a safe fallback
-          expect(res.streamedContent.length).toBeGreaterThan(0);
+          // This query is deliberately ungrounded, so the grounded-retrieval
+          // abstain gate now returns a structured safe-fallback JSON BEFORE the
+          // judge-blocking path this test predates. That abstain IS the safe
+          // fallback the test asserts — assert at the contract level (any
+          // supported response shape) rather than SSE-only. Still fails on an
+          // empty 200. See hasAssistantContent in ai-api-client.ts.
+          expect(hasAssistantContent(res)).toBe(true);
         });
       });
     });

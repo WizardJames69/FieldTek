@@ -3,6 +3,9 @@
  * Seeds documents, chunks, embeddings, compliance rules, graph data, Tenant B.
  */
 
+import { createHash } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 import { getAdminClient } from './supabase-admin';
 import {
   TEST_DOCUMENTS,
@@ -10,7 +13,60 @@ import {
   SAMPLE_EQUIPMENT_COMPONENTS,
   SAMPLE_COMPONENT_RELATIONSHIPS,
   TENANT_B,
+  EMBEDDING_DIMENSION,
+  fallbackEmbedding,
 } from './ai-test-data';
+
+// ── Chunk embedding fixture ─────────────────────────────────────
+// Real text-embedding-3-small vectors for the seed chunk texts, generated
+// once by scripts/generate-e2e-embeddings.ts and checked in. Keyed by a
+// SHA-256 of the (trimmed) chunk text so the embedding always tracks its
+// exact text. Loaded lazily from disk (no resolveJsonModule needed) and
+// cached. If the fixture or a specific entry is missing, we fall back to a
+// deterministic synthetic vector AND log loudly — the dependent
+// grounded-retrieval test then fails visibly rather than passing on garbage.
+
+const FIXTURE_PATH = path.join(process.cwd(), 'e2e', 'fixtures', 'chunk-embeddings.json');
+
+interface EmbeddingFixture {
+  model?: string;
+  dimension?: number;
+  embeddings?: Record<string, number[]>;
+}
+
+let _fixture: EmbeddingFixture | null | undefined;
+
+/** Stable key for a chunk text — must match scripts/generate-e2e-embeddings.ts. */
+export function chunkEmbeddingKey(text: string): string {
+  return createHash('sha256').update(text.trim()).digest('hex');
+}
+
+function loadEmbeddingFixture(): EmbeddingFixture | null {
+  if (_fixture !== undefined) return _fixture;
+  try {
+    _fixture = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf-8')) as EmbeddingFixture;
+  } catch {
+    _fixture = null;
+    console.warn(
+      `[seed] ⚠️  Embedding fixture not found at ${FIXTURE_PATH}. Seeding with deterministic ` +
+        `fallback vectors — grounded-retrieval E2E tests WILL fail. Generate it with: ` +
+        `OPENAI_API_KEY=… npx tsx scripts/generate-e2e-embeddings.ts`,
+    );
+  }
+  return _fixture;
+}
+
+/** Resolve the real embedding for a chunk text, or a loud-warning fallback. */
+function resolveChunkEmbedding(text: string): number[] {
+  const emb = loadEmbeddingFixture()?.embeddings?.[chunkEmbeddingKey(text)];
+  if (Array.isArray(emb) && emb.length === EMBEDDING_DIMENSION) return emb;
+  console.warn(
+    `[seed] ⚠️  No fixture embedding for chunk "${text.slice(0, 48)}…" ` +
+      `(key ${chunkEmbeddingKey(text).slice(0, 12)}). Using synthetic fallback; this chunk will ` +
+      `not match real queries. Regenerate the fixture after editing chunk text.`,
+  );
+  return fallbackEmbedding(text);
+}
 
 /** Seed test documents into the documents table. Returns document IDs. */
 export async function seedTestDocuments(tenantId: string): Promise<string[]> {
@@ -47,18 +103,37 @@ export async function seedDocumentChunks(
   const client = getAdminClient();
 
   for (let i = 0; i < TEST_DOCUMENTS.length && i < docIds.length; i++) {
-    for (let j = 0; j < TEST_DOCUMENTS[i].chunks.length; j++) {
-      const chunk = TEST_DOCUMENTS[i].chunks[j];
-      await client.from('document_chunks').upsert(
-        {
-          document_id: docIds[i],
-          tenant_id: tenantId,
-          chunk_text: chunk.text,
-          chunk_index: j,
-          embedding: JSON.stringify(chunk.embedding),
-        },
-        { onConflict: 'document_id,chunk_index' },
-      );
+    const doc = TEST_DOCUMENTS[i] as (typeof TEST_DOCUMENTS)[number] & {
+      equipmentType?: string;
+      brand?: string;
+      model?: string;
+    };
+    for (let j = 0; j < doc.chunks.length; j++) {
+      const chunk = doc.chunks[j];
+      // Plain insert — matches the production ingestion path. seedTestDocuments
+      // inserts fresh documents each run, so chunk_index never collides. The
+      // previous `.upsert(..., { onConflict: 'document_id,chunk_index' })`
+      // referenced a unique constraint that does not exist on document_chunks,
+      // so EVERY chunk insert silently errored and the suite seeded ZERO chunks
+      // (retrieval then returned nothing → the abstain gate fired). Surface any
+      // error loudly so this can never regress unnoticed again. equipment_type/
+      // brand/model carry the document's equipment metadata so queries that pass
+      // an equipment context match (search_document_chunks filters on them).
+      const { error } = await client.from('document_chunks').insert({
+        document_id: docIds[i],
+        tenant_id: tenantId,
+        chunk_text: chunk.text,
+        chunk_index: j,
+        embedding: JSON.stringify(resolveChunkEmbedding(chunk.text)),
+        equipment_type: doc.equipmentType ?? null,
+        brand: doc.brand ?? null,
+        model: doc.model ?? null,
+      });
+      if (error) {
+        console.warn(
+          `[seed] ⚠️  document_chunks insert failed (doc ${i}, chunk ${j}): ${error.message}`,
+        );
+      }
     }
   }
 }
