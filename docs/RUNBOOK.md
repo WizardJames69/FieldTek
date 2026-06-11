@@ -51,7 +51,7 @@ After any deploy: watch `system_alerts` (Admin → System Health) and Sentry for
 | `cleanup-old-health-metrics` | `0 3 * * *` | prunes old health metrics | 20260228200000 |
 | `retry-stuck-documents` | `*/5 * * * *` | `retry_stuck_documents()`: retries stuck embeddings + pending-stranded extraction (max 3), marks permanent failures, **alerts on failures/vault-miss** (20260610300000) | 20260301000000 / 20260520200000 / 20260610300000 |
 | `refresh-rag-quality-daily` | `0 * * * *` (hourly, despite name) | refreshes RAG quality metrics | 20260305100000 |
-| `evaluate-rag-alerts` | `*/5 * * * *` | `evaluate_rag_alerts()`: evaluates `rag_alert_rules`, writes `system_health_metrics` | 20260305200000 |
+| `evaluate-rag-alerts` | `*/5 * * * *` | `evaluate_rag_alerts()`: evaluates `rag_alert_rules`, writes `system_health_metrics` + bridges breaches into `system_alerts` (20260610400000) | 20260305200000 / 20260610400000 |
 | `log-pending-reembeds` | `*/5 * * * *` | logs chunks pending re-embedding | 20260325000000 |
 
 Additional schedule shipped with the **deferred** workflow stream (do not expect it yet): hourly intelligence refresh in `20260513000000`.
@@ -60,8 +60,26 @@ Additional schedule shipped with the **deferred** workflow stream (do not expect
 
 Out-of-band backstop: `.github/workflows/health-monitor.yml` pings the `monitor-health` function every 5 minutes from GitHub Actions and emails via Resend if it is unreachable (secrets: `MONITOR_HEALTH_URL`, `RESEND_API_KEY`, `ALERT_EMAIL_RECIPIENT`).
 
-### Known alerting gap
-`evaluate_rag_alerts()` writes to `system_health_metrics`, but the **email trigger lives on `system_alerts`** — RAG alert rules (including the seeded "Stuck documents" critical rule) currently produce dashboard metrics, **not emails**. Ingestion failures now alert directly into `system_alerts` (20260610300000); bridging the remaining rag-rule severities is a Phase 1 follow-up.
+### RAG alert → email bridging (since 20260610400000)
+`evaluate_rag_alerts()` still writes every breach to `system_health_metrics` (dashboard), and **also inserts a `system_alerts` row** (`alert_type = 'rag_<metric>'`, `source = 'evaluate_rag_alerts'`). Rule severity `critical` maps to system_alerts severity `critical` — which fires the existing email pipeline (`trg_notify_critical_alert` → `send-health-alert` → Resend); all other rule severities map to `medium` (visible in Admin → System Health, no email). Dedup: no new row while an unresolved alert of the same `alert_type` from the last hour exists, on top of each rule's `cooldown_minutes`/`last_triggered_at` gate.
+
+To test the bridge end-to-end:
+```sql
+-- 1. Make a rule trivially breach on the next 5-min cron tick
+UPDATE rag_alert_rules SET operator='gte', threshold=0, last_triggered_at=NULL
+WHERE rule_name='Stuck documents';
+-- 2. After the tick: expect one system_alerts row (and, for critical,
+--    a system_notifications row from the email trigger)
+SELECT created_at, alert_type, severity, message FROM system_alerts
+WHERE source='evaluate_rag_alerts' ORDER BY created_at DESC LIMIT 3;
+-- 3. Re-arm the rule (clear cooldown) and wait one more tick to confirm
+--    dedup: still exactly one unresolved row
+UPDATE rag_alert_rules SET last_triggered_at=NULL WHERE rule_name='Stuck documents';
+-- 4. Restore the rule and resolve the test alert
+UPDATE rag_alert_rules SET operator='gt', threshold=3 WHERE rule_name='Stuck documents';
+UPDATE system_alerts SET resolved_at=now()
+WHERE source='evaluate_rag_alerts' AND resolved_at IS NULL;
+```
 
 ## 6. Secrets inventory
 
