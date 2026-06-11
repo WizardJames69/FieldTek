@@ -128,30 +128,46 @@ export const TEST_DOCUMENTS = [
       // Startup procedure (q: "startup procedure for the Carrier 24ACC636")
       {
         text: 'Startup procedure for the Carrier 24ACC636: the recommended startup sequence is to verify the thermostat is set to off, turn on the main disconnect, switch the thermostat to cool mode, and wait five minutes for the compressor delay timer before the unit starts.',
+        page_number: 3,
+        section_name: 'Startup Procedure',
       },
       {
         text: 'Pre-startup checklist for the Carrier 24ACC636: before performing the startup procedure, confirm all electrical connections are torqued to specification, verify the disconnect is correctly rated, and check that the thermostat wiring matches the installation diagram.',
+        page_number: 3,
+        section_name: 'Startup Procedure',
       },
       // Operating temperature limits (q: "operating temperature limits")
       {
         text: 'Operating temperature range for the Carrier 24ACC636: the unit is rated to operate between 65°F and 85°F and must not run below 55°F without a low-ambient kit installed. Confirm the operating temperature is within these limits before startup.',
+        page_number: 5,
+        section_name: 'Operating Temperature Limits',
       },
       {
         text: 'Checking operating temperature limits: measure the supply and return air temperatures and confirm they fall within the rated operating temperature range. Readings outside the operating temperature limits indicate a refrigerant charge or airflow fault.',
+        page_number: 5,
+        section_name: 'Operating Temperature Limits',
       },
       // Refrigerant levels (q: "how do I check refrigerant levels")
       {
         text: 'Refrigerant charge verification: to check refrigerant levels on the Carrier 24ACC636, connect manifold gauges and compare the suction and liquid pressures against the nameplate charge table, then verify subcooling and superheat.',
+        page_number: 7,
+        section_name: 'Refrigerant Charge',
       },
       {
         text: 'How to check refrigerant levels: low refrigerant reduces cooling capacity, so check refrigerant levels by reading the manifold gauge pressures and comparing measured subcooling and superheat against the operating specification.',
+        page_number: 7,
+        section_name: 'Refrigerant Charge',
       },
       // Not cooling / troubleshooting (q: "unit is not cooling, what should I check")
       {
         text: 'Troubleshooting a unit that is not cooling: if the unit is not cooling, check that the thermostat is set to cool, confirm the compressor starts, inspect the air filter for restriction, and verify the refrigerant charge and operating temperature.',
+        page_number: 9,
+        section_name: 'Troubleshooting',
       },
       {
         text: 'What to check when the unit is not cooling: when cooling is weak or the unit is not cooling at all, check the refrigerant levels, confirm the operating temperature is within range, and make sure the air filter and coil are not blocking airflow.',
+        page_number: 9,
+        section_name: 'Troubleshooting',
       },
     ],
   },
@@ -162,26 +178,40 @@ export const TEST_DOCUMENTS = [
       // Filter replacement schedule (q: "what is a filter replacement schedule")
       {
         text: 'Filter replacement schedule: replace standard filters every 90 days and pleated filters every 60 days in high-use environments, and check the filter monthly during peak cooling season.',
+        page_number: 2,
+        section_name: 'Filter Replacement',
       },
       {
         text: 'Air filter replacement schedule and intervals: follow the recommended filter replacement schedule for the filter type in use. Replacing the air filter on its scheduled interval maintains airflow and system efficiency.',
+        page_number: 2,
+        section_name: 'Filter Replacement',
       },
       // Maintenance intervals + HVAC maintenance (q: "recommended maintenance intervals", "what is HVAC maintenance")
       {
         text: 'Recommended maintenance intervals: perform routine HVAC maintenance on a quarterly schedule by inspecting and replacing air filters, checking belt tension, and cleaning the condenser coil. The recommended maintenance intervals depend on equipment usage.',
+        page_number: 4,
+        section_name: 'Maintenance Intervals',
       },
       {
         text: 'Maintenance interval schedule: the recommended maintenance intervals are quarterly for air filter inspection and replacement, semi-annual for coil cleaning, and annual for a full system inspection. Adjust the maintenance intervals to match equipment runtime and operating environment.',
+        page_number: 4,
+        section_name: 'Maintenance Intervals',
       },
       {
         text: 'HVAC maintenance overview: routine HVAC maintenance includes replacing air filters, cleaning coils, and checking the refrigerant charge. Following the recommended maintenance intervals keeps the HVAC system running efficiently.',
+        page_number: 4,
+        section_name: 'Maintenance Intervals',
       },
       // Filter warning light (q: "can I safely ignore the filter warning light")
       {
         text: 'Filter warning light: when the filter warning light illuminates, the air filter is restricted and should be replaced. Do not ignore the filter warning light, because operating with a clogged filter reduces airflow.',
+        page_number: 6,
+        section_name: 'Filter Warning Light',
       },
       {
         text: 'Responding to the filter warning light: the filter warning light indicates the air filter needs replacement. It is not safe to ignore the filter warning light; replace the filter promptly when the warning appears.',
+        page_number: 6,
+        section_name: 'Filter Warning Light',
       },
     ],
   },
@@ -191,9 +221,13 @@ export const TEST_DOCUMENTS = [
     chunks: [
       {
         text: 'Warranty coverage: parts warranty is 5 years from the installation date and the compressor warranty is 10 years. Labor is not included, and the warranty is void if the equipment is not installed by a certified technician.',
+        page_number: 1,
+        section_name: 'Coverage',
       },
       {
         text: 'Warranty claims process: to file a warranty claim for Carrier equipment, submit the installation date, model and serial number, and proof of certified installation within the applicable coverage period.',
+        page_number: 1,
+        section_name: 'Claims Process',
       },
     ],
   },

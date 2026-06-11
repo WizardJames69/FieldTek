@@ -3,21 +3,76 @@ import { BookOpen, ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { resolveDocumentSignedUrl } from "@/lib/documentLinks";
+
+/** Structured citation from the assistant's response metadata. */
+export interface CitationSource {
+  document_id?: string | null;
+  document_name: string;
+  page_number?: number | null;
+  section_name?: string | null;
+  similarity?: number;
+}
 
 interface DocumentCitationProps {
-  sources: string[];
+  /** Legacy name-only sources (regex-parsed [Source: Name] markers). */
+  sources?: string[];
+  /** Structured sources from response metadata — preferred when present. */
+  citations?: CitationSource[];
   onSourceClick?: (sourceName: string) => void;
   className?: string;
 }
 
+const BADGE_CLASS =
+  "text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors";
+
 export function DocumentCitation({
   sources,
+  citations,
   onSourceClick,
   className,
 }: DocumentCitationProps) {
   const navigate = useNavigate();
 
-  if (sources.length === 0) return null;
+  // Structured citations (document + page + section) take priority.
+  if (citations && citations.length > 0) {
+    const handleCitationClick = async (c: CitationSource) => {
+      if (c.document_id) {
+        const url = await resolveDocumentSignedUrl(c.document_id, c.page_number ?? null);
+        if (url) {
+          window.open(url, "_blank");
+          return;
+        }
+      }
+      // No document_id, or the signed URL could not be resolved.
+      navigate(`/documents?search=${encodeURIComponent(c.document_name)}`);
+    };
+
+    return (
+      <div data-testid="document-citation" className={cn("flex flex-wrap gap-1.5", className)}>
+        {citations.map((c, idx) => {
+          const label =
+            c.page_number != null ? `${c.document_name} · p.${c.page_number}` : c.document_name;
+          return (
+            <Badge
+              key={idx}
+              variant="outline"
+              title={c.section_name ?? undefined}
+              className={BADGE_CLASS}
+              onClick={() => handleCitationClick(c)}
+            >
+              <BookOpen className="h-3 w-3" />
+              {label}
+              <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+            </Badge>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Legacy name-only fallback (old response shapes / regex markers).
+  if (!sources || sources.length === 0) return null;
 
   const handleClick = (source: string) => {
     if (onSourceClick) {
@@ -34,7 +89,7 @@ export function DocumentCitation({
         <Badge
           key={idx}
           variant="outline"
-          className="text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors"
+          className={BADGE_CLASS}
           onClick={() => handleClick(source)}
         >
           <BookOpen className="h-3 w-3" />

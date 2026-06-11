@@ -43,6 +43,7 @@ import {
   getWarrantyContext,
   generateQueryEmbedding,
   extractQueryForSearch,
+  buildSourceCitations,
   extractTextFromMessage,
   detectSymptomsInText,
   detectPatterns,
@@ -465,7 +466,7 @@ serve(async (req) => {
       id: string; chunk_text: string; document_name: string; document_category: string;
       similarity: number; keyword_rank?: number | null; chunk_type?: string;
       brand?: string | null; model?: string | null; embedding_model?: string;
-      page_number?: number | null; section_name?: string | null;
+      page_number?: number | null; section_name?: string | null; document_id?: string | null;
     }> = [];
 
     let retrievalBackend = "pgvector";
@@ -559,7 +560,7 @@ serve(async (req) => {
                 document_category: r.documentCategory, similarity: r.similarity,
                 keyword_rank: r.keywordRank, chunk_type: r.chunkType,
                 brand: r.brand, model: r.model, embedding_model: r.embeddingModel,
-                page_number: r.pageNumber, section_name: r.sectionName,
+                page_number: r.pageNumber, section_name: r.sectionName, document_id: r.documentId,
               }));
               console.log(`Semantic search found ${retrievalResponse.results.length} relevant chunks (backend=${retrievalBackend}, latency=${retrievalResponse.latencyMs}ms)`);
             }
@@ -589,14 +590,15 @@ serve(async (req) => {
         );
         // Graph scoring can reorder chunks. Look up page/section by chunk id
         // from the pre-graph list since applyGraphScoring's projection drops them.
-        const pageSectionByChunkId = new Map<string, { page_number: number | null; section_name: string | null }>(
+        const pageSectionByChunkId = new Map<string, { page_number: number | null; section_name: string | null; document_id: string | null }>(
           semanticSearchResults.map(r => [r.id, {
             page_number: r.page_number ?? null,
             section_name: r.section_name ?? null,
+            document_id: r.document_id ?? null,
           }]),
         );
         semanticSearchResults = scored.map(r => {
-          const extras = pageSectionByChunkId.get(r.id) ?? { page_number: null, section_name: null };
+          const extras = pageSectionByChunkId.get(r.id) ?? { page_number: null, section_name: null, document_id: null };
           return {
             id: r.id, chunk_text: r.chunk_text, document_name: r.document_name,
             document_category: r.document_category, similarity: r.similarity,
@@ -604,6 +606,7 @@ serve(async (req) => {
             brand: r.brand, model: r.model, embedding_model: r.embedding_model,
             page_number: extras.page_number,
             section_name: extras.section_name,
+            document_id: extras.document_id,
           };
         });
         graphScoringApplied = true;
@@ -1285,11 +1288,6 @@ serve(async (req) => {
         const keywordMatchCount = semanticSearchResults.filter(r => r.keyword_rank !== null && r.keyword_rank !== undefined).length;
         const chunkTypesRetrieved = [...new Set(semanticSearchResults.map(r => r.chunk_type).filter(Boolean))] as string[];
 
-        const metadataEvent = {
-          metadata: { retrieval_quality_score: rqScore, confidence, chunk_count: semanticSearchResults.length, documents_used: docNames.length, correlation_id: correlationId },
-        };
-        await writer.write(encoder.encode(`data: ${JSON.stringify(metadataEvent)}\n\n`));
-
         // ── Phase 8D/9D: Judge Evaluation (warning + full blocking) ─
         let judgeVerdict: "none" | "pass" | "warn_appended" | "blocked" = "none";
         let judgeResultSync: JudgeResult | null = null;
@@ -1344,6 +1342,30 @@ serve(async (req) => {
             console.warn("[judge-blocking] Error (non-fatal):", judgeBlockErr);
           }
         }
+
+        // ── Response metadata event ───────────────────────────────
+        // Emitted AFTER the judge block so `validationFailed` already
+        // reflects a judge full-block. Structured `sources` (document +
+        // page + section citation chips) are attached only for grounded,
+        // non-failed responses; the abstain / compliance-block / human-review
+        // paths return their own JSON before reaching this streaming block,
+        // so they never carry chips. Both metadata consumers read this event
+        // position-agnostically, so emitting it here (still before the content
+        // flush and [DONE]) keeps the existing aggregate-metadata contract.
+        const citationSources = !validationFailed
+          ? buildSourceCitations(semanticSearchResults)
+          : [];
+        const metadataEvent = {
+          metadata: {
+            retrieval_quality_score: rqScore,
+            confidence,
+            chunk_count: semanticSearchResults.length,
+            documents_used: docNames.length,
+            correlation_id: correlationId,
+            ...(citationSources.length > 0 ? { sources: citationSources } : {}),
+          },
+        };
+        await writer.write(encoder.encode(`data: ${JSON.stringify(metadataEvent)}\n\n`));
 
         if (!validationFailed) {
           if (containsWarrantyLanguage) {

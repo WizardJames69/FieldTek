@@ -169,6 +169,27 @@ test.describe('Successful Response', () => {
     }
   });
 
+  test('metadata event includes structured source citations for a grounded query', async () => {
+    const res = await client.sendChatMessage({
+      messages: [{ role: 'user', content: 'What is the startup procedure for the Carrier 24ACC636?' }],
+      context: { industry: 'hvac' },
+      authToken: adminToken,
+    });
+    expect(res.status).toBe(200);
+    expect(res.metadata).toBeTruthy();
+    const sources = (res.metadata?.sources ?? []) as Array<{
+      document_id?: string;
+      document_name?: string;
+      page_number?: number | null;
+      section_name?: string | null;
+    }>;
+    // Grounded query → structured citation chips carrying real retrieval metadata.
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.some((s) => typeof s.page_number === 'number')).toBe(true);
+    expect(sources.some((s) => typeof s.document_id === 'string' && s.document_id.length > 0)).toBe(true);
+    expect(sources.some((s) => (s.document_name ?? '').includes('Carrier'))).toBe(true);
+  });
+
   test('response includes rate limit headers', async () => {
     const res = await client.sendChatMessage({
       messages: [{ role: 'user', content: 'What filters should I use?' }],

@@ -123,6 +123,68 @@ export function extractQueryForSearch(messages: ChatMessage[]): string {
   return queryParts.join(" ").slice(0, 2000);
 }
 
+// ── Source Citations ────────────────────────────────────────
+// Build a deduped, capped list of citation sources for the response
+// metadata so the client can render document + page + section chips.
+// Dedupes by (document_id, page_number): chunks from the same document on
+// the same page collapse to one entry, and all null-page chunks of a
+// document collapse to a single name-only entry. Keeps the highest
+// similarity per group, prefers a non-empty section name, sorts by
+// similarity descending, and caps the list. Tolerant of missing fields.
+
+export interface SourceCitation {
+  document_id: string | null;
+  document_name: string;
+  page_number: number | null;
+  section_name: string | null;
+  similarity: number;
+}
+
+interface SourceCitationInput {
+  document_id?: string | null;
+  document_name?: string | null;
+  page_number?: number | null;
+  section_name?: string | null;
+  similarity?: number | null;
+}
+
+export function buildSourceCitations(
+  results: SourceCitationInput[],
+  cap = 6,
+): SourceCitation[] {
+  const groups = new Map<string, SourceCitation>();
+
+  for (const r of results || []) {
+    const documentName = (r.document_name ?? "").trim();
+    if (!documentName) continue; // a citation chip with no name is useless
+    const documentId = r.document_id ?? null;
+    const pageNumber = typeof r.page_number === "number" ? r.page_number : null;
+    const sectionName = (r.section_name ?? "").trim() || null;
+    const similarity = typeof r.similarity === "number" ? r.similarity : 0;
+
+    // Group by document + page. Fall back to the document name when no id is
+    // present so same-document chunks still collapse into one chip.
+    const key = `${documentId ?? documentName}::${pageNumber ?? "null"}`;
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, {
+        document_id: documentId,
+        document_name: documentName,
+        page_number: pageNumber,
+        section_name: sectionName,
+        similarity,
+      });
+    } else {
+      if (similarity > existing.similarity) existing.similarity = similarity;
+      if (!existing.section_name && sectionName) existing.section_name = sectionName;
+    }
+  }
+
+  return [...groups.values()]
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, Math.max(0, cap));
+}
+
 // ── Extract text from a user message ────────────────────────
 
 export function extractTextFromMessage(msg: ChatMessage | undefined): string {

@@ -109,7 +109,7 @@ export async function seedDocumentChunks(
       model?: string;
     };
     for (let j = 0; j < doc.chunks.length; j++) {
-      const chunk = doc.chunks[j];
+      const chunk = doc.chunks[j] as { text: string; page_number?: number | null; section_name?: string | null };
       // Plain insert — matches the production ingestion path. seedTestDocuments
       // inserts fresh documents each run, so chunk_index never collides. The
       // previous `.upsert(..., { onConflict: 'document_id,chunk_index' })`
@@ -128,6 +128,8 @@ export async function seedDocumentChunks(
         equipment_type: doc.equipmentType ?? null,
         brand: doc.brand ?? null,
         model: doc.model ?? null,
+        page_number: chunk.page_number ?? null,
+        section_name: chunk.section_name ?? null,
       });
       if (error) {
         console.warn(

@@ -1,8 +1,19 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@/test/test-utils";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@/test/test-utils";
 import { SuggestedQuestions } from "@/components/assistant/SuggestedQuestions";
 import { DocumentCitation, ContextIndicator } from "@/components/assistant/DocumentCitation";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
+import { resolveDocumentSignedUrl } from "@/lib/documentLinks";
+
+// Structured citation clicks resolve a signed URL or fall back to navigation.
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }));
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+vi.mock("@/lib/documentLinks", () => ({
+  resolveDocumentSignedUrl: vi.fn(),
+}));
 
 describe("Sentinel AI Components", () => {
   describe("SuggestedQuestions", () => {
@@ -65,6 +76,74 @@ describe("Sentinel AI Components", () => {
       
       // Should not show any badges
       expect(screen.queryByRole("button")).toBeNull();
+    });
+  });
+
+  describe("DocumentCitation (structured citations)", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("renders a page number when present", () => {
+      render(
+        <DocumentCitation
+          citations={[
+            { document_id: "doc-1", document_name: "Carrier Manual", page_number: 12, section_name: "Startup" },
+          ]}
+        />,
+      );
+      expect(screen.getByText("Carrier Manual · p.12")).toBeInTheDocument();
+    });
+
+    it("renders name-only when page number is null", () => {
+      render(
+        <DocumentCitation
+          citations={[{ document_id: "doc-1", document_name: "Carrier Manual", page_number: null }]}
+        />,
+      );
+      expect(screen.getByText("Carrier Manual")).toBeInTheDocument();
+      expect(screen.queryByText(/p\./)).toBeNull();
+    });
+
+    it("exposes the section name as a tooltip title", () => {
+      render(
+        <DocumentCitation
+          citations={[
+            { document_id: "doc-1", document_name: "Carrier Manual", page_number: 5, section_name: "Refrigerant Charge" },
+          ]}
+        />,
+      );
+      expect(screen.getByText("Carrier Manual · p.5")).toHaveAttribute("title", "Refrigerant Charge");
+    });
+
+    it("opens a signed URL at the page when a citation with document_id is clicked", async () => {
+      vi.mocked(resolveDocumentSignedUrl).mockResolvedValue("https://signed.example/doc.pdf#page=12");
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+
+      render(
+        <DocumentCitation
+          citations={[
+            { document_id: "doc-1", document_name: "Carrier Manual", page_number: 12, section_name: "Startup" },
+          ]}
+        />,
+      );
+      fireEvent.click(screen.getByText("Carrier Manual · p.12"));
+
+      await waitFor(() => expect(resolveDocumentSignedUrl).toHaveBeenCalledWith("doc-1", 12));
+      await waitFor(() =>
+        expect(openSpy).toHaveBeenCalledWith("https://signed.example/doc.pdf#page=12", "_blank"),
+      );
+      openSpy.mockRestore();
+    });
+
+    it("falls back to documents search when a citation has no document_id", async () => {
+      render(<DocumentCitation citations={[{ document_name: "Carrier Manual", page_number: null }]} />);
+      fireEvent.click(screen.getByText("Carrier Manual"));
+
+      await waitFor(() =>
+        expect(mockNavigate).toHaveBeenCalledWith("/documents?search=Carrier%20Manual"),
+      );
+      expect(resolveDocumentSignedUrl).not.toHaveBeenCalled();
     });
   });
 

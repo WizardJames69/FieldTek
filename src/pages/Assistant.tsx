@@ -28,7 +28,7 @@ import { VoiceInput } from "@/components/assistant/VoiceInput";
 import { TextToSpeech, playTTS } from "@/components/assistant/TextToSpeech";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SuggestedQuestions, generateSuggestions } from "@/components/assistant/SuggestedQuestions";
-import { DocumentCitation, ContextIndicator } from "@/components/assistant/DocumentCitation";
+import { DocumentCitation, ContextIndicator, type CitationSource } from "@/components/assistant/DocumentCitation";
 import { DiagnosticWizard, getDiagnosticPath, formatDiagnosticData } from "@/components/assistant/DiagnosticWizard";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
 
@@ -42,6 +42,7 @@ type ResponseMetadata = {
   confidence: 'high' | 'medium' | 'low';
   chunk_count: number;
   documents_used: number;
+  sources?: CitationSource[];
 };
 
 type Message = {
@@ -905,7 +906,8 @@ export default function Assistant() {
                           )}
                           {msg.role === "assistant" ? (
                             (() => {
-                              const { sources, cleanContent } = parseDocumentSources(textContent);
+                              const { sources: regexSources, cleanContent } = parseDocumentSources(textContent);
+                              const structuredSources = msg.metadata?.sources;
                               return (
                                 <div className="max-w-[80%] space-y-2">
                                   <div className="chat-bubble-assistant rounded-lg px-4 py-2">
@@ -922,9 +924,11 @@ export default function Assistant() {
                                       </div>
                                     </div>
                                   </div>
-                                  {sources.length > 0 && (
-                                    <DocumentCitation sources={sources} />
-                                  )}
+                                  {structuredSources && structuredSources.length > 0 ? (
+                                    <DocumentCitation citations={structuredSources} />
+                                  ) : regexSources.length > 0 ? (
+                                    <DocumentCitation sources={regexSources} />
+                                  ) : null}
                                   {msg.metadata?.confidence && (
                                     <div data-testid="confidence-badge" className={cn(
                                       "flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-md w-fit font-medium",
