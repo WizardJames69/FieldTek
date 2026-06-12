@@ -51,7 +51,7 @@ After any deploy: watch `system_alerts` (Admin → System Health) and Sentry for
 | `cleanup-old-health-metrics` | `0 3 * * *` | prunes old health metrics | 20260228200000 |
 | `retry-stuck-documents` | `*/5 * * * *` | `retry_stuck_documents()`: retries stuck embeddings + pending-stranded extraction (max 3), marks permanent failures, **alerts on failures/vault-miss** (20260610300000) | 20260301000000 / 20260520200000 / 20260610300000 |
 | `refresh-rag-quality-daily` | `0 * * * *` (hourly, despite name) | refreshes RAG quality metrics | 20260305100000 |
-| `evaluate-rag-alerts` | `*/5 * * * *` | `evaluate_rag_alerts()`: evaluates `rag_alert_rules`, writes `system_health_metrics` + bridges breaches into `system_alerts` (20260610400000) | 20260305200000 / 20260610400000 |
+| `evaluate-rag-alerts` | `*/5 * * * *` | `evaluate_rag_alerts()`: evaluates `rag_alert_rules`, writes `system_health_metrics` + bridges breaches into `system_alerts` (20260610400000); skips average metrics on idle/no-data windows (20260610600000) | 20260305200000 / 20260610400000 / 20260610600000 |
 | `log-pending-reembeds` | `*/5 * * * *` | logs chunks pending re-embedding | 20260325000000 |
 
 Additional schedule shipped with the **deferred** workflow stream (do not expect it yet): hourly intelligence refresh in `20260513000000`.
@@ -79,6 +79,25 @@ UPDATE rag_alert_rules SET last_triggered_at=NULL WHERE rule_name='Stuck documen
 UPDATE rag_alert_rules SET operator='gt', threshold=3 WHERE rule_name='Stuck documents';
 UPDATE system_alerts SET resolved_at=now()
 WHERE source='evaluate_rag_alerts' AND resolved_at IS NULL;
+```
+
+### Idle/no-data guard for average RAG alerts (since 20260610600000)
+Average/observation-based RAG rules (`avg_rq_score`, `abstain_rate`, `validation_failure_rate`, `p95_response_time_ms`) **do not alert on idle windows with zero observations.** Previously `evaluate_rag_alerts()` computed `avg_rq_score` as `COALESCE(AVG(retrieval_quality_score), 0)`, so a quiet hour with no RAG activity produced `0`, and the seeded `avg_rq_score < 40` ("Low retrieval quality") rule breached on nothing — a recurring phantom **medium** alert. The function now also counts the rows actually measured in the window and **skips** the rule (no `system_health_metrics`, no `system_alerts`, no cooldown update) when that count is zero.
+
+- **Real low-quality observations still alert.** A window that *does* contain scored requests with a genuinely low average still breaches and bridges normally.
+- **Count-based alerts are unchanged.** `stuck_document_count` is a `COUNT(*)` where `0` is a real, healthy measurement; its branch leaves the observation count NULL so the guard never applies, and the critical "Stuck documents" alert keeps working.
+
+Confirm on a quiet staging window (no recent scored `ai_audit_logs`):
+```sql
+-- Arm the average rule and run one evaluation by hand.
+UPDATE rag_alert_rules SET last_triggered_at=NULL WHERE rule_name='Low retrieval quality';
+SELECT public.evaluate_rag_alerts();
+-- Expect NO new row (the rule was skipped on no-data, not breached):
+SELECT created_at, alert_type, severity, message FROM system_alerts
+WHERE alert_type='rag_avg_rq_score' AND source='evaluate_rag_alerts'
+ORDER BY created_at DESC LIMIT 3;
+-- (A window that contains a real low retrieval_quality_score still breaches;
+--  count-based rules are exercised by the bridge test above.)
 ```
 
 ## 6. Secrets inventory
