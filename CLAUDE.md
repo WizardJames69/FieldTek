@@ -97,7 +97,7 @@ Shared chunking logic in `_shared/chunking.ts`. AI gateway client with circuit b
 - CORS: all functions handle OPTIONS preflight with `corsHeaders` object.
 - Auth: most functions verify JWT via `supabase.auth.getUser()` or raw GoTrue API.
 - `supabase/config.toml` lists functions with `verify_jwt = false` (webhooks, public endpoints).
-- `AI_GATEWAY_URL` env var set to `https://api.openai.com/v1` on staging to bypass Lovable gateway.
+- `AI_GATEWAY_URL` env var set to `https://api.openai.com/v1` on the primary backend to bypass the Lovable AI gateway.
 
 ## Database
 
