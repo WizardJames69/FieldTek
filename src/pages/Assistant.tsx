@@ -357,6 +357,33 @@ export default function Assistant() {
     const contentType = resp.headers.get("content-type") ?? "";
     if (contentType.includes("application/json")) {
       const body = await resp.json().catch(() => ({}));
+
+      // Deterministic compliance block: a 200 JSON body carrying `compliance_blocked`
+      // and `verdicts` but no `response`/`error`. Render the blocked rules clearly
+      // instead of falling through to the "Empty response" throw below.
+      if (body.compliance_blocked === true) {
+        const verdicts: Array<{ rule?: string; explanation?: string; code_references?: string[] }> =
+          Array.isArray(body.verdicts) ? body.verdicts : [];
+        const lines = verdicts.map((v) => {
+          const refs =
+            v.code_references && v.code_references.length > 0
+              ? ` (${v.code_references.join(", ")})`
+              : "";
+          return `• ${v.rule ?? "Rule"}: ${v.explanation ?? "blocked"}${refs}`;
+        });
+        const content = [
+          "This action is blocked by compliance rules:",
+          "",
+          ...(lines.length > 0
+            ? lines
+            : ["• A required compliance check has not been satisfied."]),
+          "",
+          "An owner or admin can override this from the job's workflow panel.",
+        ].join("\n");
+        setMessages((prev) => [...prev, { role: "assistant", content }]);
+        return;
+      }
+
       const text: string | undefined = body.response || body.error;
       if (!text) throw new Error("Empty response from assistant");
       setMessages((prev) => [

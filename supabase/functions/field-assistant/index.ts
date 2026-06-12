@@ -62,7 +62,7 @@ import type { JudgeResult } from "./judge.ts";
 import { fetchWorkflowState, fetchWorkflowExecutionContext } from "./workflow.ts";
 import type { WorkflowExecutionContext } from "./types.ts";
 import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
-import type { ComplianceContext, ComplianceVerdict, StepEvidenceRecord } from "./compliance.ts";
+import type { ComplianceContext, ComplianceVerdict, OverrideEntry, StepEvidenceRecord } from "./compliance.ts";
 import { expandQueryWithGraph } from "./graph.ts";
 import type { GraphExpansionResult } from "./graph.ts";
 import { applyGraphScoring } from "./graphScoring.ts";
@@ -369,7 +369,35 @@ serve(async (req) => {
         // 4. Evaluate deterministic rules (no AI involved)
         complianceVerdicts = await evaluateCompliance(serviceRoleClient, complianceCtx);
 
-        // 5. Persist verdicts
+        // 4b. Fetch active admin overrides for this job (FAIL CLOSED on error).
+        // An override marked on a prior (rule_id, stage_name) verdict is carried
+        // forward so the same rule/stage does not immediately re-block. On any
+        // lookup error we use an empty map: nothing is excluded, the block stands.
+        const overrideMap = new Map<string, OverrideEntry>();
+        try {
+          const { data: activeOverrides, error: overrideErr } = await serviceRoleClient
+            .from("compliance_verdicts")
+            .select("rule_id, stage_name, overridden_by, override_reason")
+            .eq("job_id", context.job.id)
+            .eq("overridden", true);
+          if (overrideErr) throw overrideErr;
+          for (const o of activeOverrides ?? []) {
+            overrideMap.set(`${o.rule_id}::${o.stage_name}`, {
+              overriddenBy: o.overridden_by,
+              overrideReason: o.override_reason,
+            });
+          }
+        } catch (overrideLookupErr) {
+          console.error(
+            "[compliance] Override lookup failed — failing CLOSED (block stands):",
+            overrideLookupErr,
+          );
+          overrideMap.clear();
+        }
+        const overrideKey = (v: ComplianceVerdict) =>
+          `${v.ruleId}::${complianceCtx.currentStage}`;
+
+        // 5. Persist verdicts (carrying overrides forward onto matching fail/block rows)
         if (complianceVerdicts.length > 0) {
           await persistVerdicts(
             serviceRoleClient,
@@ -377,13 +405,17 @@ serve(async (req) => {
             context.job.id,
             complianceCtx.currentStage,
             complianceVerdicts,
+            overrideMap,
           );
         }
 
-        // 6. Check for blocking verdicts (critical/blocking severity that failed)
+        // 6. Check for blocking verdicts (critical/blocking severity that failed),
+        // excluding any (rule, stage) the admin has actively overridden.
         complianceBlockingVerdicts = complianceVerdicts.filter(
-          (v) => (v.verdict === "block") ||
-            (v.verdict === "fail" && (v.severity === "critical" || v.severity === "blocking")),
+          (v) => (
+            (v.verdict === "block") ||
+            (v.verdict === "fail" && (v.severity === "critical" || v.severity === "blocking"))
+          ) && !overrideMap.has(overrideKey(v)),
         );
 
         if (complianceBlockingVerdicts.length > 0 && aiPolicy?.auto_block_on_critical !== false) {
@@ -408,9 +440,15 @@ serve(async (req) => {
           }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        // Non-blocking: update compliance status
-        const hasFailures = complianceVerdicts.some((v) => v.verdict === "fail");
-        const hasWarnings = complianceVerdicts.some((v) => v.verdict === "warn");
+        // Non-blocking: update compliance status. Exclude actively-overridden
+        // (rule, stage) tuples so a suppressed fail does not leave the job at
+        // "violations" after an override.
+        const hasFailures = complianceVerdicts.some(
+          (v) => v.verdict === "fail" && !overrideMap.has(overrideKey(v)),
+        );
+        const hasWarnings = complianceVerdicts.some(
+          (v) => v.verdict === "warn" && !overrideMap.has(overrideKey(v)),
+        );
         await serviceRoleClient
           .from("scheduled_jobs")
           .update({

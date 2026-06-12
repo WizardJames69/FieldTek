@@ -20,6 +20,7 @@ import { useJobEvidence, useRequiredEvidence, getItemEvidence } from '@/hooks/us
 import type { RequiredEvidenceMap } from '@/hooks/useStepEvidence';
 import { StepEvidenceCapture } from '@/components/mobile/StepEvidenceCapture';
 import { EvidenceStatusBadge } from '@/components/mobile/EvidenceStatusBadge';
+import { ComplianceOverrideDialog } from '@/components/jobs/ComplianceOverrideDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -77,12 +78,13 @@ const stageStyles = {
 };
 
 export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }: JobStageWorkflowProps) {
-  const { tenant } = useTenant();
+  const { tenant, isAdmin } = useTenant();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeStage, setActiveStage] = useState(currentStage || 'Service');
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
+  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
 
   // Step verification
   const { isEnabled } = useFeatureFlags();
@@ -154,6 +156,57 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
     const status = getStageVerdictStatus(stage);
     return status === 'block';
   };
+
+  // Blocking verdicts at the active stage — matches the backend's notion of a
+  // block: verdict 'block', OR a 'fail' on a blocking/critical-severity rule.
+  const activeBlockingVerdicts = (complianceVerdicts ?? []).filter(
+    (v) =>
+      v.stage_name === activeStage &&
+      (v.verdict === 'block' ||
+        (v.verdict === 'fail' &&
+          (v.compliance_rules?.severity === 'blocking' ||
+            v.compliance_rules?.severity === 'critical'))),
+  );
+  const activeBlockingRuleNames = activeBlockingVerdicts
+    .map((v) => v.compliance_rules?.rule_name)
+    .filter((n): n is string => Boolean(n));
+  const isActiveStageBlocked = activeBlockingVerdicts.length > 0;
+
+  // Admin/owner-only override of a deterministic compliance block. Writes flow
+  // through the SECURITY DEFINER RPC (required reason + audit); the direct table
+  // UPDATE path was removed, so technicians cannot override.
+  const overrideMutation = useMutation({
+    mutationFn: async (reason: string) => {
+      type OverrideRpc = (
+        fn: 'override_compliance_block',
+        args: { p_job_id: string; p_reason: string },
+      ) => Promise<{ data: number | null; error: { message: string } | null }>;
+      const { data, error } = await (supabase.rpc as unknown as OverrideRpc)(
+        'override_compliance_block',
+        { p_job_id: jobId, p_reason: reason },
+      );
+      if (error) throw new Error(error.message);
+      return data ?? 0;
+    },
+    onSuccess: (count) => {
+      setOverrideDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['compliance-verdicts', jobId] });
+      toast({
+        title: 'Compliance block overridden',
+        description:
+          count > 0
+            ? 'The block has been overridden and recorded against your account.'
+            : 'No active block to override.',
+      });
+    },
+    onError: (err) => {
+      toast({
+        title: 'Override failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      });
+    },
+  });
 
   // Get the current stage template
   const stageTemplate = templates?.find(t => t.stage_name === activeStage);
@@ -436,12 +489,38 @@ export function JobStageWorkflow({ jobId, jobType, currentStage, onStageChange }
                       )}
                     </div>
                   ))}
+                  {isActiveStageBlocked &&
+                    (isAdmin ? (
+                      <div className="pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs border-amber-300 text-amber-900 hover:bg-amber-100"
+                          onClick={() => setOverrideDialogOpen(true)}
+                        >
+                          Override block…
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-amber-700 pt-1">
+                        Blocked — an owner or admin must review and override.
+                      </p>
+                    ))}
                 </div>
               </div>
             </CardContent>
           </Card>
         );
       })()}
+
+      <ComplianceOverrideDialog
+        open={overrideDialogOpen}
+        onOpenChange={setOverrideDialogOpen}
+        ruleNames={activeBlockingRuleNames}
+        isSubmitting={overrideMutation.isPending}
+        onConfirm={(reason) => overrideMutation.mutate(reason)}
+      />
 
       {/* AI Guidance Banner */}
       <Card className={cn('border-2', styles.border, styles.bg)}>

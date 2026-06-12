@@ -340,24 +340,52 @@ export async function evaluateCompliance(
 
 // ── Persist Verdicts ────────────────────────────────────────
 
+// An active override carried forward from a prior admin action.
+// Keyed by `${ruleId}::${stageName}` in the override map.
+export interface OverrideEntry {
+  overriddenBy: string | null;
+  overrideReason: string | null;
+}
+
 export async function persistVerdicts(
   client: SupabaseClient,
   tenantId: string,
   jobId: string,
   stageName: string,
   verdicts: ComplianceVerdict[],
+  overrideMap?: Map<string, OverrideEntry>,
 ): Promise<void> {
   if (verdicts.length === 0) return;
 
-  const rows = verdicts.map((v) => ({
-    tenant_id: tenantId,
-    job_id: jobId,
-    rule_id: v.ruleId,
-    stage_name: stageName,
-    verdict: v.verdict,
-    explanation: v.explanation,
-    evidence_json: v.evidence,
-  }));
+  const nowIso = new Date().toISOString();
+
+  const rows = verdicts.map((v) => {
+    // Carry forward an existing override so a re-evaluation of the same
+    // (rule, stage) does not re-block. Only fail/block verdicts can carry
+    // an override; a later genuine 'pass'/'warn' is persisted normally.
+    const carried =
+      (v.verdict === "fail" || v.verdict === "block")
+        ? overrideMap?.get(`${v.ruleId}::${stageName}`)
+        : undefined;
+
+    return {
+      tenant_id: tenantId,
+      job_id: jobId,
+      rule_id: v.ruleId,
+      stage_name: stageName,
+      verdict: v.verdict,
+      explanation: v.explanation,
+      evidence_json: v.evidence,
+      ...(carried
+        ? {
+            overridden: true,
+            overridden_by: carried.overriddenBy,
+            override_reason: carried.overrideReason,
+            overridden_at: nowIso,
+          }
+        : {}),
+    };
+  });
 
   const { error } = await client.from("compliance_verdicts").insert(rows);
 

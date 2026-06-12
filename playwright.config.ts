@@ -133,6 +133,7 @@ export default defineConfig({
         'e2e/specs/assistant-pipeline.spec.ts',
         'e2e/specs/ai-security.spec.ts',
         'e2e/specs/ai-compliance.spec.ts',
+        'e2e/specs/ai-compliance-override.spec.ts',
         'e2e/specs/ai-degradation.spec.ts',
         'e2e/specs/ai-rate-limiting.spec.ts',
         'e2e/specs/ai-multi-tenant.spec.ts',
