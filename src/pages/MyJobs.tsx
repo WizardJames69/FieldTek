@@ -340,7 +340,7 @@ export default function MyJobs() {
                     <div className="section-divider" />
                     <div>
                       <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-widest mb-4">Checklist</h4>
-                      <JobChecklist jobId={selectedJob.id} items={offlineChecklistItems} />
+                      <JobChecklist key={selectedJob.id} jobId={selectedJob.id} items={offlineChecklistItems} />
                     </div>
                   </>
                 ) : null}

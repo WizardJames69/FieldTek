@@ -145,6 +145,18 @@ export default defineConfig({
         'e2e/specs/workflow-verification.spec.ts',
       ],
     },
+
+    // Technician mobile workflow incl. offline sync (runs last so its seeded
+    // job never appears while earlier projects' specs are running)
+    {
+      name: 'chromium-technician',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: '.playwright/auth/technician.json',
+      },
+      dependencies: ['setup'],
+      testMatch: ['e2e/specs/offline-technician.spec.ts'],
+    },
   ],
 
   webServer: {

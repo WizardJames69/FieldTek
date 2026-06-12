@@ -1,9 +1,6 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, Camera, Loader2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { Check, Loader2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { useOfflineChecklistUpdate } from '@/hooks/useOfflineChecklistUpdate';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useJobEvidence, useRequiredEvidence, getItemEvidence } from '@/hooks/useStepEvidence';
 import type { RequiredEvidenceMap } from '@/hooks/useStepEvidence';
@@ -30,11 +27,49 @@ interface JobChecklistProps {
 }
 
 export function JobChecklist({ jobId, items }: JobChecklistProps) {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { toggleItem, saveNotes } = useOfflineChecklistUpdate(jobId);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  // Optimistic layer over the items prop: MyJobs loads items once per
+  // sheet-open, so a server round-trip can't re-render this list. Successful
+  // updates (online or queued offline) land here.
+  const [overrides, setOverrides] = useState<Record<string, Partial<ChecklistItem>>>({});
+  const [togglingItemId, setTogglingItemId] = useState<string | null>(null);
+  const [savingNotesItemId, setSavingNotesItemId] = useState<string | null>(null);
+
+  const mergedItems = items.map((item) => ({ ...item, ...overrides[item.id] }));
+
+  const handleToggle = async (item: ChecklistItem) => {
+    if (togglingItemId) return;
+    const completed = !item.completed;
+    setTogglingItemId(item.id);
+    try {
+      const success = await toggleItem(item.id, completed);
+      if (success) {
+        setOverrides((prev) => ({
+          ...prev,
+          [item.id]: { ...prev[item.id], completed },
+        }));
+      }
+    } finally {
+      setTogglingItemId(null);
+    }
+  };
+
+  const handleSaveNotes = async (itemId: string, value: string) => {
+    setSavingNotesItemId(itemId);
+    try {
+      const success = await saveNotes(itemId, value);
+      if (success) {
+        setOverrides((prev) => ({
+          ...prev,
+          [itemId]: { ...prev[itemId], notes: value },
+        }));
+      }
+    } finally {
+      setSavingNotesItemId(null);
+    }
+  };
 
   // Step verification
   const { isEnabled } = useFeatureFlags();
@@ -48,55 +83,15 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
     verificationEnabled && stageNames.length > 0 ? stageNames[0] : undefined
   );
 
-  const toggleMutation = useMutation({
-    mutationFn: async ({ itemId, completed }: { itemId: string; completed: boolean }) => {
-      const { error } = await supabase
-        .from('job_checklist_completions')
-        .update({
-          completed,
-          completed_by: completed ? user?.id : null,
-          completed_at: completed ? new Date().toISOString() : null,
-        })
-        .eq('id', itemId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job-checklist', jobId] });
-    },
-    onError: (error) => {
-      toast({
-        title: 'Failed to update',
-        description: error.message,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  const saveNotesMutation = useMutation({
-    mutationFn: async ({ itemId, notes }: { itemId: string; notes: string }) => {
-      const { error } = await supabase
-        .from('job_checklist_completions')
-        .update({ notes })
-        .eq('id', itemId);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({ title: 'Notes saved' });
-      queryClient.invalidateQueries({ queryKey: ['job-checklist', jobId] });
-    },
-  });
-
-  const groupedItems = items.reduce((acc, item) => {
+  const groupedItems = mergedItems.reduce((acc, item) => {
     if (!acc[item.stage_name]) acc[item.stage_name] = [];
     acc[item.stage_name].push(item);
     return acc;
   }, {} as Record<string, ChecklistItem[]>);
 
   // Calculate completion progress
-  const completedCount = items.filter(i => i.completed).length;
-  const totalCount = items.length;
+  const completedCount = mergedItems.filter(i => i.completed).length;
+  const totalCount = mergedItems.length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
   return (
@@ -147,8 +142,9 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                       <div className="flex items-start gap-4">
                         <button
                           type="button"
-                          onClick={() => toggleMutation.mutate({ itemId: item.id, completed: !item.completed })}
-                          disabled={toggleMutation.isPending}
+                          aria-label={`Toggle ${item.checklist_item}`}
+                          onClick={() => handleToggle(item)}
+                          disabled={togglingItemId !== null}
                           className={cn(
                             "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-all touch-native",
                             item.completed
@@ -160,7 +156,7 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                             checked={item.completed}
                             tabIndex={-1}
                             className="h-6 w-6 border-0 pointer-events-none"
-                            disabled={toggleMutation.isPending}
+                            disabled={togglingItemId !== null}
                           />
                         </button>
                         <div className="flex-1 min-w-0">
@@ -209,15 +205,10 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                                   size="default"
                                   variant="outline"
                                   className="flex-1 touch-native h-11 font-semibold"
-                                  onClick={() =>
-                                    saveNotesMutation.mutate({
-                                      itemId: item.id,
-                                      notes: notes[item.id] ?? '',
-                                    })
-                                  }
-                                  disabled={saveNotesMutation.isPending}
+                                  onClick={() => handleSaveNotes(item.id, notes[item.id] ?? '')}
+                                  disabled={savingNotesItemId !== null}
                                 >
-                                  {saveNotesMutation.isPending ? (
+                                  {savingNotesItemId === item.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     'Save Notes'

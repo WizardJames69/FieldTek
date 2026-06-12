@@ -132,6 +132,10 @@ export function useOfflineJobs({ userId, tenantId, enabled = true }: UseOfflineJ
       return userJobs;
     },
     enabled: enabled && !isOnline,
+    // This query reads IndexedDB, not the network. React Query's default
+    // networkMode ('online') pauses fetches while navigator.onLine is false —
+    // which is precisely when this query runs — so it must opt out.
+    networkMode: 'always',
     staleTime: Infinity, // Cached data doesn't go stale
   });
 

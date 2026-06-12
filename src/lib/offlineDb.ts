@@ -8,7 +8,7 @@ const DB_VERSION = 3; // Bumped for evidence_blobs store
 
 export interface QueuedOperation {
   id: string;
-  type: 'job_status_update' | 'job_checklist_update' | 'job_notes_update' | 'evidence_submission';
+  type: 'job_status_update' | 'job_checklist_update' | 'job_notes_update' | 'evidence_submission' | 'checklist_completion_update';
   payload: Record<string, any>;
   createdAt: string;
   retryCount: number;
@@ -326,6 +326,35 @@ export async function getCachedChecklist(jobId: string): Promise<CachedChecklist
 
     request.onsuccess = () => resolve(request.result || null);
     request.onerror = () => reject(request.error);
+  });
+}
+
+export async function updateCachedChecklistItem(
+  jobId: string,
+  itemId: string,
+  patch: Record<string, any>
+): Promise<void> {
+  const database = await initOfflineDb();
+
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(['cached_checklists'], 'readwrite');
+    const store = transaction.objectStore('cached_checklists');
+    const getRequest = store.get(jobId);
+
+    getRequest.onsuccess = () => {
+      const cached: CachedChecklist | undefined = getRequest.result;
+      if (!cached) {
+        // No cached checklist for this job — nothing to patch.
+        resolve();
+        return;
+      }
+      cached.items = cached.items.map((item) =>
+        item.id === itemId ? { ...item, ...patch } : item
+      );
+      store.put(cached);
+      resolve();
+    };
+    getRequest.onerror = () => reject(getRequest.error);
   });
 }
 

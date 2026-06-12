@@ -13,9 +13,18 @@ import {
   removeEvidenceBlob,
 } from '@/lib/offlineDb';
 import { useOnlineStatus } from './useOnlineStatus';
+import {
+  buildJobStatusUpdate,
+  buildChecklistCompletionUpdate,
+  JobStatusUpdatePayload,
+  ChecklistCompletionUpdatePayload,
+} from '@/lib/offlineReplay';
 import { toast } from 'sonner';
 
-const MAX_RETRIES = 3;
+// Operations are DELETED once retryCount exceeds this — keep it generous so a
+// burst of transient failures (e.g. 401s racing token refresh right after
+// reconnect) doesn't silently drop field data.
+const MAX_RETRIES = 10;
 const SYNC_INTERVAL = 30000; // 30 seconds
 
 export function useOfflineSync() {
@@ -85,16 +94,27 @@ export function useOfflineSync() {
     try {
       switch (operation.type) {
         case 'job_status_update': {
-          const { jobId, status, notes } = operation.payload;
+          const payload = operation.payload as JobStatusUpdatePayload;
           const { error } = await supabase
             .from('scheduled_jobs')
-            .update({ 
-              status, 
-              notes,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', jobId);
-          
+            .update(buildJobStatusUpdate(payload))
+            .eq('id', payload.jobId);
+
+          if (error) throw error;
+          break;
+        }
+
+        case 'checklist_completion_update': {
+          const payload = operation.payload as ChecklistCompletionUpdatePayload;
+          const update = buildChecklistCompletionUpdate(payload);
+          // Nothing to write (defensive — shouldn't be queued empty).
+          if (Object.keys(update).length === 0) break;
+
+          const { error } = await supabase
+            .from('job_checklist_completions')
+            .update(update)
+            .eq('id', payload.itemId);
+
           if (error) throw error;
           break;
         }
