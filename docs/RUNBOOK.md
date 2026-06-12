@@ -15,9 +15,11 @@ that wording until a second Supabase environment is deliberately created and doc
 | `dlrhobkrjfegtbdsqdsa` | **Legacy Lovable — do not use** | The original Lovable-provisioned project. **Not accessible from the current CLI account** (different Supabase account). Not managed, migrated, or deployed to from this repo. Archive; do not delete. |
 | `dguurrghlassjshteupf` | Unrelated | "always-triple-check" stray project in the same org. Ignore. |
 
-Frontend hosting: the app is Lovable-managed (no Vercel/Netlify config in the repo). The deployed app's
-`VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` must point at the primary backend
-(`fgemfxhwushaiiguqxfe`); confirm/maintain this in the hosting dashboard (not committed in-repo).
+Frontend hosting: the app deploys through **Vercel** (no hosting config is committed in-repo; the
+`VITE_*` env vars are injected by Vercel at build time). To confirm/maintain the backend target, in
+**Vercel → Project Settings → Environment Variables**:
+- `VITE_SUPABASE_URL` points to `https://fgemfxhwushaiiguqxfe.supabase.co`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` (Supabase publishable/anon key) belongs to `fgemfxhwushaiiguqxfe`
 
 > **Follow-up (separate task):** three already-applied migrations hard-code the legacy `dlrho` URL as
 > cron / alert callback targets — `20260228200000_schedule_health_checks.sql`,
@@ -35,7 +37,7 @@ Order matters: database first, then functions, then frontend.
 
 1. **Migrations** — see §4 for the safety rules. Never deploy function code that depends on a migration before that migration is applied.
 2. **Edge functions** — `supabase functions deploy <function-name> --project-ref fgemfxhwushaiiguqxfe`. Deploy only the functions changed in the release; there is no bulk-deploy script (TODO: add one listing the 53 functions).
-3. **Frontend** — `npm run build` with the target environment's `.env` (`VITE_SUPABASE_URL` drives both the API client and the service-worker cache rule in `vite.config.ts`). TODO(hosting): exact publish step.
+3. **Frontend** — deployed via **Vercel**, which runs `npm run build` with the `VITE_*` env vars from Project Settings → Environment Variables (`VITE_SUPABASE_URL` drives both the API client and the service-worker cache rule in `vite.config.ts`). Confirm those env vars target the primary backend (`fgemfxhwushaiiguqxfe`) before a release. TODO(hosting): document the exact Vercel deploy trigger (push-to-`main` vs manual promote).
 
 After any deploy: watch `system_alerts` (Admin → System Health) and Sentry for 15 minutes.
 
