@@ -23,10 +23,16 @@ E2E tests require `.env.test` with Supabase credentials. Tests run sequentially 
 ## Supabase Edge Function Deployment
 
 ```bash
-supabase functions deploy <function-name> --project-ref <ref>
+supabase functions deploy <function-name> --project-ref fgemfxhwushaiiguqxfe
 ```
 
-Staging ref: `fgemfxhwushaiiguqxfe` | Production ref: `dlrhobkrjfegtbdsqdsa`
+**Canonical backend:** `fgemfxhwushaiiguqxfe` is the single FieldTek primary backend — the CLI-linked
+project where all migrations, functions, and the E2E suite run. All approved backend work targets it.
+
+`dlrhobkrjfegtbdsqdsa` is the **legacy Lovable backend** (inaccessible from this CLI account). Do not
+target it. (`dguurrghlassjshteupf` is unrelated — ignore.) There is currently **no staging/production
+split**; avoid that wording until a real second Supabase environment is deliberately created and
+documented here.
 
 ## Architecture Overview
 

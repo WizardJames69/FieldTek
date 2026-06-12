@@ -1,17 +1,31 @@
-# FieldTek Production Runbook
+# FieldTek Runbook
 
-Last updated: 2026-06-10 (Phase 0 stabilization). Items marked **TODO(prod-access)** cannot be filled in until the production project is accessible from this CLI account.
+Last updated: 2026-06-11 (canonical-backend cleanup).
 
 ---
 
 ## 1. Environments
 
-| Environment | Supabase project ref | Notes |
-|---|---|---|
-| Staging | `fgemfxhwushaiiguqxfe` | Linked to this repo's CLI (`supabase/.temp/project-ref`). E2E suite runs against it. |
-| Production | `dlrhobkrjfegtbdsqdsa` | **Not accessible from the current CLI account.** TODO(prod-access): inventory applied migrations, deployed functions, secrets, cron jobs. |
+There is a **single canonical FieldTek backend**. No staging/production split exists yet — do not use
+that wording until a second Supabase environment is deliberately created and documented here.
 
-Frontend hosting: **TODO** — no Vercel/Netlify config exists in the repo; the README references a Lovable project. Confirm where the production frontend is actually served from and how it is rebuilt (this determines how `VITE_*` env vars are injected).
+| Supabase project ref | Status | Notes |
+|---|---|---|
+| `fgemfxhwushaiiguqxfe` | **Primary / canonical** | The one real FieldTek backend. CLI-linked (`supabase/.temp/project-ref`); all migrations, the 53 edge functions, and the E2E suite run here. All approved backend work targets it. |
+| `dlrhobkrjfegtbdsqdsa` | **Legacy Lovable — do not use** | The original Lovable-provisioned project. **Not accessible from the current CLI account** (different Supabase account). Not managed, migrated, or deployed to from this repo. Archive; do not delete. |
+| `dguurrghlassjshteupf` | Unrelated | "always-triple-check" stray project in the same org. Ignore. |
+
+Frontend hosting: the app is Lovable-managed (no Vercel/Netlify config in the repo). The deployed app's
+`VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` must point at the primary backend
+(`fgemfxhwushaiiguqxfe`); confirm/maintain this in the hosting dashboard (not committed in-repo).
+
+> **Follow-up (separate task):** three already-applied migrations hard-code the legacy `dlrho` URL as
+> cron / alert callback targets — `20260228200000_schedule_health_checks.sql`,
+> `20260228400000_trigger_critical_alert_email.sql`, `20260228500000_harden_alerting_pipeline.sql`. On
+> the primary backend, scheduled health checks and critical-alert emails may therefore POST to the
+> wrong project. Do **not** rewrite those historical migrations; instead write a future **corrective
+> migration** that updates the cron/alert callback URLs to `fgemfxhwushaiiguqxfe`, and verify whether
+> the health-check / alert pipeline is currently calling the wrong function URL.
 
 ---
 
@@ -20,7 +34,7 @@ Frontend hosting: **TODO** — no Vercel/Netlify config exists in the repo; the 
 Order matters: database first, then functions, then frontend.
 
 1. **Migrations** — see §4 for the safety rules. Never deploy function code that depends on a migration before that migration is applied.
-2. **Edge functions** — `supabase functions deploy <function-name> --project-ref <ref>`. Deploy only the functions changed in the release; there is no bulk-deploy script (TODO: add one listing the 52 functions).
+2. **Edge functions** — `supabase functions deploy <function-name> --project-ref fgemfxhwushaiiguqxfe`. Deploy only the functions changed in the release; there is no bulk-deploy script (TODO: add one listing the 53 functions).
 3. **Frontend** — `npm run build` with the target environment's `.env` (`VITE_SUPABASE_URL` drives both the API client and the service-worker cache rule in `vite.config.ts`). TODO(hosting): exact publish step.
 
 After any deploy: watch `system_alerts` (Admin → System Health) and Sentry for 15 minutes.
@@ -87,7 +101,7 @@ Average/observation-based RAG rules (`avg_rq_score`, `abstain_rate`, `validation
 - **Real low-quality observations still alert.** A window that *does* contain scored requests with a genuinely low average still breaches and bridges normally.
 - **Count-based alerts are unchanged.** `stuck_document_count` is a `COUNT(*)` where `0` is a real, healthy measurement; its branch leaves the observation count NULL so the guard never applies, and the critical "Stuck documents" alert keeps working.
 
-Confirm on a quiet staging window (no recent scored `ai_audit_logs`):
+Confirm on a quiet window on the primary backend (no recent scored `ai_audit_logs`):
 ```sql
 -- Arm the average rule and run one evaluation by hand.
 UPDATE rag_alert_rules SET last_triggered_at=NULL WHERE rule_name='Low retrieval quality';
@@ -112,8 +126,7 @@ If these are missing/rotated, the retry worker now raises an `ingestion_retry_wo
 
 ### Edge function env (Supabase dashboard → Functions → Secrets)
 Required: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (injected), `OPENAI_API_KEY`, `RESEND_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`, `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`.
-Optional: `AI_GATEWAY_URL` (staging sets `https://api.openai.com/v1` to bypass the Lovable gateway), `AI_FALLBACK_URL`, `AI_FALLBACK_API_KEY`, `AI_CHAT_MODEL`, `AI_GATEWAY_TIMEOUT_MS`, `COHERE_API_KEY` (reranking), `GOOGLE_CALENDAR_CLIENT_ID/SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`, `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (push), `APP_URL`, `ALERT_EMAIL_RECIPIENT`, `CRON_SECRET`, `EXTERNAL_RETRIEVAL_URL/KEY`, `RETRIEVAL_BACKEND`.
-**TODO(prod-access):** verify which of these are set on production.
+Optional: `AI_GATEWAY_URL` (the primary backend sets `https://api.openai.com/v1` to bypass the Lovable gateway), `AI_FALLBACK_URL`, `AI_FALLBACK_API_KEY`, `AI_CHAT_MODEL`, `AI_GATEWAY_TIMEOUT_MS`, `COHERE_API_KEY` (reranking), `GOOGLE_CALENDAR_CLIENT_ID/SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`, `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (push), `APP_URL`, `ALERT_EMAIL_RECIPIENT`, `CRON_SECRET`, `EXTERNAL_RETRIEVAL_URL/KEY`, `RETRIEVAL_BACKEND`.
 
 ### Frontend build env
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (required); `VITE_CF_TURNSTILE_SITE_KEY`, `VITE_VAPID_PUBLIC_KEY`, `VITE_SENTRY_DSN`, `VITE_APP_VERSION` (recommended for prod). CI additionally uses `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` for sourcemap upload.
@@ -162,5 +175,5 @@ If the deterministic compliance engine incorrectly blocks a job (`scheduled_jobs
 ## 8. Quality gates
 
 - CI (`.github/workflows/ci.yml`): lint, typecheck, unit tests, production build on push/PR to main.
-- E2E (`.github/workflows/e2e.yml`): full Playwright suite (~311 tests, sequential) against staging.
+- E2E (`.github/workflows/e2e.yml`): full Playwright suite (~311 tests, sequential) against the primary backend (`fgemfxhwushaiiguqxfe`).
 - Local git hooks: **none**. Husky pre-commit (lint+typecheck) and pre-push (unit) were removed once the CI gates above were confirmed green on main; quality enforcement now lives entirely in CI.

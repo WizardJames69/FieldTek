@@ -1,4 +1,4 @@
-project_id = "dlrhobkrjfegtbdsqdsa"
+project_id = "fgemfxhwushaiiguqxfe"
 
 [functions.generate-invoice-pdf]
 verify_jwt = false

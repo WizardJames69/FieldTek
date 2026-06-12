@@ -15,7 +15,10 @@ import { toast } from "sonner";
 import { Copy, Plus, Trash2, Key, Shield, Clock, ChevronRight, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
-const BASE_URL = `https://dlrhobkrjfegtbdsqdsa.supabase.co/functions/v1/tenant-api`;
+// Derive the tenant-api endpoint from the configured Supabase URL so it always
+// targets the active backend (VITE_SUPABASE_URL) rather than a hard-coded ref.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
+const BASE_URL = `${SUPABASE_URL}/functions/v1/tenant-api`;
 
 interface ApiKey {
   id: string;
