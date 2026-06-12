@@ -1,6 +1,6 @@
 # FieldTek Runbook
 
-Last updated: 2026-06-11 (canonical-backend cleanup).
+Last updated: 2026-06-12 (cron/alert callback follow-up resolved; canonical-backend cleanup).
 
 ---
 
@@ -21,13 +21,16 @@ Frontend hosting: the app deploys through **Vercel** (no hosting config is commi
 - `VITE_SUPABASE_URL` points to `https://fgemfxhwushaiiguqxfe.supabase.co`
 - `VITE_SUPABASE_PUBLISHABLE_KEY` (Supabase publishable/anon key) belongs to `fgemfxhwushaiiguqxfe`
 
-> **Follow-up (separate task):** three already-applied migrations hard-code the legacy `dlrho` URL as
-> cron / alert callback targets — `20260228200000_schedule_health_checks.sql`,
-> `20260228400000_trigger_critical_alert_email.sql`, `20260228500000_harden_alerting_pipeline.sql`. On
-> the primary backend, scheduled health checks and critical-alert emails may therefore POST to the
-> wrong project. Do **not** rewrite those historical migrations; instead write a future **corrective
-> migration** that updates the cron/alert callback URLs to `fgemfxhwushaiiguqxfe`, and verify whether
-> the health-check / alert pipeline is currently calling the wrong function URL.
+> **Resolved (2026-06-12):** the cron/alert/retry callbacks are **not** hardcoded at runtime.
+> `20260228500000_harden_alerting_pipeline.sql` rewired them to read the project URL from the Postgres
+> **vault** secret `supabase_project_url` — `invoke_health_monitor()`, `notify_critical_alert()`, and
+> `retry_stuck_documents()` all read it from vault, so the `dlrho` strings remaining in the three
+> historical migrations (`20260228200000/400000/500000`) are inert history only. Verified in the `fgem`
+> SQL Editor that `vault.decrypted_secrets.supabase_project_url = https://fgemfxhwushaiiguqxfe.supabase.co`
+> and that `service_role_key` is present; live telemetry corroborates (fresh `system_health_metrics`, no
+> `ingestion_retry_worker_skipped` alerts, `queued` `system_notifications`). **No corrective migration is
+> needed.** Do **not** rewrite those historical migrations. (The only remaining ops check is out of band:
+> confirm the `MONITOR_HEALTH_URL` GitHub Actions secret also points at `fgem` — see §9 / the health-monitor workflow.)
 
 ---
 
