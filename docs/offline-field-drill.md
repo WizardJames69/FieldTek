@@ -73,6 +73,28 @@ changes sync on reconnect.
 
 ---
 
+## 3a. Shared-device sign-out drill (no data leaks to the next user)
+
+Simulates one shared phone/tablet passed between technicians. Sign-out clears all FieldTek-owned
+offline data (IndexedDB caches/queues/evidence + the per-user tenant snapshot).
+
+1. Log in **online** as technician A. Open **My Jobs** and a job so the offline cache + tenant
+   snapshot prime (DevTools → Application → IndexedDB `fieldtek-offline` has rows; Local Storage
+   has a `fieldtek-tenant-snapshot:<A's user id>` key).
+2. **Sync any pending offline changes first** — sign-out intentionally discards the offline queue.
+3. Tap **Sign Out**.
+4. Confirm cleanup: DevTools → Application → IndexedDB `fieldtek-offline` stores
+   (`cached_jobs`, `cached_clients`, `cached_checklists`, `sync_queue`, `offline_metadata`,
+   `evidence_blobs`) are **empty**, and **no** `fieldtek-tenant-snapshot:` key remains in Local
+   Storage. (The Supabase session keys and unrelated prefs are untouched.)
+5. Log in as technician B (or relaunch offline): technician A's jobs/checklists must **not** render.
+
+**Pass:** after A signs out, none of A's cached jobs, checklists, queued ops, evidence, or tenant
+snapshot are visible to B. **Note:** sign-out is best-effort cleanup and is *not* a substitute for
+syncing — unsynced offline work is discarded on sign-out by design.
+
+---
+
 ## 4. Known limitations
 
 - **iOS has no Background Sync.** Replay only happens while the app is in the **foreground** —

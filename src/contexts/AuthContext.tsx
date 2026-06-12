@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { setUser as setTrackingUser, addBreadcrumb, clearUser as clearTrackingUser } from '@/lib/errorTracking';
+import { clearAllOfflineData } from '@/lib/offlineDb';
+import { clearTenantSnapshot } from '@/lib/tenantSnapshot';
 import * as Sentry from '@sentry/react';
 
 interface AuthContextType {
@@ -132,6 +134,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Shared-device hygiene: wipe FieldTek-owned offline data so the next user
+    // on a shared phone/tablet cannot see the previous user's cached jobs,
+    // checklists, queued operations, evidence blobs, or tenant snapshot. This is
+    // a deliberate sign-out (not an involuntary session expiry), so discarding
+    // any unsynced offline queue is the intended behavior. Best-effort — never
+    // block or fail sign-out if local cleanup throws.
+    const signedOutUserId = user?.id;
+    try {
+      await clearAllOfflineData();
+    } catch (err) {
+      console.warn('[AuthContext] Failed to clear offline data on sign out:', err);
+    }
+    clearTenantSnapshot(signedOutUserId);
+
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {

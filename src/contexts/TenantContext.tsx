@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { useImpersonation } from './ImpersonationContext';
 import type { Tenant, TenantUser, TenantSettings, TenantBranding, AppRole, IndustryType } from '@/types/database';
+import { readTenantSnapshot, writeTenantSnapshot, removeTenantSnapshot } from '@/lib/tenantSnapshot';
 
 interface TenantContextType {
   tenant: Tenant | null;
@@ -20,60 +21,8 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
-// ── Offline tenant snapshot ─────────────────────────────────────────────
-// Cold-opening the installed PWA offline serves the precached app shell, but
-// tenant/role can't be fetched — RoleGuard would render null (blank screen).
-// Persist the last successful tenant load per user so the shell can hydrate
-// offline. Keyed by user id so one user's snapshot is never used for another;
-// localStorage already holds the Supabase session itself, so this stores no
-// new class of data. All access is try/catch (private mode / quota safe).
-
-const TENANT_SNAPSHOT_VERSION = 1;
-
-interface TenantSnapshot {
-  v: number;
-  savedAt: string;
-  tenantUser: TenantUser;
-  tenant: Tenant;
-  settings: TenantSettings | null;
-  branding: TenantBranding | null;
-}
-
-const tenantSnapshotKey = (userId: string) => `fieldtek-tenant-snapshot:${userId}`;
-
-function readTenantSnapshot(userId: string): TenantSnapshot | null {
-  try {
-    const raw = localStorage.getItem(tenantSnapshotKey(userId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as TenantSnapshot;
-    if (parsed?.v !== TENANT_SNAPSHOT_VERSION || !parsed.tenantUser || !parsed.tenant) return null;
-    // The snapshot must belong to this user — never hydrate someone else's.
-    if (parsed.tenantUser.user_id !== userId) return null;
-    return parsed;
-  } catch (e) {
-    console.error('Error reading tenant snapshot:', e);
-    return null;
-  }
-}
-
-function writeTenantSnapshot(userId: string, snapshot: Omit<TenantSnapshot, 'v' | 'savedAt'>): void {
-  try {
-    localStorage.setItem(
-      tenantSnapshotKey(userId),
-      JSON.stringify({ v: TENANT_SNAPSHOT_VERSION, savedAt: new Date().toISOString(), ...snapshot })
-    );
-  } catch (e) {
-    console.error('Error writing tenant snapshot:', e);
-  }
-}
-
-function removeTenantSnapshot(userId: string): void {
-  try {
-    localStorage.removeItem(tenantSnapshotKey(userId));
-  } catch (e) {
-    console.error('Error removing tenant snapshot:', e);
-  }
-}
+// Offline tenant snapshot helpers live in @/lib/tenantSnapshot (a leaf module
+// shared with the AuthContext sign-out cleanup path).
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
