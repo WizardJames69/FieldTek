@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
@@ -28,6 +28,26 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+// The Workbox service worker (registered at startup in main.tsx, scope '/',
+// push handlers imported from sw-push.js) is the single registration this hook
+// uses. navigator.serviceWorker.ready never settles when no SW registers
+// (blocked, unsupported, registration failed), so cap the wait instead of
+// hanging subscribe/unsubscribe forever.
+async function getReadyRegistration(timeoutMs = 5000): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    const existing = await navigator.serviceWorker.getRegistration('/');
+    if (existing?.active) return existing;
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+    ]);
+  } catch (e) {
+    console.error('Error getting service worker registration:', e);
+    return null;
+  }
 }
 
 export function usePushNotifications() {
@@ -84,8 +104,8 @@ export function usePushNotifications() {
       // Check if we have an active subscription in the browser
       let browserSubscribed = false;
       try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await (registration as any).pushManager?.getSubscription();
+        const registration = await getReadyRegistration();
+        const subscription = await (registration as any)?.pushManager?.getSubscription();
         browserSubscribed = !!subscription;
       } catch (e) {
         console.error('Error checking push subscription:', e);
@@ -101,22 +121,6 @@ export function usePushNotifications() {
 
     updateState();
   }, [isSupported, existingSubscription, isCheckingSubscription]);
-
-  // Register service worker
-  const registerServiceWorker = useCallback(async () => {
-    if (!isSupported) return null;
-    
-    try {
-      const registration = await navigator.serviceWorker.register('/sw-push.js', {
-        scope: '/'
-      });
-      console.log('Push SW registered:', registration);
-      return registration;
-    } catch (error) {
-      console.error('Failed to register push SW:', error);
-      return null;
-    }
-  }, [isSupported]);
 
   // Subscribe to push notifications
   const subscribeMutation = useMutation({
@@ -135,13 +139,10 @@ export function usePushNotifications() {
         throw new Error('Notification permission denied');
       }
 
-      // Register service worker if not already
-      let registration = await navigator.serviceWorker.ready;
+      // The Workbox SW is registered at app startup (main.tsx)
+      const registration = await getReadyRegistration();
       if (!registration) {
-        registration = await registerServiceWorker();
-        if (!registration) {
-          throw new Error('Failed to register service worker');
-        }
+        throw new Error('Service worker not ready — reload the app and try again');
       }
 
       // Subscribe to push
@@ -186,10 +187,10 @@ export function usePushNotifications() {
     mutationFn: async () => {
       if (!user?.id) throw new Error('User not found');
 
-      // Unsubscribe from browser
+      // Unsubscribe from browser (skip silently if no SW registration is available)
       try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await (registration as any).pushManager?.getSubscription();
+        const registration = await getReadyRegistration();
+        const subscription = await (registration as any)?.pushManager?.getSubscription();
         if (subscription) {
           await subscription.unsubscribe();
         }

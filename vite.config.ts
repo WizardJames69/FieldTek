@@ -90,9 +90,17 @@ export default defineConfig(({ mode }) => {
       clientsClaim: true,
       skipWaiting: true,
       cleanupOutdatedCaches: true,
-      navigateFallback: null,
+      // Serve the precached SPA shell for same-origin navigations so installed
+      // PWAs cold-open offline. Applies only to mode:"navigate" requests —
+      // cross-origin Supabase fetches are never routed through this fallback.
+      navigateFallback: "index.html",
       navigateFallbackDenylist: [/^\/~oauth/, /^\/admin/, /^\/api/],
-      globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
+      // "html" must stay in this list: navigateFallback requires index.html to
+      // be in the precache manifest or the generated SW throws on activation.
+      globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      // Push/notification/background-sync handlers live in public/sw-push.js and
+      // are pulled into the single Workbox-generated sw.js (one SW owns scope /).
+      importScripts: ["sw-push.js"],
         // NOTE: Supabase API responses (/rest/v1, /auth/v1, /functions/v1,
         // and signed/private storage URLs) are deliberately NOT cached by the
         // service worker. Workbox cache keys ignore the Authorization header,

@@ -20,6 +20,61 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
+// ── Offline tenant snapshot ─────────────────────────────────────────────
+// Cold-opening the installed PWA offline serves the precached app shell, but
+// tenant/role can't be fetched — RoleGuard would render null (blank screen).
+// Persist the last successful tenant load per user so the shell can hydrate
+// offline. Keyed by user id so one user's snapshot is never used for another;
+// localStorage already holds the Supabase session itself, so this stores no
+// new class of data. All access is try/catch (private mode / quota safe).
+
+const TENANT_SNAPSHOT_VERSION = 1;
+
+interface TenantSnapshot {
+  v: number;
+  savedAt: string;
+  tenantUser: TenantUser;
+  tenant: Tenant;
+  settings: TenantSettings | null;
+  branding: TenantBranding | null;
+}
+
+const tenantSnapshotKey = (userId: string) => `fieldtek-tenant-snapshot:${userId}`;
+
+function readTenantSnapshot(userId: string): TenantSnapshot | null {
+  try {
+    const raw = localStorage.getItem(tenantSnapshotKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as TenantSnapshot;
+    if (parsed?.v !== TENANT_SNAPSHOT_VERSION || !parsed.tenantUser || !parsed.tenant) return null;
+    // The snapshot must belong to this user — never hydrate someone else's.
+    if (parsed.tenantUser.user_id !== userId) return null;
+    return parsed;
+  } catch (e) {
+    console.error('Error reading tenant snapshot:', e);
+    return null;
+  }
+}
+
+function writeTenantSnapshot(userId: string, snapshot: Omit<TenantSnapshot, 'v' | 'savedAt'>): void {
+  try {
+    localStorage.setItem(
+      tenantSnapshotKey(userId),
+      JSON.stringify({ v: TENANT_SNAPSHOT_VERSION, savedAt: new Date().toISOString(), ...snapshot })
+    );
+  } catch (e) {
+    console.error('Error writing tenant snapshot:', e);
+  }
+}
+
+function removeTenantSnapshot(userId: string): void {
+  try {
+    localStorage.removeItem(tenantSnapshotKey(userId));
+  } catch (e) {
+    console.error('Error removing tenant snapshot:', e);
+  }
+}
+
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { isImpersonating, impersonatedTenant } = useImpersonation();
@@ -118,6 +173,23 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Offline cold-open: hydrate from the persisted snapshot instead of burning
+    // the retry chain on requests that cannot succeed. If no snapshot exists,
+    // fall through to the normal fetch path (fails safely exactly as before).
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const snapshot = readTenantSnapshot(user.id);
+      if (snapshot) {
+        console.log('Offline: hydrating tenant context from local snapshot');
+        setTenantUser(snapshot.tenantUser);
+        setTenant(snapshot.tenant);
+        setSettings(snapshot.settings);
+        setBranding(snapshot.branding);
+        setLoading(false);
+        fetchedForUserRef.current = user.id;
+        return;
+      }
+    }
+
     try {
       // Ensure a manual refresh forces the context into a loading state.
       if (isRetry) {
@@ -195,6 +267,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
         // After empty retries exhausted, user truly has no tenant membership
         console.log('No tenant membership found after retries - user needs onboarding');
+        // Membership is confirmed gone — a stale snapshot must not grant offline access.
+        removeTenantSnapshot(user.id);
         setTenant(null);
         setTenantUser(null);
         setSettings(null);
@@ -244,6 +318,16 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setTenant(tenantResult.data as Tenant);
       setSettings(settingsResult.data as unknown as TenantSettings | null);
       setBranding(brandingResult.data as TenantBranding | null);
+
+      // Persist the successful load so the app shell can cold-open offline
+      // (RoleGuard role, SubscriptionGuard tier, branding). Real data only —
+      // impersonation is layered at render time and never reaches this fetch.
+      writeTenantSnapshot(user.id, {
+        tenantUser: tenantUserData as TenantUser,
+        tenant: tenantResult.data as Tenant,
+        settings: settingsResult.data as unknown as TenantSettings | null,
+        branding: brandingResult.data as TenantBranding | null,
+      });
     } catch (error) {
       // Treat timeouts and transient errors as retryable
       if (requestId === requestIdRef.current) {
@@ -265,6 +349,19 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         // After all retries exhausted, stop loading but don't clear existing data
         // This prevents "flash of fallback branding" if we already have data
         console.error('All retries exhausted after error');
+        // Went offline mid-retry: fill any still-missing state from the
+        // snapshot instead of leaving the shell blank. Functional updates
+        // only fill nulls — data already loaded is never replaced.
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          const snapshot = readTenantSnapshot(user.id);
+          if (snapshot) {
+            console.log('Offline after failed fetch: filling tenant context from local snapshot');
+            setTenantUser((current) => current ?? snapshot.tenantUser);
+            setTenant((current) => current ?? snapshot.tenant);
+            setSettings((current) => current ?? snapshot.settings);
+            setBranding((current) => current ?? snapshot.branding);
+          }
+        }
         setLoading(false);
         fetchedForUserRef.current = user?.id ?? null;
       }
