@@ -98,11 +98,19 @@ export default function Landing() {
     }
   }, [user, authLoading, navigate, isRedirecting]);
 
+  // Keep the canvas behind the page dark while the landing is mounted so iOS
+  // rubber-band overscroll doesn't flash white around the dark sections. The
+  // global --background stays light for the app (see index.css).
+  useEffect(() => {
+    document.documentElement.classList.add('landing-html-bg');
+    return () => document.documentElement.classList.remove('landing-html-bg');
+  }, []);
+
   const openWaitlist = () => setWaitlistOpen(true);
   const openBetaModal = () => setBetaModalOpen(true);
 
   return (
-    <div className="min-h-screen overflow-x-hidden noise-overlay">
+    <div className="landing-page min-h-screen overflow-x-hidden noise-overlay">
       <Helmet>
         <title>FieldTek | AI-Powered Field Service Platform | Guide Every Repair. Learn From Every Job.</title>
         <meta name="description" content="FieldTek's Sentinel AI guides technicians through manufacturer-specific procedures, auto-generates compliance documentation, and protects warranties. Built for HVAC, electrical, plumbing, and mechanical contractors." />

@@ -10,9 +10,18 @@ interface RoleGuardProps {
   allowedRoles: AppRole[];
   children: ReactNode;
   fallbackPath?: string;
+  /**
+   * Skip the "Access denied" toast and just redirect. For routes the app
+   * itself sends users to by default (e.g. /dashboard is the PWA start_url
+   * and generic post-login target), landing there with a non-allowed role is
+   * the designed fallback flow, not a denied user action — a destructive
+   * toast on every app launch reads as an error. The redirect still happens
+   * and nothing is rendered; only the toast is suppressed.
+   */
+  silent?: boolean;
 }
 
-export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard' }: RoleGuardProps) {
+export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard', silent = false }: RoleGuardProps) {
   const { user, loading: authLoading } = useAuth();
   const { role, loading } = useTenant();
   const navigate = useNavigate();
@@ -24,14 +33,16 @@ export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard' 
       return;
     }
     if (!loading && role && !allowedRoles.includes(role)) {
-      toast({
-        variant: 'destructive',
-        title: 'Access denied',
-        description: "You don't have permission to view this page.",
-      });
+      if (!silent) {
+        toast({
+          variant: 'destructive',
+          title: 'Access denied',
+          description: "You don't have permission to view this page.",
+        });
+      }
       navigate(fallbackPath, { replace: true });
     }
-  }, [authLoading, user, loading, role, allowedRoles, fallbackPath, navigate, toast]);
+  }, [authLoading, user, loading, role, allowedRoles, fallbackPath, navigate, toast, silent]);
 
   if (authLoading || loading) {
     return (

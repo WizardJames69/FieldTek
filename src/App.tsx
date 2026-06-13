@@ -281,7 +281,10 @@ function App() {
                         {/* Tenant app routes - with TenantProvider */}
                         <Route element={<TenantLayout />}>
                           <Route path="/onboarding" element={<Onboarding />} />
-                          <Route path="/dashboard" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Dashboard /></RoleGuard></SubscriptionGuard>} />
+                          {/* silent: /dashboard is the PWA start_url + default post-login target —
+                              technicians landing here follow the designed redirect to /my-jobs,
+                              so no "Access denied" toast on every app launch. */}
+                          <Route path="/dashboard" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs" silent><Dashboard /></RoleGuard></SubscriptionGuard>} />
                           <Route path="/jobs" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Jobs /></RoleGuard></SubscriptionGuard>} />
                           <Route path="/clients" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']}><Clients /></RoleGuard></SubscriptionGuard>} />
                           <Route path="/schedule" element={<SubscriptionGuard><RoleGuard allowedRoles={['owner', 'admin', 'dispatcher']} fallbackPath="/my-jobs"><Schedule /></RoleGuard></SubscriptionGuard>} />

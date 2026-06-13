@@ -26,6 +26,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { CustomerEquipmentHistory } from '@/components/equipment/CustomerEquipmentHistory';
+import { JobChecklistResults } from '@/components/jobs/JobChecklistResults';
 import { JobStageWorkflow } from '@/components/jobs/JobStageWorkflow';
 import { WorkflowExecutionView } from '@/components/jobs/workflows/WorkflowExecutionView';
 import { WorkflowAssignDialog } from '@/components/jobs/workflows/WorkflowAssignDialog';
@@ -370,6 +371,11 @@ export function JobDetailSheet({
                   </div>
                 </>
               )}
+
+              {/* Read-only checklist results — what the technician actually synced.
+                  Rendered for any status (incl. completed) so admins can verify
+                  finished work; hidden when the job has no checklist rows. */}
+              <JobChecklistResults jobId={job.id} />
 
               {/* Assign Workflow button (admin only, no workflow assigned, job not completed) */}
               {showWorkflows && (role === 'admin' || role === 'owner') && !job.workflow_execution_id && job.status !== 'completed' && job.status !== 'cancelled' && tenant?.id && (

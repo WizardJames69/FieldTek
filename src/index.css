@@ -8,8 +8,11 @@
 
 @layer base {
   :root {
-    /* Dark background matching landing page */
-    --background: 220 13% 4%;
+    /* Clean Light Background — the in-app light theme depends on this pairing
+       with the dark --foreground below. The dark marketing/landing backdrop is
+       scoped to those pages (see .landing-page / the hard-coded bg-[#0...]
+       roots), never set globally. */
+    --background: 30 20% 98%;
     --foreground: 20 14% 12%;
     
     --card: 0 0% 100%;
@@ -1473,6 +1476,25 @@
 }
 
 /* B.3 Glass Sheet Overlay */
+/* Frosted surface for sticky sheet headers and inline cards (MyJobs job sheet,
+   JobChecklist, calendars). Referenced in several components but was never
+   defined, leaving those surfaces fully transparent — scrolled content showed
+   through the sticky sheet title. Theme-aware via --background. */
+.glass-morphism {
+  background: hsl(var(--background) / 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* The landing page is dark in every theme. The global --background must stay
+   light for the app, so the dark canvas lives here: Landing's root paints it,
+   and the html-level class keeps iOS rubber-band overscroll from flashing
+   white above/below the page (the original "white border" bug). */
+html.landing-html-bg,
+.landing-page {
+  background-color: #09090B;
+}
+
 .sheet-glass {
   background: linear-gradient(135deg, hsl(var(--background) / 0.95), hsl(var(--background) / 0.9)) !important;
   backdrop-filter: blur(20px);
