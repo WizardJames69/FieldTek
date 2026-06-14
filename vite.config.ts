@@ -16,7 +16,10 @@ export default defineConfig(({ mode }) => {
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt" (not "autoUpdate"): a new deploy must NOT silently swap the
+      // running bundle. main.tsx shows an in-app "New version available" toast and
+      // the user chooses when to reload (registerSW onNeedRefresh -> updateSW).
+      registerType: "prompt",
       injectRegister: null, // We handle registration manually via virtual:pwa-register
       includeAssets: ["favicon.png", "robots.txt", "pwa-icon-192.png", "pwa-icon-512.png"],
       manifest: {
@@ -88,7 +91,11 @@ export default defineConfig(({ mode }) => {
       },
     workbox: {
       clientsClaim: true,
-      skipWaiting: true,
+      // skipWaiting must be false in prompt mode: a new SW stays in "waiting"
+      // until the user clicks Reload (updateSW(true) posts SKIP_WAITING), so the
+      // bundle never swaps under a running tab. clientsClaim stays true so the SW
+      // still controls the page on first install (offline cold-open unchanged).
+      skipWaiting: false,
       cleanupOutdatedCaches: true,
       // Serve the precached SPA shell for same-origin navigations so installed
       // PWAs cold-open offline. Applies only to mode:"navigate" requests —
