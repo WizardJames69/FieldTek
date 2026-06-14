@@ -50,6 +50,14 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
           ...prev,
           [item.id]: { ...prev[item.id], completed },
         }));
+        // Collapse this item once it's checked off so the mobile workflow
+        // advances cleanly instead of leaving the step expanded. Only collapse
+        // if THIS item is the open one — never close an unrelated expanded item.
+        // Runs for both online success and a queued offline update (toggleItem
+        // resolves true in both cases).
+        if (completed) {
+          setExpandedItem((cur) => (cur === item.id ? null : cur));
+        }
       }
     } finally {
       setTogglingItemId(null);
@@ -65,6 +73,10 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
           ...prev,
           [itemId]: { ...prev[itemId], notes: value },
         }));
+        // Collapse the note editor after a successful save (online or queued
+        // offline). The saved text is preserved via the override above + the
+        // notes state, and shown in the collapsed note preview under the title.
+        setExpandedItem((cur) => (cur === itemId ? null : cur));
       }
     } finally {
       setSavingNotesItemId(null);

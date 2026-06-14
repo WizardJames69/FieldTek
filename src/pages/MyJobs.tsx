@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
-import { MapPin, Phone, MessageSquare, Loader2, Inbox, WifiOff, CloudOff, RefreshCw, Download } from 'lucide-react';
+import { MapPin, Phone, MessageSquare, Loader2, Inbox, WifiOff, CloudOff, RefreshCw, Download, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
@@ -234,8 +234,22 @@ export default function MyJobs() {
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto sheet-glass">
           {selectedJob && (
             <>
-              <SheetHeader className="sticky top-0 glass-morphism -mx-6 px-6 py-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
-                <SheetTitle className="text-xl font-bold">{selectedJob.title}</SheetTitle>
+              <SheetHeader className="sticky top-0 glass-morphism -mx-6 px-6 pt-4 pb-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
+                {/* Explicit back control. The default sheet close (X) is absolutely
+                    positioned inside the scroll area, so it scrolls out of view and
+                    sits behind this sticky glass header — technicians felt stuck in
+                    the job detail on iPhone PWA. This button lives in the always-
+                    visible sticky header and returns to the My Jobs list. */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedJob(null)}
+                  aria-label="Back to My Jobs"
+                  className="flex items-center gap-1 -ml-1.5 mb-1 w-fit text-sm font-semibold text-muted-foreground hover:text-foreground touch-native"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                  My Jobs
+                </button>
+                <SheetTitle className="text-xl font-bold text-left">{selectedJob.title}</SheetTitle>
               </SheetHeader>
 
               <div className="mt-8 space-y-8">

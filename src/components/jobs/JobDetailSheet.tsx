@@ -75,18 +75,20 @@ interface JobDetailSheetProps {
   onStatusChange?: (jobId: string, status: string) => void;
 }
 
+// Status/priority colors carry a dark: text variant so the tinted badges stay
+// legible on the dark admin drawer (the bare *-700 text was muddy on dark).
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: 'Pending', color: 'bg-muted text-muted-foreground', icon: Clock },
-  scheduled: { label: 'Scheduled', color: 'bg-blue-500/20 text-blue-700', icon: Calendar },
-  in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-700', icon: Play },
-  completed: { label: 'Completed', color: 'bg-green-500/20 text-green-700', icon: CheckCircle2 },
+  scheduled: { label: 'Scheduled', color: 'bg-blue-500/20 text-blue-700 dark:text-blue-300', icon: Calendar },
+  in_progress: { label: 'In Progress', color: 'bg-amber-500/20 text-amber-700 dark:text-amber-300', icon: Play },
+  completed: { label: 'Completed', color: 'bg-green-500/20 text-green-700 dark:text-green-300', icon: CheckCircle2 },
   cancelled: { label: 'Cancelled', color: 'bg-destructive/20 text-destructive', icon: AlertTriangle },
 };
 
 const priorityConfig: Record<string, { label: string; color: string }> = {
   low: { label: 'Low', color: 'bg-muted text-muted-foreground' },
   medium: { label: 'Medium', color: 'bg-primary/20 text-primary' },
-  high: { label: 'High', color: 'bg-orange-500/20 text-orange-700' },
+  high: { label: 'High', color: 'bg-orange-500/20 text-orange-700 dark:text-orange-300' },
   urgent: { label: 'Urgent', color: 'bg-destructive/20 text-destructive' },
 };
 
@@ -284,7 +286,7 @@ export function JobDetailSheet({
               {job.description && (
                 <div>
                   <h4 className="font-semibold text-sm mb-2">Description</h4>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <p className="text-sm text-foreground/90 whitespace-pre-wrap">
                     {job.description}
                   </p>
                 </div>
@@ -294,7 +296,7 @@ export function JobDetailSheet({
               {job.notes && (
                 <div>
                   <h4 className="font-semibold text-sm mb-2">Notes</h4>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <p className="text-sm text-foreground/90 whitespace-pre-wrap">
                     {job.notes}
                   </p>
                 </div>
