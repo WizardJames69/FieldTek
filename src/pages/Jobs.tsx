@@ -427,23 +427,29 @@ export default function Jobs() {
 
   const filteredJobIds = useMemo(() => filteredJobs.map(j => j.id), [filteredJobs]);
 
+  // Light-theme readability: the previous bg-<token>/10 text-<token> badges used
+  // bright mid-lightness semantic colors (warning/success/info) that wash out on
+  // the near-white background (failed WCAG AA, e.g. in_progress ~1.86:1). The
+  // .dark block doesn't re-tint those tokens, so dark mode was already fine.
+  // These palette colors carry an explicit light/dark text split (matching the
+  // detail drawer's badges) so they read in both themes.
   const getStatusBadge = (status: JobStatus) => {
     const styles: Record<JobStatus, string> = {
-      pending: 'bg-muted text-muted-foreground',
-      scheduled: 'bg-info/10 text-info',
-      in_progress: 'bg-warning/10 text-warning',
-      completed: 'bg-success/10 text-success',
-      cancelled: 'bg-destructive/10 text-destructive',
+      pending: 'bg-muted text-foreground/80',
+      scheduled: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+      in_progress: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+      completed: 'bg-green-500/15 text-green-700 dark:text-green-300',
+      cancelled: 'bg-red-500/15 text-red-700 dark:text-red-300',
     };
     return styles[status];
   };
 
   const getPriorityBadge = (priority: JobPriority) => {
     const styles: Record<JobPriority, string> = {
-      low: 'border-muted-foreground/30 text-muted-foreground',
-      medium: 'border-info/30 text-info',
-      high: 'border-warning/30 text-warning',
-      urgent: 'border-destructive/30 text-destructive',
+      low: 'border-muted-foreground/40 text-foreground/80',
+      medium: 'border-blue-500/40 text-blue-700 dark:border-blue-400/50 dark:text-blue-300',
+      high: 'border-amber-500/40 text-amber-700 dark:border-amber-400/50 dark:text-amber-300',
+      urgent: 'border-red-500/40 text-red-700 dark:border-red-400/50 dark:text-red-300',
     };
     return styles[priority];
   };
