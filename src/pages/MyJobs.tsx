@@ -28,6 +28,7 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useOfflineJobs } from '@/hooks/useOfflineJobs';
 import { useOfflineDataPreloader } from '@/hooks/useOfflineDataPreloader';
 import { OfflineSyncStatus } from '@/components/offline/OfflineSyncStatus';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { cn } from '@/lib/utils';
 
 export default function MyJobs() {
@@ -39,11 +40,20 @@ export default function MyJobs() {
   const [offlineChecklistItems, setOfflineChecklistItems] = useState<any[]>([]);
   
   // Offline-aware jobs fetching
-  const { jobs, isLoading, isOnline, isFromCache, refreshCache, getJobChecklist } = useOfflineJobs({
+  const { jobs, isLoading, isOnline, isFromCache, refreshCache, getJobChecklist, error } = useOfflineJobs({
     userId: user?.id,
     tenantId: tenant?.id,
     enabled: !!user?.id && !!tenant?.id,
   });
+
+  // Distinguish the data states so a failed fetch never looks like "no jobs":
+  //  - loadFailed + no cached jobs  -> hard error (retry if online)
+  //  - loadFailed + cached jobs     -> show cached data + a non-blocking warning
+  //  - offline + no cached jobs     -> offline-specific empty message
+  //  - loaded with zero rows        -> the normal "No jobs" empty state
+  const loadFailed = !!error;
+  const hasAnyJobs = (jobs?.length ?? 0) > 0;
+  const offlineNoData = !isOnline && !loadFailed && !hasAnyJobs;
   
   // Offline sync state is owned by the shared OfflineSyncProvider (mounted in
   // TenantLayout) and surfaced here via <OfflineSyncStatus /> and the header
@@ -184,7 +194,29 @@ export default function MyJobs() {
               <p className="text-sm font-medium text-muted-foreground">Loading your jobs...</p>
             </div>
           </div>
-        ) : filteredJobs.length === 0 ? (
+        ) : loadFailed && !hasAnyJobs ? (
+          <QueryErrorState
+            title="Couldn't load your jobs"
+            description={isOnline ? 'Check your connection and try again.' : "You're offline and no jobs are saved on this device yet."}
+            onRetry={isOnline ? () => refreshCache() : undefined}
+            testId="my-jobs-error-state"
+          />
+        ) : (
+          <>
+            {loadFailed && hasAnyJobs && (
+              <div role="status" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                  Showing saved jobs — couldn't refresh.
+                </span>
+                {isOnline && (
+                  <Button variant="ghost" size="sm" onClick={() => refreshCache()} className="h-8 px-2 text-xs shrink-0">
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Retry
+                  </Button>
+                )}
+              </div>
+            )}
+            {filteredJobs.length === 0 ? (
           <div className="empty-state-native py-20">
             <div className="relative">
               <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-muted/80 to-muted/40 backdrop-blur-xl flex items-center justify-center mb-5 ring-1 ring-border/50 shadow-xl">
@@ -192,16 +224,18 @@ export default function MyJobs() {
               </div>
               <div className="absolute inset-0 rounded-3xl bg-gradient-radial from-primary/10 to-transparent blur-xl" />
             </div>
-            <h3 className="text-xl font-bold">No jobs</h3>
+            <h3 className="text-xl font-bold">{offlineNoData ? 'No saved jobs' : 'No jobs'}</h3>
             <p className="text-muted-foreground text-sm mt-2 max-w-[280px] leading-relaxed">
-              {view === 'today'
+              {offlineNoData
+                ? "You're offline and no jobs are saved on this device yet. Reconnect to load your assigned jobs."
+                : view === 'today'
                 ? "You don't have any jobs scheduled for today. Enjoy your break!"
                 : view === 'upcoming'
                 ? 'No upcoming jobs assigned to you yet'
                 : 'No completed jobs to show'}
             </p>
           </div>
-        ) : (
+            ) : (
           <div className="space-y-8">
             {Object.entries(groupedJobs).map(([date, dateJobs]) => (
               <div key={date}>
@@ -226,6 +260,8 @@ export default function MyJobs() {
               </div>
             ))}
           </div>
+            )}
+          </>
         )}
       </div>
 

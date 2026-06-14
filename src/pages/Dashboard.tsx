@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant, useBranding } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -71,7 +72,7 @@ export default function Dashboard() {
   });
 
   // Fetch job stats using single RPC call for better performance
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError, isFetching: statsFetching, refetch: refetchStats } = useQuery({
     queryKey: ['dashboard-stats', tenant?.id],
     queryFn: async () => {
       if (!tenant?.id) return null;
@@ -98,7 +99,7 @@ export default function Dashboard() {
   });
 
   // Fetch today's jobs
-  const { data: todaysJobs, isLoading: jobsLoading } = useQuery({
+  const { data: todaysJobs, isLoading: jobsLoading, isError: jobsError, isFetching: jobsFetching, refetch: refetchJobs } = useQuery({
     queryKey: ['dashboard-todays-jobs', tenant?.id],
     queryFn: async () => {
       if (!tenant?.id) return [];
@@ -128,7 +129,7 @@ export default function Dashboard() {
   });
 
   // Fetch recent service requests
-  const { data: serviceRequests, isLoading: requestsLoading } = useQuery({
+  const { data: serviceRequests, isLoading: requestsLoading, isError: requestsError, isFetching: requestsFetching, refetch: refetchRequests } = useQuery({
     queryKey: ['dashboard-service-requests', tenant?.id],
     queryFn: async () => {
       if (!tenant?.id) return [];
@@ -430,6 +431,14 @@ export default function Dashboard() {
         <StripeConnectIndicator />
         
         {/* Stats Grid with 3D Cards */}
+        {statsError && !statsLoading ? (
+          <QueryErrorState
+            title={`Couldn't load ${t('jobs').toLowerCase()} stats`}
+            onRetry={() => refetchStats()}
+            retrying={statsFetching}
+            testId="dashboard-stats-error"
+          />
+        ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" data-testid="dashboard-stats-grid">
           {statItems.map((stat, index) => {
             const Icon = stat.icon;
@@ -485,6 +494,7 @@ export default function Dashboard() {
             );
           })}
         </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Today's Jobs */}
@@ -499,7 +509,15 @@ export default function Dashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              {jobsLoading ? (
+              {jobsError && !jobsLoading ? (
+                <QueryErrorState
+                  variant="inline"
+                  title={`Couldn't load today's ${t('jobs').toLowerCase()}`}
+                  onRetry={() => refetchJobs()}
+                  retrying={jobsFetching}
+                  testId="dashboard-todays-jobs-error"
+                />
+              ) : jobsLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-16 w-full" />
@@ -564,7 +582,15 @@ export default function Dashboard() {
               )}
             </CardHeader>
             <CardContent>
-              {requestsLoading ? (
+              {requestsError && !requestsLoading ? (
+                <QueryErrorState
+                  variant="inline"
+                  title="Couldn't load requests"
+                  onRetry={() => refetchRequests()}
+                  retrying={requestsFetching}
+                  testId="dashboard-requests-error"
+                />
+              ) : requestsLoading ? (
                 <div className="space-y-3">
                   {[1, 2].map((i) => (
                     <Skeleton key={i} className="h-20 w-full" />

@@ -12,6 +12,7 @@ import { JobFormDialog } from "@/components/jobs/JobFormDialog";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { QueryErrorState } from "@/components/ui/QueryErrorState";
 import { Plus, Loader2, Users, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { useTerminology } from "@/hooks/useTerminology";
@@ -47,6 +48,7 @@ export default function Schedule() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedTechnician, setSelectedTechnician] = useState<string | null>(null);
@@ -115,6 +117,7 @@ export default function Schedule() {
       setJobs(formattedJobs);
     } catch (error) {
       console.error("Error fetching jobs:", error);
+      setLoadError(true);
       toast.error("Failed to load jobs");
     }
   }, [tenant?.id]);
@@ -185,17 +188,19 @@ export default function Schedule() {
     }
   }, [user, tenant, authLoading, tenantLoading, navigate]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([fetchJobs(), fetchTechnicians()]);
-      setLoading(false);
-    };
+  const loadData = useCallback(async () => {
+    if (!tenant?.id) return;
+    setLoading(true);
+    setLoadError(false);
+    await Promise.all([fetchJobs(), fetchTechnicians()]);
+    setLoading(false);
+  }, [tenant?.id, fetchJobs, fetchTechnicians]);
 
+  useEffect(() => {
     if (tenant?.id) {
       loadData();
     }
-  }, [tenant?.id, fetchJobs, fetchTechnicians]);
+  }, [tenant?.id, loadData]);
 
   const handleJobDrop = async (jobId: string, date: string, technicianId?: string) => {
     try {
@@ -278,6 +283,20 @@ export default function Schedule() {
       <MainLayout title={t('schedule')}>
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <MainLayout title={t('schedule')}>
+        <div className="flex items-center justify-center h-[60vh]">
+          <QueryErrorState
+            title="Couldn't load the schedule"
+            onRetry={loadData}
+            testId="schedule-error-state"
+          />
         </div>
       </MainLayout>
     );

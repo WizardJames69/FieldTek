@@ -60,6 +60,7 @@ export default defineConfig({
         'e2e/specs/schedule.spec.ts',
         'e2e/specs/settings.spec.ts',
         'e2e/specs/navigation.spec.ts',
+        'e2e/specs/error-recovery.spec.ts',
       ],
     },
 

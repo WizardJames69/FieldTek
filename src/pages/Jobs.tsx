@@ -21,6 +21,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
@@ -99,6 +100,7 @@ export default function Jobs() {
 
   const [jobs, setJobs] = useState<JobWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<JobPriority | 'all'>('all');
@@ -150,6 +152,7 @@ export default function Jobs() {
 
   const fetchJobs = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       // Fetch jobs with client relation
       const { data: jobsData, error: jobsError } = await supabase
@@ -192,6 +195,7 @@ export default function Jobs() {
 
       setJobs(jobsWithProfiles);
     } catch (error: any) {
+      setLoadError(true);
       toast({
         variant: 'destructive',
         title: 'Error loading jobs',
@@ -561,6 +565,16 @@ export default function Jobs() {
               </Card>
             ))}
           </div>
+        ) : loadError ? (
+          <Card className="border-dashed app-glass-container" data-testid="jobs-error-state">
+            <CardContent className="p-12">
+              <QueryErrorState
+                variant="inline"
+                title={`Couldn't load ${t('jobs').toLowerCase()}`}
+                onRetry={fetchJobs}
+              />
+            </CardContent>
+          </Card>
         ) : filteredJobs.length === 0 ? (
           <Card className="border-dashed app-glass-container" data-testid="jobs-empty-state">
             <CardContent className="p-12 text-center">
