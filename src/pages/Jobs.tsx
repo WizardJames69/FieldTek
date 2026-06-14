@@ -581,15 +581,36 @@ export default function Jobs() {
           <div className="space-y-3" data-testid="jobs-list">
             {filteredJobs.map((job) => {
               // Phase 6: Priority-based glow effects
-              const priorityGlow = job.priority === 'urgent' 
-                ? 'priority-glow-urgent' 
-                : job.priority === 'high' 
-                  ? 'shadow-[inset_0_0_0_1px_hsl(var(--warning)/0.2)]' 
+              const priorityGlow = job.priority === 'urgent'
+                ? 'priority-glow-urgent'
+                : job.priority === 'high'
+                  ? 'shadow-[inset_0_0_0_1px_hsl(var(--warning)/0.2)]'
                   : '';
-              
+
+              // Clicking the card body opens the same detail drawer as the
+              // "View Details" menu item. Nested controls (checkbox, status
+              // action, menu trigger) stop propagation so they keep acting only
+              // on themselves.
+              const openDetails = () => { setViewingJob(job); setDetailOpen(true); };
+
               return (
-              <Card key={job.id} data-testid="job-card" className={cn(
-                "card-interactive card-premium group touch-native relative overflow-hidden",
+              <Card
+                key={job.id}
+                data-testid="job-card"
+                role="button"
+                tabIndex={0}
+                aria-label={`View details for ${job.title}`}
+                onClick={openDetails}
+                onKeyDown={(e) => {
+                  // Only the focused card itself responds — pressing Enter/Space
+                  // on a nested control must not also open the drawer.
+                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    openDetails();
+                  }
+                }}
+                className={cn(
+                "card-interactive card-premium group touch-native relative overflow-hidden cursor-pointer",
                 priorityGlow,
                 selection.isSelected(job.id) && "ring-2 ring-primary/50"
               )}>
@@ -675,7 +696,7 @@ export default function Jobs() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleStatusChange(job.id, job.status === 'in_progress' ? 'completed' : 'in_progress')}
+                          onClick={(e) => { e.stopPropagation(); handleStatusChange(job.id, job.status === 'in_progress' ? 'completed' : 'in_progress'); }}
                           className="gap-1"
                         >
                           <CheckCircle2 className="h-4 w-4" />
@@ -685,15 +706,12 @@ export default function Jobs() {
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
-                            setViewingJob(job);
-                            setDetailOpen(true);
-                          }}>
+                          <DropdownMenuItem onClick={openDetails}>
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </DropdownMenuItem>

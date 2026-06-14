@@ -69,4 +69,32 @@ test.describe('Jobs Management', () => {
     await expect(page.getByRole('tab', { name: /all/i })).toBeVisible();
     await expect(page.getByRole('tab', { name: /recurring/i })).toBeVisible();
   });
+
+  test('clicking a job card body opens the detail drawer', async ({ page }) => {
+    const card = jobsPage.getJobCards().first();
+    await expect(card).toBeVisible({ timeout: 10_000 });
+    const title = (await card.getByRole('heading').first().innerText()).trim();
+
+    // Click the card body (the title) — not a control
+    await card.getByRole('heading').first().click();
+
+    // The detail drawer (Sheet → dialog) opens, showing the job title
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog.getByText(title, { exact: false }).first()).toBeVisible();
+  });
+
+  test('three-dot menu opens the menu without opening the drawer; View Details still works', async ({ page }) => {
+    const card = jobsPage.getJobCards().first();
+    await expect(card).toBeVisible({ timeout: 10_000 });
+
+    // Opening the row action menu must NOT open the detail drawer
+    await card.locator('[aria-haspopup="menu"]').click();
+    await expect(page.getByRole('menuitem', { name: /view details/i })).toBeVisible();
+    await expect(page.getByRole('dialog')).toBeHidden();
+
+    // View Details from the menu still opens the drawer
+    await page.getByRole('menuitem', { name: /view details/i }).click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 10_000 });
+  });
 });
