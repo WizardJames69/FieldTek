@@ -19,7 +19,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useOfflineSyncContext } from '@/contexts/OfflineSyncContext';
 import { getOfflineStats } from '@/lib/offlineDb';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,7 +31,7 @@ interface OfflineSyncStatusProps {
 }
 
 export function OfflineSyncStatus({ className, variant = 'full' }: OfflineSyncStatusProps) {
-  const { isOnline, isSyncing, pendingCount, lastSyncAt, syncQueue, syncErrors } = useOfflineSync();
+  const { isOnline, isSyncing, pendingCount, lastSyncAt, syncQueue, syncErrors } = useOfflineSyncContext();
   const [isExpanded, setIsExpanded] = useState(false);
   const [stats, setStats] = useState<{
     cachedJobsCount: number;

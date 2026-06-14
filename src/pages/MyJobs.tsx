@@ -26,7 +26,6 @@ import { Separator } from '@/components/ui/separator';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useOfflineJobs } from '@/hooks/useOfflineJobs';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useOfflineDataPreloader } from '@/hooks/useOfflineDataPreloader';
 import { OfflineSyncStatus } from '@/components/offline/OfflineSyncStatus';
 import { cn } from '@/lib/utils';
@@ -46,9 +45,10 @@ export default function MyJobs() {
     enabled: !!user?.id && !!tenant?.id,
   });
   
-  // Sync queue status
-  const { pendingCount, isSyncing } = useOfflineSync();
-  
+  // Offline sync state is owned by the shared OfflineSyncProvider (mounted in
+  // TenantLayout) and surfaced here via <OfflineSyncStatus /> and the header
+  // <OfflineIndicator /> — My Jobs no longer runs its own sync engine.
+
   // Preloader for offline data
   const { preloadOfflineData } = useOfflineDataPreloader();
 

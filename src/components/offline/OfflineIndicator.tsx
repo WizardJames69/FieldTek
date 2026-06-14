@@ -1,4 +1,4 @@
-import { WifiOff, Cloud, CloudOff, Loader2, RefreshCw } from 'lucide-react';
+import { WifiOff, CloudOff, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,7 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useOfflineSyncContext } from '@/contexts/OfflineSyncContext';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -22,10 +22,13 @@ export function OfflineIndicator({
   showPendingCount = true,
   compact = false 
 }: OfflineIndicatorProps) {
-  const { isOnline, isSyncing, pendingCount, syncQueue, lastSyncAt } = useOfflineSync();
+  const { isOnline, isSyncing, pendingCount, syncQueue, lastSyncAt, syncErrors } =
+    useOfflineSyncContext();
+  const hasErrors = syncErrors.length > 0;
 
-  // Don't show anything if online with no pending items
-  if (isOnline && pendingCount === 0 && !isSyncing) {
+  // Don't clutter the UI when there's nothing to report: online, synced, idle,
+  // and no errors.
+  if (isOnline && pendingCount === 0 && !isSyncing && !hasErrors) {
     return null;
   }
 
@@ -73,8 +76,8 @@ export function OfflineIndicator({
                     {!compact && 'Syncing...'}
                   </Badge>
                 ) : pendingCount > 0 ? (
-                  <Badge 
-                    variant="secondary" 
+                  <Badge
+                    variant="secondary"
                     className={cn(
                       'gap-1.5 font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
                       compact && 'px-2 py-0.5 text-xs'
@@ -84,6 +87,17 @@ export function OfflineIndicator({
                     {showPendingCount && (
                       <span>{pendingCount} pending</span>
                     )}
+                  </Badge>
+                ) : hasErrors ? (
+                  <Badge
+                    variant="destructive"
+                    className={cn(
+                      'gap-1.5 font-medium',
+                      compact && 'px-2 py-0.5 text-xs'
+                    )}
+                  >
+                    <AlertTriangle className={cn('h-3.5 w-3.5', compact && 'h-3 w-3')} />
+                    {!compact && 'Sync error'}
                   </Badge>
                 ) : null}
 
@@ -104,15 +118,22 @@ export function OfflineIndicator({
             <TooltipContent side="bottom" className="max-w-xs">
               <div className="space-y-1 text-sm">
                 <p className="font-medium">
-                  {!isOnline 
-                    ? 'You are offline' 
-                    : pendingCount > 0 
+                  {!isOnline
+                    ? 'You are offline'
+                    : pendingCount > 0
                       ? `${pendingCount} update${pendingCount > 1 ? 's' : ''} pending sync`
-                      : 'All changes synced'}
+                      : hasErrors
+                        ? `${syncErrors.length} sync error${syncErrors.length > 1 ? 's' : ''}`
+                        : 'All changes synced'}
                 </p>
                 {!isOnline && (
                   <p className="text-muted-foreground text-xs">
                     Changes will sync automatically when you're back online.
+                  </p>
+                )}
+                {isOnline && hasErrors && (
+                  <p className="text-muted-foreground text-xs">
+                    Some changes couldn't sync. Open My Jobs for details.
                   </p>
                 )}
                 {lastSyncAt && (

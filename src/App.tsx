@@ -9,6 +9,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
+import { OfflineSyncProvider } from "@/contexts/OfflineSyncContext";
 import { PortalAuthProvider } from "@/contexts/PortalAuthContext";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -156,8 +157,13 @@ function PortalLayout() {
 function TenantLayout() {
   return (
     <TenantProvider>
-      <SubscriptionStatusBanner />
-      <Outlet />
+      {/* One offline sync engine for the whole authenticated tenant app. Mounted
+          here (not per-page) so a single instance persists across navigation and
+          powers the header indicator + My Jobs status panel from shared state. */}
+      <OfflineSyncProvider>
+        <SubscriptionStatusBanner />
+        <Outlet />
+      </OfflineSyncProvider>
     </TenantProvider>
   );
 }
