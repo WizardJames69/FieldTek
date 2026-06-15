@@ -34,7 +34,9 @@ import {
   Lock,
   Loader2,
   BookOpen,
+  Stethoscope,
 } from 'lucide-react';
+import { DiagnosticsDialog } from '@/components/support/DiagnosticsPanel';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -227,6 +229,19 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
                   <p className="text-xs text-muted-foreground capitalize">{role || 'User'}</p>
                 </div>
               </div>
+              {/* Diagnostics — read-only support info, available to every role */}
+              <DiagnosticsDialog
+                trigger={
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-2"
+                    data-testid="mobile-diagnostics-button"
+                  >
+                    <Stethoscope className="h-4 w-4" />
+                    Diagnostics
+                  </Button>
+                }
+              />
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2"

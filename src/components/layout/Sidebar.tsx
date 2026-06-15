@@ -18,8 +18,10 @@ import {
   Lock,
   Loader2,
   RefreshCw,
+  Stethoscope,
 } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
+import { DiagnosticsDialog } from '@/components/support/DiagnosticsPanel';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant, useBranding, useUserRole } from '@/contexts/TenantContext';
@@ -408,6 +410,24 @@ export function Sidebar() {
             </div>
           )}
         </div>
+
+        {/* Diagnostics — read-only support info, available to every role */}
+        <DiagnosticsDialog
+          trigger={
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="sidebar-diagnostics-button"
+              className={cn(
+                'w-full text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 touch-native transition-all duration-200',
+                collapsed ? 'justify-center px-2' : 'justify-start'
+              )}
+            >
+              <Stethoscope className="h-4 w-4" />
+              {!collapsed && <span className="ml-2">Diagnostics</span>}
+            </Button>
+          }
+        />
 
         {/* Sign Out with enhanced styling */}
         <Button

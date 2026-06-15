@@ -16,14 +16,21 @@ Related docs: [pilot-admin-setup.md](pilot-admin-setup.md),
 
 ## Diagnostic info to collect first (every ticket)
 
-Ask for / record these — they answer most questions on their own:
+> **Fastest path — the in-app Diagnostics panel.** Have the user open the menu (the sidebar on
+> desktop, or the **☰** menu on mobile), tap **Diagnostics**, then **Copy diagnostics**, and paste
+> the result to you. One paste gives you app version, build mode, route, backend ref, online/offline,
+> service-worker + PWA status, pending sync count, sync errors, last sync, company, and account — all
+> the fields below, with **no secrets**. It's read-only and available to **every** signed-in user
+> (technicians included).
+
+Ask for / record these — they answer most questions on their own (the Diagnostics panel covers most):
 
 - **User email** (who is affected)
 - **Tenant / company name**
-- **App version** if you can get it — not shown in the normal UI; in a desktop browser, open the
-  page, view source/DevTools and read the `data-app-version` attribute on the `<html>` tag, or check
-  the browser console for a `[FieldTek] Version …` / `[FieldTek] build …` line. (Pilot rule of thumb:
-  if unsure, have them reload to get the newest build.)
+- **App version / build mode** — read straight from **Diagnostics → Copy diagnostics** (above).
+  (Fallback without the panel: in a desktop browser read the `data-app-version` attribute on the
+  `<html>` tag, or the console `[FieldTek] build …` line. If unsure, have them reload for the newest
+  build.)
 - **Page / route** they were on (e.g. `/my-jobs`, `/jobs`, `/dashboard`)
 - **Online or offline** at the time
 - **Pending sync count** (the badge number on My Jobs), and whether it said **Sync error**
@@ -179,6 +186,7 @@ Escalate when, after the steps above:
 - Anything that looks like **data loss, a security/permission problem, or an outage** (also check
   Admin → **System Health** and Sentry — [RUNBOOK.md §5/§7](RUNBOOK.md)).
 
-**Include in the escalation:** the full diagnostic set from the top of this doc (user email, tenant,
-app version if available, route, online/offline, pending count, screenshot, time, job name/ID).
-Do **not** include secrets or keys.
+**Include in the escalation:** the **Diagnostics → Copy diagnostics** paste (covers app version,
+route, backend ref, online/offline, pending count, last sync, company, account, support session) plus
+a **screenshot**, the **time** it happened, and the **job name/ID**. Do **not** include secrets or
+keys — the diagnostics paste is already secret-free by design.

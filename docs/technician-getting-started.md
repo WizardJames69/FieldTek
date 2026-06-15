@@ -128,7 +128,13 @@ You'll occasionally see a **"New version available"** message with a **Reload** 
    roughly **when** it happened. The [troubleshooting guide](pilot-troubleshooting.md) lists exactly
    what helps them.
 
+> **Tip — send your Diagnostics.** Open the menu (tap the **☰** icon at the top-left), tap
+> **Diagnostics**, then **Copy diagnostics**, and paste it into your message to the office. It's a
+> short, safe summary (no passwords or private data) that tells them exactly what your app is doing —
+> it saves a lot of back-and-forth.
+
 ---
 
 You don't need to understand the technical side — if a screen looks wrong or stuck, take a quick
-screenshot and send it to your office with a one-line note. That's always enough to get help.
+screenshot and send it to your office with a one-line note (and, if you can, the **Diagnostics →
+Copy diagnostics** paste from the **☰** menu). That's always enough to get help.
