@@ -11,6 +11,7 @@ import {
   setOfflineMetadata,
   getEvidenceBlob,
   removeEvidenceBlob,
+  getCachedJob,
 } from '@/lib/offlineDb';
 import { useOnlineStatus } from './useOnlineStatus';
 import {
@@ -19,6 +20,12 @@ import {
   JobStatusUpdatePayload,
   ChecklistCompletionUpdatePayload,
 } from '@/lib/offlineReplay';
+import {
+  buildSyncErrorMessage,
+  buildDroppedMessage,
+  getOperationJobId,
+  getJobContextLabel,
+} from '@/lib/offlineSyncErrors';
 import { toast } from 'sonner';
 
 // Operations are DELETED once retryCount exceeds this — keep it generous so a
@@ -26,6 +33,42 @@ import { toast } from 'sonner';
 // reconnect) doesn't silently drop field data.
 const MAX_RETRIES = 10;
 const SYNC_INTERVAL = 30000; // 30 seconds
+
+/**
+ * Resolve a human-readable job label for an operation from the offline cache.
+ * Read-only and defensive — a missing/expired cache entry just yields no
+ * context (the message falls back to a generic phrasing). Never throws.
+ */
+async function resolveJobContext(operation: QueuedOperation): Promise<string | null> {
+  try {
+    const jobId = getOperationJobId(operation);
+    if (!jobId) return null;
+    const cached = await getCachedJob(jobId);
+    return getJobContextLabel(cached?.data ?? null);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Loud, persistent warning that an offline change was permanently dropped after
+ * exhausting its retries. The drop itself is unchanged — this only makes the
+ * (real) data loss impossible to miss and gives support a non-sensitive log
+ * line. The toast stays until the user dismisses it (`duration: Infinity`).
+ */
+function notifyPermanentDrop(operation: QueuedOperation, message: string): void {
+  // Support breadcrumb — type/id/retries only, never the payload (no secrets).
+  console.warn('[OfflineSync] Operation dropped after max retries', {
+    id: operation.id,
+    type: operation.type,
+    retryCount: operation.retryCount,
+  });
+  const toastId = toast.error('Offline change could not sync', {
+    description: message,
+    duration: Infinity,
+    action: { label: 'Dismiss', onClick: () => toast.dismiss(toastId) },
+  });
+}
 
 export function useOfflineSync() {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -222,9 +265,16 @@ export function useOfflineSync() {
       let successCount = 0;
 
       for (const operation of queue) {
+        // Read-only lookup of a friendly job name for any message we build.
+        const jobContext = await resolveJobContext(operation);
+
         if (operation.retryCount >= MAX_RETRIES) {
-          errors.push(`Operation ${operation.id} exceeded max retries`);
+          // Permanent drop — keep removing it from the queue exactly as before,
+          // but make the data loss loud and human-readable.
+          const droppedMessage = buildDroppedMessage(operation.type, MAX_RETRIES, jobContext);
+          errors.push(droppedMessage);
           await removeFromSyncQueue(operation.id);
+          notifyPermanentDrop(operation, droppedMessage);
           continue;
         }
 
@@ -234,8 +284,14 @@ export function useOfflineSync() {
           await removeFromSyncQueue(operation.id);
           successCount++;
         } else {
-          await updateQueueItemRetry(operation.id, operation.retryCount + 1);
-          errors.push(`Failed to sync ${operation.type} for job`);
+          const nextRetry = operation.retryCount + 1;
+          await updateQueueItemRetry(operation.id, nextRetry);
+          errors.push(
+            buildSyncErrorMessage(operation.type, jobContext, {
+              count: nextRetry,
+              max: MAX_RETRIES,
+            })
+          );
         }
       }
 

@@ -32,6 +32,7 @@ interface OfflineSyncStatusProps {
 
 export function OfflineSyncStatus({ className, variant = 'full' }: OfflineSyncStatusProps) {
   const { isOnline, isSyncing, pendingCount, lastSyncAt, syncQueue, syncErrors } = useOfflineSyncContext();
+  const hasErrors = syncErrors.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
   const [stats, setStats] = useState<{
     cachedJobsCount: number;
@@ -103,10 +104,12 @@ export function OfflineSyncStatus({ className, variant = 'full' }: OfflineSyncSt
         animate={{ opacity: 1, y: 0 }}
         className={cn(
           'rounded-2xl overflow-hidden',
-          isOnline 
-            ? pendingCount > 0 
+          isOnline
+            ? pendingCount > 0
               ? 'bg-gradient-to-br from-amber-500/10 to-amber-600/5 ring-1 ring-amber-500/30'
-              : 'bg-gradient-to-br from-success/10 to-success/5 ring-1 ring-success/30'
+              : hasErrors
+                ? 'bg-gradient-to-br from-destructive/10 to-destructive/5 ring-1 ring-destructive/30'
+                : 'bg-gradient-to-br from-success/10 to-success/5 ring-1 ring-success/30'
             : 'bg-gradient-to-br from-destructive/10 to-destructive/5 ring-1 ring-destructive/30',
           className
         )}
@@ -117,10 +120,12 @@ export function OfflineSyncStatus({ className, variant = 'full' }: OfflineSyncSt
               {/* Status icon */}
               <div className={cn(
                 'h-10 w-10 rounded-xl flex items-center justify-center ring-1',
-                isOnline 
+                isOnline
                   ? pendingCount > 0
                     ? 'bg-gradient-to-br from-amber-500/30 to-amber-600/20 ring-amber-500/40'
-                    : 'bg-gradient-to-br from-success/30 to-success/20 ring-success/40'
+                    : hasErrors
+                      ? 'bg-gradient-to-br from-destructive/30 to-destructive/20 ring-destructive/40'
+                      : 'bg-gradient-to-br from-success/30 to-success/20 ring-success/40'
                   : 'bg-gradient-to-br from-destructive/30 to-destructive/20 ring-destructive/40'
               )}>
                 {!isOnline ? (
@@ -129,6 +134,8 @@ export function OfflineSyncStatus({ className, variant = 'full' }: OfflineSyncSt
                   <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
                 ) : pendingCount > 0 ? (
                   <CloudOff className="h-5 w-5 text-amber-500" />
+                ) : hasErrors ? (
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
                 ) : (
                   <Cloud className="h-5 w-5 text-success" />
                 )}
@@ -138,24 +145,30 @@ export function OfflineSyncStatus({ className, variant = 'full' }: OfflineSyncSt
               <div className="text-left">
                 <p className={cn(
                   'font-bold text-sm',
-                  isOnline 
-                    ? pendingCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-success'
+                  isOnline
+                    ? pendingCount > 0
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : hasErrors ? 'text-destructive' : 'text-success'
                     : 'text-destructive'
                 )}>
-                  {!isOnline 
-                    ? 'Offline Mode' 
-                    : isSyncing 
+                  {!isOnline
+                    ? 'Offline Mode'
+                    : isSyncing
                       ? 'Syncing changes...'
-                      : pendingCount > 0 
+                      : pendingCount > 0
                         ? `${pendingCount} pending sync${pendingCount > 1 ? 's' : ''}`
-                        : 'All synced'}
+                        : hasErrors
+                          ? `${syncErrors.length} change${syncErrors.length > 1 ? 's' : ''} didn't sync`
+                          : 'All synced'}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {!isOnline 
+                  {!isOnline
                     ? `${stats?.cachedJobsCount || 0} jobs available offline`
-                    : lastSyncAt 
-                      ? `Last sync: ${formatTime(lastSyncAt)}`
-                      : 'Tap for details'}
+                    : hasErrors
+                      ? 'Tap to see what failed'
+                      : lastSyncAt
+                        ? `Last sync: ${formatTime(lastSyncAt)}`
+                        : 'Tap for details'}
                 </p>
               </div>
             </div>
@@ -226,15 +239,22 @@ export function OfflineSyncStatus({ className, variant = 'full' }: OfflineSyncSt
               </Badge>
             </div>
 
-            {/* Sync errors */}
-            {syncErrors.length > 0 && (
+            {/* Sync errors — human-readable; older entries collapsed to a count */}
+            {hasErrors && (
               <div className="p-3 rounded-xl bg-destructive/10 ring-1 ring-destructive/30">
-                <p className="text-xs font-semibold text-destructive mb-2">Sync Errors:</p>
+                <p className="text-xs font-semibold text-destructive mb-2">
+                  {syncErrors.length === 1 ? 'Sync error:' : 'Sync errors:'}
+                </p>
                 <ul className="text-xs text-destructive/80 space-y-1">
                   {syncErrors.slice(0, 3).map((error, i) => (
                     <li key={i}>• {error}</li>
                   ))}
                 </ul>
+                {syncErrors.length > 3 && (
+                  <p className="text-xs text-destructive/70 mt-1.5">
+                    …and {syncErrors.length - 3} more
+                  </p>
+                )}
               </div>
             )}
 
