@@ -15,7 +15,8 @@ import {
   Download,
   UserPlus,
   Upload,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -112,9 +113,14 @@ export default function Jobs() {
   const [viewingJob, setViewingJob] = useState<JobWithRelations | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteJobId, setDeleteJobId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
   const [completingJobId, setCompletingJobId] = useState<string | null>(null);
+  // The single job whose status change is currently in flight, so its inline
+  // Start/Complete button (and the detail-drawer buttons) can show a loading
+  // state and disable to prevent a double submit.
+  const [updatingJobId, setUpdatingJobId] = useState<string | null>(null);
 
   const recurringCount = useActiveRecurringJobsCount();
 
@@ -229,8 +235,9 @@ export default function Jobs() {
   };
 
   const handleDeleteJob = async () => {
-    if (!deleteJobId) return;
-    
+    if (!deleteJobId || deleteLoading) return;
+
+    setDeleteLoading(true);
     try {
       const { error } = await supabase
         .from('scheduled_jobs')
@@ -238,17 +245,19 @@ export default function Jobs() {
         .eq('id', deleteJobId);
 
       if (error) throw error;
-      
+
       toast({ title: 'Job deleted successfully' });
       setJobs(jobs.filter(j => j.id !== deleteJobId));
+      setDeleteJobId(null);
     } catch (error: any) {
+      // Keep the confirmation open so the failure is obvious and retryable.
       toast({
         variant: 'destructive',
         title: 'Error deleting job',
         description: error.message,
       });
     } finally {
-      setDeleteJobId(null);
+      setDeleteLoading(false);
     }
   };
 
@@ -265,15 +274,25 @@ export default function Jobs() {
 
   const handleCompleteWithNotes = async (resolutionNotes: string) => {
     if (!completingJobId) return;
-    setCompletionDialogOpen(false);
-    await applyStatusChange(completingJobId, 'completed', resolutionNotes);
-    setCompletingJobId(null);
+    // Apply first, then close ONLY on success — a failed completion keeps the
+    // dialog open with the typed resolution notes intact (the dialog no longer
+    // clears its text on confirm, only when it actually closes).
+    const ok = await applyStatusChange(completingJobId, 'completed', resolutionNotes);
+    if (ok) {
+      setCompletionDialogOpen(false);
+      setCompletingJobId(null);
+    }
   };
 
-  const applyStatusChange = async (jobId: string, newStatus: JobStatus, resolutionNotes?: string) => {
+  const applyStatusChange = async (
+    jobId: string,
+    newStatus: JobStatus,
+    resolutionNotes?: string
+  ): Promise<boolean> => {
     const jobToUpdate = jobs.find(j => j.id === jobId);
     const previousStatus = jobToUpdate?.status;
 
+    setUpdatingJobId(jobId);
     try {
       const updatePayload: Record<string, unknown> = { status: newStatus };
       if (resolutionNotes) {
@@ -299,12 +318,16 @@ export default function Jobs() {
           technicianName: jobToUpdate.profiles?.full_name || undefined,
         }).catch(err => console.error('Push notification failed:', err));
       }
+      return true;
     } catch (error: any) {
       toast({
         variant: 'destructive',
         title: 'Error updating status',
         description: error.message,
       });
+      return false;
+    } finally {
+      setUpdatingJobId(null);
     }
   };
 
@@ -717,10 +740,18 @@ export default function Jobs() {
                           variant="outline"
                           size="sm"
                           onClick={(e) => { e.stopPropagation(); handleStatusChange(job.id, job.status === 'in_progress' ? 'completed' : 'in_progress'); }}
+                          disabled={updatingJobId === job.id}
+                          aria-busy={updatingJobId === job.id}
                           className="gap-1"
                         >
-                          <CheckCircle2 className="h-4 w-4" />
-                          {job.status === 'in_progress' ? 'Complete' : 'Start'}
+                          {updatingJobId === job.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4" />
+                          )}
+                          {updatingJobId === job.id
+                            ? (job.status === 'in_progress' ? 'Completing…' : 'Starting…')
+                            : (job.status === 'in_progress' ? 'Complete…' : 'Start')}
                         </Button>
                       )}
 
@@ -740,17 +771,17 @@ export default function Jobs() {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleStatusChange(job.id, 'pending')}>
+                          <DropdownMenuItem disabled={updatingJobId === job.id} onClick={() => handleStatusChange(job.id, 'pending')}>
                             Set as Pending
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(job.id, 'scheduled')}>
+                          <DropdownMenuItem disabled={updatingJobId === job.id} onClick={() => handleStatusChange(job.id, 'scheduled')}>
                             Set as Scheduled
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(job.id, 'in_progress')}>
+                          <DropdownMenuItem disabled={updatingJobId === job.id} onClick={() => handleStatusChange(job.id, 'in_progress')}>
                             Set as In Progress
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(job.id, 'completed')}>
-                            Set as Completed
+                          <DropdownMenuItem disabled={updatingJobId === job.id} onClick={() => handleStatusChange(job.id, 'completed')}>
+                            Set as Completed…
                           </DropdownMenuItem>
                           {isAdmin && (
                             <>
@@ -785,9 +816,13 @@ export default function Jobs() {
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" disabled={bulkStatusLoading}>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Status
+            <Button size="sm" variant="outline" disabled={bulkStatusLoading} aria-busy={bulkStatusLoading}>
+              {bulkStatusLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              {bulkStatusLoading ? 'Updating…' : 'Status'}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -808,9 +843,13 @@ export default function Jobs() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" disabled={bulkStatusLoading}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Assign
+            <Button size="sm" variant="outline" disabled={bulkStatusLoading} aria-busy={bulkStatusLoading}>
+              {bulkStatusLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4 mr-2" />
+              )}
+              {bulkStatusLoading ? 'Assigning…' : 'Assign'}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -864,6 +903,7 @@ export default function Jobs() {
           setIsFormOpen(true);
         }}
         onStatusChange={handleStatusChange}
+        isUpdating={!!viewingJob && updatingJobId === viewingJob.id}
       />
 
       {/* Create/Edit Dialog */}
@@ -875,18 +915,41 @@ export default function Jobs() {
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteJobId} onOpenChange={() => setDeleteJobId(null)}>
+      <AlertDialog open={!!deleteJobId} onOpenChange={(open) => { if (!open && !deleteLoading) setDeleteJobId(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Job</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this job? This action cannot be undone.
+              {(() => {
+                const title = deleteJobId ? jobs.find(j => j.id === deleteJobId)?.title : undefined;
+                return title ? (
+                  <>
+                    This permanently deletes{' '}
+                    <span className="font-semibold text-foreground">“{title}”</span>. This action
+                    cannot be undone.
+                  </>
+                ) : (
+                  'Are you sure you want to delete this job? This action cannot be undone.'
+                );
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteJob} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
+            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDeleteJob(); }}
+              disabled={deleteLoading}
+              aria-busy={deleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                'Delete'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -908,6 +971,7 @@ export default function Jobs() {
         }}
         jobTitle={completingJobId ? jobs.find(j => j.id === completingJobId)?.title : undefined}
         onConfirm={handleCompleteWithNotes}
+        isSubmitting={!!completingJobId && updatingJobId === completingJobId}
       />
     </MainLayout>
   );

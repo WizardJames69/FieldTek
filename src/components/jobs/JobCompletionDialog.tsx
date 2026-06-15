@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CheckCircle2, FileText } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, FileText, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,12 @@ interface JobCompletionDialogProps {
   onOpenChange: (open: boolean) => void;
   jobTitle?: string;
   onConfirm: (resolutionNotes: string) => void;
+  /**
+   * When true the completion is in flight: the action shows a spinner, inputs
+   * lock, and the dialog can't be dismissed — so a failed submit (the parent
+   * keeps `open` true) leaves the typed notes intact for a retry.
+   */
+  isSubmitting?: boolean;
 }
 
 const MIN_RESOLUTION_LENGTH = 10;
@@ -38,16 +44,25 @@ export function JobCompletionDialog({
   onOpenChange,
   jobTitle,
   onConfirm,
+  isSubmitting = false,
 }: JobCompletionDialogProps) {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const isValid = resolutionNotes.trim().length >= MIN_RESOLUTION_LENGTH;
 
+  // Reset only when the dialog actually closes. We intentionally do NOT clear on
+  // confirm: if the submit fails the parent keeps the dialog open, and the typed
+  // notes must survive for a retry.
+  useEffect(() => {
+    if (!open) {
+      setResolutionNotes('');
+      setSelectedTemplate(null);
+    }
+  }, [open]);
+
   const handleConfirm = () => {
-    if (!isValid) return;
+    if (!isValid || isSubmitting) return;
     onConfirm(resolutionNotes.trim());
-    setResolutionNotes('');
-    setSelectedTemplate(null);
   };
 
   const handleCancel = () => {
@@ -69,7 +84,7 @@ export function JobCompletionDialog({
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={(o) => { if (!isSubmitting) onOpenChange(o); }}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
@@ -106,6 +121,7 @@ export function JobCompletionDialog({
                 variant={selectedTemplate === tpl ? 'secondary' : 'outline'}
                 className="text-xs h-7 px-2.5"
                 onClick={() => handleSelectTemplate(tpl)}
+                disabled={isSubmitting}
               >
                 {tpl}
               </Button>
@@ -119,6 +135,7 @@ export function JobCompletionDialog({
             onChange={(e) => handleTextChange(e.target.value)}
             rows={4}
             className="resize-none"
+            disabled={isSubmitting}
           />
           <p className="text-xs text-muted-foreground">
             {resolutionNotes.trim().length < MIN_RESOLUTION_LENGTH
@@ -128,9 +145,20 @@ export function JobCompletionDialog({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancel}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} disabled={!isValid}>
-            Complete Job
+          <AlertDialogCancel onClick={handleCancel} disabled={isSubmitting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => { e.preventDefault(); handleConfirm(); }}
+            disabled={!isValid || isSubmitting}
+            aria-busy={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Completing…
+              </>
+            ) : (
+              'Complete Job'
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

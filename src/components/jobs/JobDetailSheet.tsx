@@ -24,6 +24,7 @@ import {
   Play,
   AlertTriangle,
   Pencil,
+  Loader2,
 } from 'lucide-react';
 import { CustomerEquipmentHistory } from '@/components/equipment/CustomerEquipmentHistory';
 import { JobChecklistResults } from '@/components/jobs/JobChecklistResults';
@@ -73,6 +74,8 @@ interface JobDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   onEdit?: () => void;
   onStatusChange?: (jobId: string, status: string) => void;
+  /** True while this job's status change is in flight (drives button loading). */
+  isUpdating?: boolean;
 }
 
 // Status/priority colors carry a dark: text variant so the tinted badges stay
@@ -98,6 +101,7 @@ export function JobDetailSheet({
   onOpenChange,
   onEdit,
   onStatusChange,
+  isUpdating = false,
 }: JobDetailSheetProps) {
   const [showChecklist, setShowChecklist] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -162,18 +166,30 @@ export function JobDetailSheet({
                     <Button
                       className="flex-1 gap-2 btn-shimmer touch-native"
                       onClick={() => onStatusChange(job.id, 'in_progress')}
+                      disabled={isUpdating}
+                      aria-busy={isUpdating}
                     >
-                      <Play className="h-4 w-4" />
-                      Start {t('job')}
+                      {isUpdating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
+                      {isUpdating ? 'Starting…' : `Start ${t('job')}`}
                     </Button>
                   )}
                   {canComplete && (
                     <Button
                       className="flex-1 gap-2 btn-shimmer touch-native"
                       onClick={() => onStatusChange(job.id, 'completed')}
+                      disabled={isUpdating}
+                      aria-busy={isUpdating}
                     >
-                      <CheckCircle2 className="h-4 w-4" />
-                      Complete {t('job')}
+                      {isUpdating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      {isUpdating ? 'Completing…' : `Complete ${t('job')}…`}
                     </Button>
                   )}
                 </div>
