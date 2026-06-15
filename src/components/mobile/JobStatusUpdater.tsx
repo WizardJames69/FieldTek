@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { Play, CheckCircle, Loader2, WifiOff, Zap } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useRef } from 'react';
+import { Play, CheckCircle, Loader2, WifiOff, Zap, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useTenant } from '@/contexts/TenantContext';
 import { useOfflineJobUpdate } from '@/hooks/useOfflineJobUpdate';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { JobCompletionDialog } from '@/components/jobs/JobCompletionDialog';
@@ -24,17 +22,20 @@ const STATUS_FLOW = {
 };
 
 export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }: JobStatusUpdaterProps) {
-  const { toast } = useToast();
-  const { tenant } = useTenant();
   const { isOnline } = useOnlineStatus();
   const { updateJobStatus } = useOfflineJobUpdate();
   const [isUpdating, setIsUpdating] = useState(false);
   const [completionDialogOpen, setCompletionDialogOpen] = useState(false);
+  const [lastFailed, setLastFailed] = useState(false);
+  // Remember the resolution notes from the last attempt so a failed completion
+  // can be retried without re-typing them (the completion dialog clears its own
+  // text on confirm, so reopening it would start blank).
+  const lastResolutionNotesRef = useRef<string | undefined>(undefined);
 
   const statusConfig = STATUS_FLOW[currentStatus as keyof typeof STATUS_FLOW] || STATUS_FLOW.pending;
 
   const handleStatusUpdate = async () => {
-    if (!statusConfig.next) return;
+    if (!statusConfig.next || isUpdating) return;
 
     // Intercept completion: require resolution notes
     if (statusConfig.next === 'completed') {
@@ -45,24 +46,29 @@ export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }:
     await applyUpdate();
   };
 
+  const handleRetry = () => {
+    // Replay the exact failed attempt — including any resolution notes the
+    // technician already entered — instead of reopening the cleared dialog.
+    void applyUpdate(lastResolutionNotesRef.current);
+  };
+
   const applyUpdate = async (resolutionNotes?: string) => {
     if (!statusConfig.next) return;
 
+    lastResolutionNotesRef.current = resolutionNotes;
     setIsUpdating(true);
+    setLastFailed(false);
     try {
-      const success = await updateJobStatus(
+      // updateJobStatus owns the success / offline-queued / error toast (single
+      // source of copy), so we don't fire a second toast here. We only track the
+      // failed outcome to show an inline Retry affordance.
+      const outcome = await updateJobStatus(
         jobId,
         statusConfig.next as 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled',
         undefined,
         { title: jobTitle, clientName, resolutionNotes }
       );
-
-      if (success) {
-        toast({
-          title: isOnline ? 'Status updated' : 'Saved offline',
-          description: isOnline ? undefined : 'Will sync when connected'
-        });
-      }
+      setLastFailed(outcome === 'failed');
     } finally {
       setIsUpdating(false);
     }
@@ -108,6 +114,7 @@ export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }:
         )}
         onClick={handleStatusUpdate}
         disabled={isUpdating}
+        aria-busy={isUpdating}
       >
         {/* Background pulse effect */}
         <span className={cn(
@@ -128,7 +135,7 @@ export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }:
               {Icon && <Icon className="h-5 w-5" />}
             </div>
           )}
-          <span>{statusConfig.label}</span>
+          <span>{isUpdating ? (isStarting ? 'Starting…' : 'Completing…') : statusConfig.label}</span>
           {!isUpdating && <Zap className="h-5 w-5 opacity-60" />}
         </span>
       </Button>
@@ -142,6 +149,28 @@ export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }:
           <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
             Changes will sync when online
           </span>
+        </div>
+      )}
+
+      {/* Inline failure + retry (the toast already fired; this stays put so the
+          technician has an obvious, persistent way to try the same action again). */}
+      {lastFailed && !isUpdating && (
+        <div
+          role="alert"
+          className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-destructive/10 ring-1 ring-destructive/30"
+        >
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+          <span className="text-sm font-semibold text-destructive">
+            Couldn't update status.
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-destructive font-semibold hover:text-destructive"
+            onClick={handleRetry}
+          >
+            Try again
+          </Button>
         </div>
       )}
 

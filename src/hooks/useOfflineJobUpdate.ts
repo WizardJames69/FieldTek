@@ -5,6 +5,7 @@ import { addToSyncQueue, cacheJob, getCachedJob } from '@/lib/offlineDb';
 import { useOnlineStatus } from './useOnlineStatus';
 import { useTenant } from '@/contexts/TenantContext';
 import { notifyJobCompleted } from '@/lib/pushNotifications';
+import type { SaveOutcome } from '@/lib/actionFeedback';
 import { toast } from 'sonner';
 
 type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
@@ -19,7 +20,9 @@ export function useOfflineJobUpdate() {
     status: JobStatus,
     notes?: string,
     jobDetails?: { title?: string; clientName?: string; resolutionNotes?: string }
-  ): Promise<boolean> => {
+  ): Promise<SaveOutcome> => {
+    // The success/offline/error toast is owned here (single source of copy) so
+    // the calling component never fires a second, duplicate toast.
     if (isOnline) {
       // Online: update directly
       try {
@@ -53,11 +56,14 @@ export function useOfflineJobUpdate() {
           }).catch(err => console.error('Push notification failed:', err));
         }
 
-        return true;
+        toast.success(status === 'completed' ? 'Job marked complete' : 'Job status updated');
+        return 'synced';
       } catch (error) {
         console.error('Failed to update job status:', error);
-        toast.error('Failed to update job status');
-        return false;
+        toast.error("Couldn't update job status", {
+          description: 'Check your connection and try again.',
+        });
+        return 'failed';
       }
     } else {
       // Offline: queue for later sync
@@ -79,11 +85,13 @@ export function useOfflineJobUpdate() {
         }
 
         toast.info('Saved offline. Will sync when connected.');
-        return true;
+        return 'queued';
       } catch (error) {
         console.error('Failed to queue offline update:', error);
-        toast.error('Failed to save update');
-        return false;
+        toast.error("Couldn't save job status", {
+          description: 'It was not saved. Please try again.',
+        });
+        return 'failed';
       }
     }
   }, [isOnline, queryClient, tenant?.id]);

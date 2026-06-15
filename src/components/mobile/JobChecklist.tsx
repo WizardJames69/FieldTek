@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Check, Loader2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Check, Loader2, ChevronDown, ChevronUp, FileText, CloudOff, AlertTriangle } from 'lucide-react';
 import { useOfflineChecklistUpdate } from '@/hooks/useOfflineChecklistUpdate';
+import type { SaveOutcome } from '@/lib/actionFeedback';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useJobEvidence, useRequiredEvidence, getItemEvidence } from '@/hooks/useStepEvidence';
 import type { RequiredEvidenceMap } from '@/hooks/useStepEvidence';
@@ -26,6 +27,14 @@ interface JobChecklistProps {
   items: ChecklistItem[];
 }
 
+// Inline per-item feedback shown until the next interaction (or the next
+// sheet-open re-loads server state). 'queued' and 'failed' are the only states
+// that need a marker: an online success is already obvious from the green
+// checkbox / saved-note preview, so it clears the marker instead of adding one.
+type ItemFeedback =
+  | { status: 'queued'; action: 'toggle' | 'notes' }
+  | { status: 'failed'; action: 'toggle' | 'notes'; retry: () => void };
+
 export function JobChecklist({ jobId, items }: JobChecklistProps) {
   const { toggleItem, saveNotes } = useOfflineChecklistUpdate(jobId);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
@@ -36,16 +45,23 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
   const [overrides, setOverrides] = useState<Record<string, Partial<ChecklistItem>>>({});
   const [togglingItemId, setTogglingItemId] = useState<string | null>(null);
   const [savingNotesItemId, setSavingNotesItemId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Record<string, ItemFeedback | undefined>>({});
 
   const mergedItems = items.map((item) => ({ ...item, ...overrides[item.id] }));
+
+  const setItemFeedback = (itemId: string, value: ItemFeedback | undefined) =>
+    setFeedback((prev) => ({ ...prev, [itemId]: value }));
 
   const handleToggle = async (item: ChecklistItem) => {
     if (togglingItemId) return;
     const completed = !item.completed;
     setTogglingItemId(item.id);
+    // Clear any stale marker while this attempt is in flight (the checkbox
+    // spinner conveys the saving state).
+    setItemFeedback(item.id, undefined);
     try {
-      const success = await toggleItem(item.id, completed);
-      if (success) {
+      const outcome: SaveOutcome = await toggleItem(item.id, completed);
+      if (outcome !== 'failed') {
         setOverrides((prev) => ({
           ...prev,
           [item.id]: { ...prev[item.id], completed },
@@ -53,22 +69,31 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
         // Collapse this item once it's checked off so the mobile workflow
         // advances cleanly instead of leaving the step expanded. Only collapse
         // if THIS item is the open one — never close an unrelated expanded item.
-        // Runs for both online success and a queued offline update (toggleItem
-        // resolves true in both cases).
+        // Runs for both online success and a queued offline update.
         if (completed) {
           setExpandedItem((cur) => (cur === item.id ? null : cur));
         }
       }
+      setItemFeedback(
+        item.id,
+        outcome === 'queued'
+          ? { status: 'queued', action: 'toggle' }
+          : outcome === 'failed'
+            ? { status: 'failed', action: 'toggle', retry: () => handleToggle(item) }
+            : undefined
+      );
     } finally {
       setTogglingItemId(null);
     }
   };
 
   const handleSaveNotes = async (itemId: string, value: string) => {
+    if (savingNotesItemId) return;
     setSavingNotesItemId(itemId);
+    setItemFeedback(itemId, undefined);
     try {
-      const success = await saveNotes(itemId, value);
-      if (success) {
+      const outcome: SaveOutcome = await saveNotes(itemId, value);
+      if (outcome !== 'failed') {
         setOverrides((prev) => ({
           ...prev,
           [itemId]: { ...prev[itemId], notes: value },
@@ -78,6 +103,16 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
         // notes state, and shown in the collapsed note preview under the title.
         setExpandedItem((cur) => (cur === itemId ? null : cur));
       }
+      // On failure we keep the editor open and the typed text intact so the
+      // technician can retry without re-typing.
+      setItemFeedback(
+        itemId,
+        outcome === 'queued'
+          ? { status: 'queued', action: 'notes' }
+          : outcome === 'failed'
+            ? { status: 'failed', action: 'notes', retry: () => handleSaveNotes(itemId, value) }
+            : undefined
+      );
     } finally {
       setSavingNotesItemId(null);
     }
@@ -139,7 +174,8 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
             <div className="space-y-3">
               {stageItems.map((item) => {
                 const isExpanded = expandedItem === item.id;
-                
+                const fb = feedback[item.id];
+
                 return (
                   <div
                     key={item.id}
@@ -155,6 +191,7 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                         <button
                           type="button"
                           aria-label={`Toggle ${item.checklist_item}`}
+                          aria-busy={togglingItemId === item.id}
                           onClick={() => handleToggle(item)}
                           disabled={togglingItemId !== null}
                           className={cn(
@@ -164,12 +201,16 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                               : 'bg-muted/50 ring-1 ring-border/50'
                           )}
                         >
-                          <Checkbox
-                            checked={item.completed}
-                            tabIndex={-1}
-                            className="h-6 w-6 border-0 pointer-events-none"
-                            disabled={togglingItemId !== null}
-                          />
+                          {togglingItemId === item.id ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          ) : (
+                            <Checkbox
+                              checked={item.completed}
+                              tabIndex={-1}
+                              className="h-6 w-6 border-0 pointer-events-none"
+                              disabled={togglingItemId !== null}
+                            />
+                          )}
                         </button>
                         <div className="flex-1 min-w-0">
                           <button
@@ -202,6 +243,39 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                             )}
                           </button>
 
+                          {/* Inline save feedback (kept outside the title button
+                              so the Retry control isn't a nested button). */}
+                          {fb?.status === 'queued' && (
+                            <div
+                              role="status"
+                              className="flex items-center gap-1.5 mt-2 text-xs font-medium text-amber-600 dark:text-amber-400"
+                            >
+                              <CloudOff className="h-3.5 w-3.5 shrink-0" />
+                              {/* Neutral, never-stale: the live "pending → syncing →
+                                  synced" status is owned by the app-wide sync badge. */}
+                              <span>Saved offline</span>
+                            </div>
+                          )}
+                          {fb?.status === 'failed' && (
+                            <div
+                              role="alert"
+                              className="flex items-center gap-2 mt-2 text-xs font-medium text-destructive"
+                            >
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                              <span>
+                                Couldn't save {fb.action === 'notes' ? 'notes' : 'this item'}.
+                              </span>
+                              <button
+                                type="button"
+                                onClick={fb.retry}
+                                disabled={togglingItemId !== null || savingNotesItemId !== null}
+                                className="font-semibold underline underline-offset-2 disabled:opacity-50"
+                              >
+                                Retry
+                              </button>
+                            </div>
+                          )}
+
                           {isExpanded && (
                             <div className="mt-4 space-y-4 animate-fade-in">
                               <Textarea
@@ -219,9 +293,13 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
                                   className="flex-1 touch-native h-11 font-semibold"
                                   onClick={() => handleSaveNotes(item.id, notes[item.id] ?? '')}
                                   disabled={savingNotesItemId !== null}
+                                  aria-busy={savingNotesItemId === item.id}
                                 >
                                   {savingNotesItemId === item.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      Saving…
+                                    </>
                                   ) : (
                                     'Save Notes'
                                   )}
