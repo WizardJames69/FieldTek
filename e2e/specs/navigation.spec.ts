@@ -114,6 +114,56 @@ test.describe('Navigation & Route Guards', () => {
       // After redirect chain completes, the page should render with content
       await expect(page.locator('main')).toBeVisible({ timeout: 15_000 });
     });
+
+    // Owner/admin-only routes a technician must never land on. RoleGuard
+    // redirects (with a toast) to the role's fallback rather than showing a blank
+    // page; we assert the URL leaves the route and the app shell still renders.
+    for (const route of ['/team', '/reports', '/invoices']) {
+      test(`technician is redirected away from ${route}`, async ({ page }) => {
+        await page.goto(route);
+        await page.waitForLoadState('networkidle', { timeout: 30_000 }).catch(() => {});
+        await expect(page).not.toHaveURL(new RegExp(route.replace('/', '\\/')), { timeout: 15_000 });
+        await expect(page.locator('main')).toBeVisible({ timeout: 15_000 });
+      });
+    }
+  });
+
+  test.describe('Diagnostics panel (support shell)', () => {
+    test.use({ storageState: '.playwright/auth/admin.json' });
+
+    test('opens read-only diagnostics from the sidebar and copies a safe summary', async ({
+      page,
+      context,
+    }) => {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.goto('/dashboard');
+      await page.waitForLoadState('domcontentloaded');
+
+      // PR-H8 entry point in the shared shell (reachable by every signed-in role).
+      await page.getByTestId('sidebar-diagnostics-button').click();
+
+      const panel = page.getByTestId('diagnostics-panel');
+      await expect(panel).toBeVisible({ timeout: 10_000 });
+
+      // Safe, non-sensitive fields are present.
+      await expect(panel.getByText('App version')).toBeVisible();
+      await expect(panel.getByText('Backend ref')).toBeVisible();
+      await expect(panel.getByText('Connection')).toBeVisible();
+
+      // Copy produces a success toast...
+      await panel.getByRole('button', { name: /copy diagnostics/i }).click();
+      await expect(page.getByText('Diagnostics copied')).toBeVisible({ timeout: 10_000 });
+
+      // ...and (where the clipboard is readable) the text has safe fields, no JWT.
+      const clip = await page
+        .evaluate(() => navigator.clipboard.readText().catch(() => ''))
+        .catch(() => '');
+      if (clip) {
+        expect(clip).toContain('App version:');
+        expect(clip).toContain('Backend ref:');
+        expect(clip).not.toContain('eyJ');
+      }
+    });
   });
 
   test.describe('Sidebar navigation links', () => {

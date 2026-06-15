@@ -156,7 +156,7 @@ export default defineConfig({
         storageState: '.playwright/auth/technician.json',
       },
       dependencies: ['setup'],
-      testMatch: ['e2e/specs/offline-technician.spec.ts'],
+      testMatch: ['e2e/specs/my-jobs.spec.ts', 'e2e/specs/offline-technician.spec.ts'],
     },
   ],
 
