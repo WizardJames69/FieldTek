@@ -1,6 +1,14 @@
 # FieldTek Runbook
 
-Last updated: 2026-06-12 (cron/alert callback follow-up resolved; canonical-backend cleanup).
+Last updated: 2026-06-15 (added pilot docs cross-links; corrected SW rollback note to prompt-mode).
+
+### Pilot documentation (Workstream H)
+For running a controlled 1-company pilot, see:
+- [pilot-admin-setup.md](pilot-admin-setup.md) — tenant setup + pre-pilot readiness checklist + daily monitoring.
+- [technician-getting-started.md](technician-getting-started.md) — non-technical field guide (install, offline, sync).
+- [pilot-troubleshooting.md](pilot-troubleshooting.md) — support fixes + escalation + diagnostics to collect.
+- [role-capabilities.md](role-capabilities.md) — what each role can access (route/nav enforcement).
+- [offline-field-drill.md](offline-field-drill.md) — manual device offline-readiness drills.
 
 ---
 
@@ -48,7 +56,7 @@ After any deploy: watch `system_alerts` (Admin → System Health) and Sentry for
 
 - **Migrations: forward-fix only.** Do not attempt to revert applied migrations on shared environments; write a new migration that undoes the damage. All recent migrations are written idempotently (DROP POLICY IF EXISTS / CREATE OR REPLACE / to_regclass guards) — keep that convention.
 - **Edge functions:** redeploy the previous commit's function directory (`git checkout <prev-sha> -- supabase/functions/<fn> && supabase functions deploy <fn> --project-ref <ref>`, then restore the working tree).
-- **Frontend:** rebuild from the previous tag/commit. The PWA uses `registerType: "autoUpdate"`, so clients pick up the rollback on next load; `cleanupOutdatedCaches` purges stale assets.
+- **Frontend:** rebuild/redeploy from the previous tag/commit on Vercel. The PWA uses `registerType: "prompt"` (not `autoUpdate`): a new (or rolled-back) bundle stays in "waiting" and clients pick it up when they accept the **"New version available"** prompt or reload while online; `cleanupOutdatedCaches` purges stale assets. There is no automated client kill-switch — see the pilot rollback notes in [pilot-admin-setup.md](pilot-admin-setup.md) and the recovery steps in [pilot-troubleshooting.md §10](pilot-troubleshooting.md).
 - **Feature flags first:** for AI-pipeline misbehavior, prefer turning off the relevant flag (`rag_judge`, `rag_reranking`, `compliance_engine`, `equipment_graph`, `judge_blocking_mode`, `judge_full_blocking`, `diagnostic_learning`, Admin → Feature Flags) over redeploying.
 
 ## 4. Migration safety rules
@@ -137,6 +145,11 @@ Optional: `AI_GATEWAY_URL` (the primary backend sets `https://api.openai.com/v1`
 `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (required); `VITE_CF_TURNSTILE_SITE_KEY`, `VITE_VAPID_PUBLIC_KEY`, `VITE_SENTRY_DSN`, `VITE_APP_VERSION` (recommended for prod). CI additionally uses `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` for sourcemap upload.
 
 ## 7. Support procedures
+
+> **Pilot support:** for field-user issues during a pilot (login/invite, workspace-load error, wrong
+> role, job not visible, stale-after-deploy, PWA install, stuck/dropped offline changes, "couldn't
+> load data"), use [pilot-troubleshooting.md](pilot-troubleshooting.md) first — it has symptom →
+> fix → escalate steps and the diagnostic checklist. The procedures below are backend/ops triage.
 
 ### Stuck document ingestion
 1. Documents page shows per-document `extraction_status` / `embedding_status` badges; failures surface `last_error` with a retry action on the DocumentCard.

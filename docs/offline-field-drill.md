@@ -8,6 +8,11 @@ queue + sync replay) and Slice 2 (PWA app shell: cold-open offline).
 checklist) on the primary backend, and the app loaded **online at least once** after the Slice 2
 deploy so the service worker installs and the caches prime.
 
+> **Pilot docs:** this drill is the engineer/operator-facing offline verification. The
+> non-technical, field-facing companion is [technician-getting-started.md](technician-getting-started.md);
+> pilot setup is in [pilot-admin-setup.md](pilot-admin-setup.md) and support steps are in
+> [pilot-troubleshooting.md](pilot-troubleshooting.md).
+
 ---
 
 ## 1. Install the PWA
@@ -127,5 +132,8 @@ syncing — unsynced offline work is discarded on sign-out by design.
 - Check pending items: the sync indicator on My Jobs shows the queue depth.
 - Worst case: browser settings → clear site data, then log in online and re-prime. (This drops
   any **unsynced** offline changes — sync first if at all possible.)
-- Operators: see the rollback notes in the Slice 2 PR/handoff (`selfDestroying` service-worker
-  kill switch) and `docs/RUNBOOK.md`.
+- Operators: the PWA is **prompt-mode** (`registerType: "prompt"`), so emergency rollback is to
+  redeploy the previous frontend bundle on Vercel — clients then accept the "New version available"
+  prompt and reload into it. (A `selfDestroying` service-worker kill switch was discussed in the
+  Slice 2 handoff but is **not** wired into `vite.config.ts`; treat rollback as redeploy + reload.)
+  See [RUNBOOK.md §2–§3](RUNBOOK.md) and [pilot-troubleshooting.md §10](pilot-troubleshooting.md).
