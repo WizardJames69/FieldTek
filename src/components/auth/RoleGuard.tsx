@@ -1,9 +1,10 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WorkspaceLoadError } from '@/components/auth/WorkspaceLoadError';
 import type { AppRole } from '@/types/database';
 
 interface RoleGuardProps {
@@ -22,10 +23,40 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard', silent = false }: RoleGuardProps) {
-  const { user, loading: authLoading } = useAuth();
-  const { role, loading } = useTenant();
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { role, loading, refreshTenant } = useTenant();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [retrying, setRetrying] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+
+  // Recovery actions for the unresolved-role fallback. Retry re-runs the
+  // existing TenantContext fetch (resets its retry counters; no backend
+  // mutation, no security bypass). Sign out uses the cleanup-wrapped AuthContext
+  // helper so shared-device offline data is still wiped; once `user` clears, the
+  // effect below redirects to /auth.
+  const handleRetry = async () => {
+    if (retrying || signingOut) return;
+    setRetrying(true);
+    try {
+      await refreshTenant();
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (retrying || signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+      // On success `user` becomes null and the effect redirects; keep the
+      // buttons disabled until the unmount so a double-tap can't fire twice.
+    } catch (error) {
+      console.error('[RoleGuard] Sign out failed:', error);
+      setSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -53,7 +84,30 @@ export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard',
     );
   }
 
-  if (!user || !role || !allowedRoles.includes(role)) {
+  // Not authenticated — the effect redirects to /auth; render nothing meanwhile.
+  if (!user) {
+    return null;
+  }
+
+  // Authenticated and done loading, but the role couldn't be resolved (RLS
+  // denial, no tenant membership, tenant-context load failure, invite/account
+  // mismatch). This used to fall through to `return null` — a permanent blank
+  // page with no recovery. Show an actionable fallback instead. This does NOT
+  // let the user through: children still render only for an allowed role.
+  if (!role) {
+    return (
+      <WorkspaceLoadError
+        onRetry={handleRetry}
+        onSignOut={handleSignOut}
+        retrying={retrying}
+        signingOut={signingOut}
+      />
+    );
+  }
+
+  // Truthy-but-disallowed role — the effect redirects (and toasts unless
+  // silent); render nothing while that navigation happens. Unchanged behavior.
+  if (!allowedRoles.includes(role)) {
     return null;
   }
 
