@@ -35,6 +35,7 @@ import type { RetrievalQuery } from "./types.ts";
 import type { ChatMessage, ServiceJob, PartsPredictionContext, TenantPartsData } from "./types.ts";
 
 import { detectPromptInjection, validateAIResponse, validateParagraphCitations, validateMessageContent } from "./validation.ts";
+import { createSSEContentAccumulator } from "./sse.ts";
 import {
   getFirst,
   formatDate,
@@ -1199,7 +1200,6 @@ serve(async (req) => {
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
     const encoder = new TextEncoder();
 
     const userMessageText = extractTextFromMessage(messages.filter((m: ChatMessage) => m.role === "user").pop());
@@ -1213,22 +1213,21 @@ serve(async (req) => {
       const allChunks: Uint8Array[] = [];
 
       try {
-        // Phase 1: Accumulate entire response
+        // Phase 1: Accumulate the full response with a content-preserving SSE
+        // parser that BUFFERS incomplete `data:` lines across network chunks.
+        // (A naive per-chunk split("\n") dropped any line straddling a network
+        // boundary — corrupting the audit text and tripping citation/validation
+        // on grounded answers; see sse.ts.) The raw upstream bytes are still
+        // collected verbatim in `allChunks` and replayed to the client unchanged
+        // below, so client streaming stays byte-identical.
+        const sseAccumulator = createSSEContentAccumulator();
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split("\n");
-          for (const line of lines) {
-            if (line.startsWith("data: ") && line !== "data: [DONE]") {
-              try {
-                const json = JSON.parse(line.slice(6));
-                accumulatedContent += json.choices?.[0]?.delta?.content || "";
-              } catch { /* Non-JSON line */ }
-            }
-          }
+          sseAccumulator.push(value);
           allChunks.push(value);
         }
+        accumulatedContent = sseAccumulator.finish();
 
         // Phase 2: Validate complete response
         const validation = validateAIResponse(accumulatedContent, hasDocuments, codeComplianceActive, docNames);
