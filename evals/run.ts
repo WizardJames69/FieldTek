@@ -36,7 +36,13 @@ import { EVAL_ADMIN_EMAIL, EVAL_ADMIN_PASSWORD } from "./evalIdentity";
 
 import { BENCHMARK_CASES } from "./cases";
 import { scoreCase, aggregate } from "./scoring";
-import { interpretResponse, extractCitedDocNames } from "./observe";
+import { buildCaseReport } from "./report";
+import {
+  interpretResponse,
+  extractCitedDocNames,
+  extractCitedDocNamesFromText,
+  mergeCitedDocNames,
+} from "./observe";
 import { ensureCorpusSeeded, resolveTenantId } from "./seed";
 import {
   checkThresholds,
@@ -47,7 +53,7 @@ import {
 import { createCostTracker, sumTokens } from "./cost";
 import type {
   EvalCase,
-  EvalCaseResult,
+  EvalCaseReport,
   EvalMetrics,
   EvalObservation,
   EvalReport,
@@ -87,6 +93,24 @@ function parseArgs(argv: string[]): Args {
 
 function num(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+/** A blank observation (answered=false), optionally carrying a captured error. */
+function emptyObservation(caseId: string, error: string | null = null): EvalObservation {
+  return {
+    caseId,
+    answered: false,
+    abstained: false,
+    answerText: "",
+    retrievedChunkCount: 0,
+    retrievedDocNames: [],
+    retrievedChunkTexts: [],
+    citedDocNames: [],
+    hadCitations: false,
+    judgeGrounded: null,
+    judgeVerdict: null,
+    error,
+  };
 }
 
 // ── Live execution ──────────────────────────────────────────
@@ -133,7 +157,20 @@ async function observeCase(
   });
 
   const interp = interpretResponse(res);
-  const citedDocNames = extractCitedDocNames(res.metadata?.sources);
+  // Cited docs from BOTH the streamed metadata.sources AND the answer text's
+  // [Source: …] markers. The server EMPTIES metadata.sources when validation
+  // fails, so reading the text recovers a real citation the metadata dropped —
+  // without masking loss (a corruption-mangled marker simply won't parse).
+  const citedDocNamesFromMetadata = extractCitedDocNames(res.metadata?.sources);
+  const citedDocNamesFromText = extractCitedDocNamesFromText(interp.answerText);
+  const citedDocNames = mergeCitedDocNames(citedDocNamesFromMetadata, citedDocNamesFromText);
+
+  const metaDegraded =
+    typeof res.metadata?.degraded === "boolean" ? (res.metadata.degraded as boolean) : null;
+  const metaDegradedReason =
+    typeof res.metadata?.degraded_reason === "string"
+      ? (res.metadata.degraded_reason as string)
+      : null;
 
   let retrievedChunkCount = 0;
   let retrievedDocNames: string[] = [];
@@ -141,6 +178,11 @@ async function observeCase(
   let hadCitations = interp.answered && citedDocNames.length > 0;
   let judgeGrounded: boolean | null = null;
   let judgeVerdict: string | null = null;
+  let citationDensity: number | null = null;
+  let abstainFlag: boolean | null = null;
+  let enforcementRulesTriggered: string[] | null = null;
+  let similarityScores: number[] | null = null;
+  let auditLogId: string | null = null;
   let tokensUsed = 0;
 
   // Retrieval/judge detail comes from the audit log. The abstain-gate JSON
@@ -150,9 +192,23 @@ async function observeCase(
     try {
       const log = await waitForAuditLog(tenantId, res.correlationId, 20000);
       retrievedChunkCount = num(log.semantic_search_count);
-      if (typeof log.had_citations === "boolean") hadCitations = log.had_citations;
+      // had_citations from the audit is the server's view; OR in the client
+      // text-parse so a client-visible citation isn't lost if the server view
+      // was stripped/corrupted (never masks a truly missing citation).
+      if (typeof log.had_citations === "boolean") {
+        hadCitations = log.had_citations || citedDocNamesFromText.length > 0;
+      }
       if (typeof log.judge_grounded === "boolean") judgeGrounded = log.judge_grounded;
       if (typeof log.judge_verdict === "string") judgeVerdict = log.judge_verdict;
+      if (typeof log.citation_density === "number") citationDensity = log.citation_density;
+      if (typeof log.abstain_flag === "boolean") abstainFlag = log.abstain_flag;
+      if (Array.isArray(log.enforcement_rules_triggered)) {
+        enforcementRulesTriggered = log.enforcement_rules_triggered as string[];
+      }
+      if (Array.isArray(log.similarity_scores)) {
+        similarityScores = log.similarity_scores as number[];
+      }
+      if (typeof log.id === "string") auditLogId = log.id;
       tokensUsed = sumTokens(
         log.token_count_prompt as number,
         log.token_count_response as number,
@@ -179,6 +235,17 @@ async function observeCase(
       hadCitations,
       judgeGrounded,
       judgeVerdict,
+      citedDocNamesFromMetadata,
+      citedDocNamesFromText,
+      citationDensity,
+      abstainFlag,
+      degraded: metaDegraded,
+      degradedReason: metaDegradedReason,
+      enforcementRulesTriggered,
+      similarityScores,
+      auditLogId,
+      correlationId: res.correlationId ?? null,
+      error: null,
     },
     tokensUsed,
   };
@@ -188,7 +255,7 @@ async function observeCase(
 
 function buildReport(
   label: string,
-  results: EvalCaseResult[],
+  results: EvalCaseReport[],
   nowIso: string,
 ): EvalReport {
   return {
@@ -321,7 +388,7 @@ function runSelfTest(nowIso: string): EvalReport {
     { c: byId("EV-M-004"), obs: syntheticObservation("EV-M-004", "miss") },
     { c: byId("EV-A-003"), obs: syntheticObservation("EV-A-003", "abstain") },
   ];
-  const results = fixtures.map(({ c, obs }) => scoreCase(c, obs));
+  const results = fixtures.map(({ c, obs }) => buildCaseReport(c, obs, scoreCase(c, obs)));
   const report = buildReport("self-test (offline)", results, nowIso);
   printSummary(report);
   // Sanity: the canned good/abstain cases pass and the miss fails.
@@ -374,7 +441,7 @@ async function main(): Promise<void> {
   );
 
   const tracker = createCostTracker(args.maxTokens ?? null);
-  const results: EvalCaseResult[] = [];
+  const results: EvalCaseReport[] = [];
   for (let i = 0; i < cases.length; i++) {
     const c = cases[i];
     if (!tracker.hasRoom()) {
@@ -384,9 +451,21 @@ async function main(): Promise<void> {
       );
       break;
     }
-    const { obs, tokensUsed } = await observeCase(client, adminToken, tenantId, c);
+    // Capture per-case errors into the report instead of aborting the whole run,
+    // so one bad case still produces a diagnosable row (error redacted by report.ts).
+    let obs: EvalObservation;
+    let tokensUsed = 0;
+    try {
+      const observed = await observeCase(client, adminToken, tenantId, c);
+      obs = observed.obs;
+      tokensUsed = observed.tokensUsed;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`[eval] ${c.id} errored: ${msg}`);
+      obs = emptyObservation(c.id, msg);
+    }
     const r = scoreCase(c, obs);
-    results.push(r);
+    results.push(buildCaseReport(c, obs, r));
     tracker.record(tokensUsed);
     console.log(
       `[eval] ${r.passed ? "PASS" : "FAIL"} ${c.id} (answered=${obs.answered} ` +

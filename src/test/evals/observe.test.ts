@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { interpretResponse, extractCitedDocNames } from "../../../evals/observe";
+import {
+  interpretResponse,
+  extractCitedDocNames,
+  extractCitedDocNamesFromText,
+  mergeCitedDocNames,
+} from "../../../evals/observe";
 
 // interpretResponse maps a field-assistant transport response (SSE stream OR
 // structured JSON: abstain gate / compliance block / plain response) into the
@@ -75,5 +80,57 @@ describe("extractCitedDocNames", () => {
     expect(extractCitedDocNames(undefined)).toEqual([]);
     expect(extractCitedDocNames("nope")).toEqual([]);
     expect(extractCitedDocNames([{ page_number: 1 }, null, 5])).toEqual([]);
+  });
+});
+
+// Parsing cited docs from the ANSWER TEXT (independent of metadata.sources, which
+// the server empties when validation fails) — and merging the two views.
+
+describe("extractCitedDocNamesFromText", () => {
+  it("parses [Source: …] markers and strips the page locator", () => {
+    expect(
+      extractCitedDocNamesFromText("Use R-410A. [Source: Carrier 24ACC636 Installation Manual p.7]"),
+    ).toEqual(["Carrier 24ACC636 Installation Manual"]);
+  });
+
+  it("returns distinct names across multiple markers", () => {
+    const names = extractCitedDocNamesFromText(
+      "A [Source: HVAC Maintenance Best Practices]. B [Source: HVAC Maintenance Best Practices]. " +
+        "C [Source: Warranty Terms - Carrier Equipment].",
+    );
+    expect(names).toEqual(["HVAC Maintenance Best Practices", "Warranty Terms - Carrier Equipment"]);
+  });
+
+  it("does NOT match a corruption-mangled marker — never masks the loss", () => {
+    // The first baseline corrupted "[Source:" → "[Source" (no colon) and "[:".
+    expect(extractCitedDocNamesFromText("… [Source Carrier 24ACC636 Installation Manual]")).toEqual([]);
+    expect(extractCitedDocNamesFromText("… [: HVAC Maintenance Best Practices]")).toEqual([]);
+  });
+
+  it("returns [] for no marker / empty / non-string", () => {
+    expect(extractCitedDocNamesFromText("Plain answer, no citation.")).toEqual([]);
+    expect(extractCitedDocNamesFromText("")).toEqual([]);
+    expect(extractCitedDocNamesFromText(undefined)).toEqual([]);
+  });
+});
+
+describe("mergeCitedDocNames — union of metadata + text-parsed citations", () => {
+  it("dedupes and preserves order across sources", () => {
+    expect(
+      mergeCitedDocNames(
+        ["Carrier 24ACC636 Installation Manual"],
+        ["Carrier 24ACC636 Installation Manual", "HVAC Maintenance Best Practices"],
+      ),
+    ).toEqual(["Carrier 24ACC636 Installation Manual", "HVAC Maintenance Best Practices"]);
+  });
+
+  it("recovers a citation when metadata.sources was stripped but the text cited it", () => {
+    expect(mergeCitedDocNames([], ["HVAC Maintenance Best Practices"])).toEqual([
+      "HVAC Maintenance Best Practices",
+    ]);
+  });
+
+  it("tolerates null / undefined / empty lists", () => {
+    expect(mergeCitedDocNames(undefined, null, [], ["A"])).toEqual(["A"]);
   });
 });

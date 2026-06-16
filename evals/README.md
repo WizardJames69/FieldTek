@@ -63,6 +63,45 @@ but the process does not fail.
 token_count_response` and stops **before** starting another case once the budget
 is spent, logging how many cases were skipped (no silent truncation).
 
+### Enriched reports & stream fidelity
+
+Each report row is **self-contained and diagnosable** — a failed run is triaged
+from the JSON alone (no DB spelunking). Per case the report records, beyond the
+scored booleans: the `question`, `expectedSources`/`expectedFacts`, the **answer
+text**, `hadCitations`, `citationDensity`, the cited docs from BOTH the streamed
+`metadata.sources` **and** the answer text's `[Source: …]` markers
+(`citedDocNamesFromMetadata` / `citedDocNamesFromText`), `retrievedDocNames`,
+`similarityScores`, `abstainFlag`, `degraded`/`degradedReason`,
+`enforcementRulesTriggered`, `auditLogId`, `correlationId`, and any per-case
+`error`. Reports are **secret-safe** (answer text / errors pass through a
+redactor that masks JWTs, `sb_*` keys, and bearer tokens) and still write only
+under `evals/reports/` (git-ignored) — they are diagnostic artifacts, never
+committed.
+
+**Why both citation sources?** `field-assistant` empties `metadata.sources` when
+its validation layer fails, so a validly-cited answer can arrive with no sources.
+The runner therefore scores citations on the **union** of metadata + text-parsed
+`[Source: …]` names — recovering a real citation the metadata dropped **without
+masking loss**: a corruption-mangled marker (no colon, `[: …]`) never parses, so
+the case stays failed.
+
+**Stream fidelity.** The first live baseline produced *corrupted* answers
+(mangled `[Source:]` markers, dropped tokens — `every 90 days` → `every  days`,
+`24ACC636` → `24636`). `parseFieldAssistantSSE` (in
+`e2e/helpers/ai-api-client.ts`) is the shared, **content-preserving** SSE parser,
+unit-tested offline in `src/test/evals/streamFidelity.test.ts` against
+adversarially-split deltas, degree symbols, model numbers, CRLF, and `[DONE]`.
+Those tests **pass**, which localizes the eval client parser as faithful — so the
+corruption seen in the baseline is **upstream / server-side**, not in the eval
+harness. The enriched report captures the client `answerText` alongside the
+audit-derived signals so the next live run can compare client-vs-server fidelity
+directly.
+
+> **Thresholds are unchanged** (`DEFAULT_THRESHOLDS`): the baseline failure was a
+> transport/fidelity issue, not the model missing the bar, so tuning the floors
+> now would only mask it. **The OWASP ZAP passive-baseline PR stays blocked**
+> until a live eval baseline passes `--check` cleanly.
+
 ### Cost & prerequisites
 
 - **Seeding is free** — the corpus reuses pre-computed embeddings
@@ -138,7 +177,8 @@ evals/run.ts --check …`) that calls OpenAI and costs money.
 | `types.ts` | Case / observation / result / report contracts |
 | `cases.ts` | The first benchmark set (HVAC manual + must-abstain) |
 | `scoring.ts` | Pure scoring + aggregation (unit-tested in `src/test/evals/`) |
-| `observe.ts` | Pure response interpretation (SSE / abstain / block) |
+| `observe.ts` | Pure response interpretation + cited-doc parsing (metadata + `[Source:]` text) |
+| `report.ts` | Pure enriched per-case report builder + secret redaction (unit-tested) |
 | `thresholds.ts` | Pure pass/fail + no-regression gate (unit-tested) |
 | `cost.ts` | Pure per-run token budget guard (unit-tested) |
 | `seed.ts` | Resolve the dedicated eval tenant + ensure corpus (reuses E2E *corpus* seed helpers, not its identity) |
@@ -148,10 +188,11 @@ evals/run.ts --check …`) that calls OpenAI and costs money.
 | `provision.ts` | Narrow eval-only tenant provisioner (idempotent; `--dry-run` / `--confirm-project`) |
 | `reports/` | Generated reports (git-ignored) |
 
-The pure modules (`scoring.ts`, `observe.ts`, `thresholds.ts`, `cost.ts`,
-`provisionPlan.ts`, `evalIdentity.ts`) are covered by Vitest under
-`src/test/evals/`, so `npm run test` / CI catch scoring, gating, and
-eval-identity regressions without a live backend.
+The pure modules (`scoring.ts`, `observe.ts`, `report.ts`, `thresholds.ts`,
+`cost.ts`, `provisionPlan.ts`, `evalIdentity.ts`) plus the shared SSE parser
+(`parseFieldAssistantSSE` in `e2e/helpers/ai-api-client.ts`) are covered by
+Vitest under `src/test/evals/`, so `npm run test` / CI catch scoring, gating,
+stream-fidelity, and eval-identity regressions without a live backend.
 
 ## Follow-ups (not in PR-2.1)
 

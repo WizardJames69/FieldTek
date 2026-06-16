@@ -63,6 +63,32 @@ export interface EvalObservation {
   judgeGrounded: boolean | null;
   /** judge_verdict: pass | warn_appended | blocked (null if judge did not run). */
   judgeVerdict: string | null;
+
+  // ── Diagnostic fields (optional; populated by the live runner for the
+  //    enriched report). Kept optional so the pure scorer + its tests are
+  //    unaffected — scoring reads only the fields above. ──────────────────
+  /** Cited doc names taken from the streamed `metadata.sources` array. */
+  citedDocNamesFromMetadata?: string[];
+  /** Cited doc names parsed from the answer text's `[Source: …]` markers. */
+  citedDocNamesFromText?: string[];
+  /** ai_audit_logs.citation_density (`[Source:]` markers per 1k chars). */
+  citationDensity?: number | null;
+  /** ai_audit_logs.abstain_flag (validation failed / insufficient coverage / fallback). */
+  abstainFlag?: boolean | null;
+  /** Streamed `metadata.degraded` — answer served from the full-doc fallback. */
+  degraded?: boolean | null;
+  /** Streamed `metadata.degraded_reason`. */
+  degradedReason?: string | null;
+  /** ai_audit_logs.enforcement_rules_triggered. */
+  enforcementRulesTriggered?: string[] | null;
+  /** ai_audit_logs.similarity_scores (retrieved-chunk cosine scores). */
+  similarityScores?: number[] | null;
+  /** ai_audit_logs.id for the row this observation came from. */
+  auditLogId?: string | null;
+  /** correlation_id from the streamed metadata. */
+  correlationId?: string | null;
+  /** Any model/API/transport error captured while observing this case. */
+  error?: string | null;
 }
 
 export interface EvalCaseResult {
@@ -81,6 +107,35 @@ export interface EvalCaseResult {
   hallucinated: boolean;
   /** Overall per-case pass (boolean expectations; thresholds arrive in PR-2.2). */
   passed: boolean;
+}
+
+/**
+ * A self-contained, diagnosable per-case row for the JSON report. Extends the
+ * scored result with the case definition + the diagnostic signals observed, so a
+ * failed run can be triaged from the report ALONE (the first baseline review had
+ * to query ai_audit_logs because the report stored only booleans). Built by
+ * evals/report.ts → buildCaseReport. Secret-safe: answerText/error are redacted.
+ */
+export interface EvalCaseReport extends EvalCaseResult {
+  question: string;
+  expectedSources?: EvalExpectedSources;
+  expectedFacts?: string[];
+  answerText: string;
+  hadCitations: boolean;
+  /** Effective cited docs used by the scorer (metadata ∪ text-parsed). */
+  citedDocNames: string[];
+  citedDocNamesFromMetadata: string[];
+  citedDocNamesFromText: string[];
+  retrievedDocNames: string[];
+  citationDensity: number | null;
+  abstainFlag: boolean | null;
+  degraded: boolean | null;
+  degradedReason: string | null;
+  enforcementRulesTriggered: string[] | null;
+  similarityScores: number[] | null;
+  auditLogId: string | null;
+  correlationId: string | null;
+  error: string | null;
 }
 
 export interface EvalMetrics {
@@ -104,5 +159,5 @@ export interface EvalReport {
   total: number;
   passed: number;
   metrics: EvalMetrics;
-  cases: EvalCaseResult[];
+  cases: EvalCaseReport[];
 }

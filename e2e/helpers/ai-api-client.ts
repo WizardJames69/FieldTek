@@ -41,6 +41,67 @@ export function hasAssistantContent(res: ChatResponse): boolean {
   }
 }
 
+export interface ParsedFieldAssistantSSE {
+  streamedContent: string;
+  metadata?: Record<string, unknown>;
+  correlationId?: string;
+}
+
+/**
+ * Parse a field-assistant SSE response body into accumulated assistant content +
+ * the metadata event. CONTENT-PRESERVING by design — the first live eval baseline
+ * surfaced corrupted answers (mangled `[Source:]` markers, dropped tokens/spaces,
+ * `24ACC636` → `24636`), so this parser must never lose or alter payload bytes:
+ *  - splits on SSE event boundaries (a blank line), then collects the `data:`
+ *    field line(s) within each event (SSE allows several, joined with "\n");
+ *  - strips ONLY the single optional leading space after `data:` (per the SSE
+ *    spec) — it never `.trim()`s the payload, so spaces, numbers, `°F`, and
+ *    `[Source:]` survive exactly;
+ *  - tolerates CRLF framing, `[DONE]`, and non-`data:` lines (event:/id:/comment).
+ * Used by AIAPIClient.sendChatMessage (below) AND exported so the eval runner's
+ * stream fidelity is unit-testable offline — see src/test/evals/streamFidelity.test.ts.
+ */
+export function parseFieldAssistantSSE(body: string): ParsedFieldAssistantSSE {
+  let streamedContent = '';
+  let metadata: Record<string, unknown> | undefined;
+  let correlationId: string | undefined;
+  if (typeof body !== 'string' || body.length === 0) {
+    return { streamedContent, metadata, correlationId };
+  }
+
+  for (const event of body.split(/\r?\n\r?\n/)) {
+    const dataLines: string[] = [];
+    for (const line of event.split(/\r?\n/)) {
+      if (!line.startsWith('data:')) continue; // ignore event:/id:/comment lines
+      let value = line.slice(5);
+      if (value.startsWith(' ')) value = value.slice(1); // strip ONE optional space only
+      dataLines.push(value);
+    }
+    if (dataLines.length === 0) continue;
+    const payload = dataLines.join('\n');
+    if (payload === '[DONE]') break;
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(payload) as Record<string, unknown>;
+    } catch {
+      continue; // a non-JSON data line is skipped, never throws
+    }
+
+    if (parsed.metadata && typeof parsed.metadata === 'object') {
+      metadata = parsed.metadata as Record<string, unknown>;
+      const cid = metadata.correlation_id;
+      if (typeof cid === 'string') correlationId = cid;
+      continue;
+    }
+    const delta = (parsed as { choices?: Array<{ delta?: { content?: unknown } }> })
+      .choices?.[0]?.delta?.content;
+    if (typeof delta === 'string' && delta.length > 0) streamedContent += delta;
+  }
+
+  return { streamedContent, metadata, correlationId };
+}
+
 export class AIAPIClient {
   constructor(
     private supabaseUrl: string,
@@ -92,38 +153,19 @@ export class AIAPIClient {
     const responseHeaders = res.headers;
     const body = await res.text();
 
-    // Parse SSE if content-type is text/event-stream
+    // Parse SSE if content-type is text/event-stream. Delegate to the shared,
+    // content-preserving parser (unit-tested in src/test/evals/streamFidelity.test.ts)
+    // so the eval runner and these E2E helpers share one stream-fidelity contract.
     let streamedContent = '';
     let metadata: Record<string, unknown> | undefined;
     let correlationId: string | undefined;
 
     const contentType = responseHeaders.get('content-type') || '';
     if (contentType.includes('text/event-stream') && res.ok) {
-      const lines = body.split('\n');
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const payload = line.slice(6).trim();
-        if (payload === '[DONE]') break;
-
-        try {
-          const parsed = JSON.parse(payload);
-
-          // Metadata event
-          if (parsed.metadata) {
-            metadata = parsed.metadata;
-            correlationId = parsed.metadata.correlation_id;
-            continue;
-          }
-
-          // Text chunk event
-          const delta = parsed.choices?.[0]?.delta?.content;
-          if (delta) {
-            streamedContent += delta;
-          }
-        } catch {
-          // Non-JSON line, skip
-        }
-      }
+      const parsed = parseFieldAssistantSSE(body);
+      streamedContent = parsed.streamedContent;
+      metadata = parsed.metadata;
+      correlationId = parsed.correlationId;
     }
 
     return {
