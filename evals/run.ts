@@ -1,19 +1,27 @@
 // ============================================================
-// Sentinel AI eval harness — runner (PR-2.1)
+// Sentinel AI eval harness — runner (PR-2.1 + PR-2.2 gating/cost)
 // ============================================================
 // Asks the benchmark question set against the deployed field-assistant, reads
 // each answer's ai_audit_logs row for retrieval/judge signals, scores every
-// case, and writes a JSON report.
+// case, writes a JSON report, and gates the result against thresholds.
 //
-//   npx tsx evals/run.ts --self-test     # offline; no backend, no OpenAI cost
-//   npx tsx evals/run.ts                 # LIVE: hits field-assistant (OpenAI $)
-//   npx tsx evals/run.ts --limit 3       # first N cases
+//   npx tsx evals/run.ts --self-test          # offline scoring smoke (no cost)
+//   npx tsx evals/run.ts --report r.json --check   # offline: gate a saved report
+//   npx tsx evals/run.ts                       # LIVE: hits field-assistant (OpenAI $)
+//   npx tsx evals/run.ts --limit 3            # first N cases
+//   npx tsx evals/run.ts --max-tokens 50000   # stop the live run at a token budget
+//   npx tsx evals/run.ts --check              # LIVE + exit non-zero if below thresholds
+//   npx tsx evals/run.ts --report r.json --baseline prev.json --check  # + no-regression
+//   npx tsx evals/run.ts --thresholds t.json --check  # override default floors
 //   npx tsx evals/run.ts --out report.json
+//
+// --check enforces the gate (non-zero exit on failure) so it can back a CI
+// ship-gate (PR-2.3). --report / --self-test are offline and free; only a bare
+// or --check LIVE run calls OpenAI.
 //
 // LIVE runs require .env.test (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY,
 // SUPABASE_SERVICE_ROLE_KEY, E2E admin creds) and call OpenAI via the deployed
 // backend — so they cost money. Seeding is free (pre-computed embeddings).
-// Thresholds / pass-fail gating and cost controls arrive in PR-2.2 / PR-2.3.
 
 import { config } from "dotenv";
 config({ path: ".env.test" });
@@ -30,26 +38,49 @@ import { BENCHMARK_CASES } from "./cases";
 import { scoreCase, aggregate } from "./scoring";
 import { interpretResponse, extractCitedDocNames } from "./observe";
 import { ensureCorpusSeeded, resolveTenantId } from "./seed";
+import {
+  checkThresholds,
+  DEFAULT_THRESHOLDS,
+  type EvalThresholds,
+  type ThresholdCheckResult,
+} from "./thresholds";
+import { createCostTracker, sumTokens } from "./cost";
 import type {
   EvalCase,
   EvalCaseResult,
+  EvalMetrics,
   EvalObservation,
   EvalReport,
 } from "./types";
 
 interface Args {
   selfTest: boolean;
+  /** Enforce thresholds: print the gate verdict and exit non-zero on failure. */
+  check: boolean;
   limit?: number;
   out?: string;
+  /** Offline: load + gate this saved report JSON instead of running live. */
+  report?: string;
+  /** Saved report JSON whose metrics are the no-regression baseline. */
+  baseline?: string;
+  /** JSON file overriding the default thresholds (partial merge). */
+  thresholds?: string;
+  /** Live-run token budget; stop before starting a case once exhausted. */
+  maxTokens?: number;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { selfTest: false };
+  const args: Args = { selfTest: false, check: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--self-test") args.selfTest = true;
+    else if (a === "--check") args.check = true;
     else if (a === "--limit") args.limit = Number(argv[++i]);
     else if (a === "--out") args.out = argv[++i];
+    else if (a === "--report") args.report = argv[++i];
+    else if (a === "--baseline") args.baseline = argv[++i];
+    else if (a === "--thresholds") args.thresholds = argv[++i];
+    else if (a === "--max-tokens") args.maxTokens = Number(argv[++i]);
   }
   return args;
 }
@@ -94,7 +125,7 @@ async function observeCase(
   adminToken: string,
   tenantId: string,
   c: EvalCase,
-): Promise<EvalObservation> {
+): Promise<{ obs: EvalObservation; tokensUsed: number }> {
   const res = await client.sendChatMessage({
     messages: [{ role: "user", content: c.question }],
     context: c.context,
@@ -110,6 +141,7 @@ async function observeCase(
   let hadCitations = interp.answered && citedDocNames.length > 0;
   let judgeGrounded: boolean | null = null;
   let judgeVerdict: string | null = null;
+  let tokensUsed = 0;
 
   // Retrieval/judge detail comes from the audit log. The abstain-gate JSON
   // response does not carry a correlation_id, so for those cases we score on
@@ -121,6 +153,10 @@ async function observeCase(
       if (typeof log.had_citations === "boolean") hadCitations = log.had_citations;
       if (typeof log.judge_grounded === "boolean") judgeGrounded = log.judge_grounded;
       if (typeof log.judge_verdict === "string") judgeVerdict = log.judge_verdict;
+      tokensUsed = sumTokens(
+        log.token_count_prompt as number,
+        log.token_count_response as number,
+      );
       const chunkIds = Array.isArray(log.chunk_ids) ? (log.chunk_ids as string[]) : [];
       const ctx = await fetchChunkContext(chunkIds);
       retrievedChunkTexts = ctx.texts;
@@ -131,17 +167,20 @@ async function observeCase(
   }
 
   return {
-    caseId: c.id,
-    answered: interp.answered,
-    abstained: interp.abstained,
-    answerText: interp.answerText,
-    retrievedChunkCount,
-    retrievedDocNames,
-    retrievedChunkTexts,
-    citedDocNames,
-    hadCitations,
-    judgeGrounded,
-    judgeVerdict,
+    obs: {
+      caseId: c.id,
+      answered: interp.answered,
+      abstained: interp.abstained,
+      answerText: interp.answerText,
+      retrievedChunkCount,
+      retrievedDocNames,
+      retrievedChunkTexts,
+      citedDocNames,
+      hadCitations,
+      judgeGrounded,
+      judgeVerdict,
+    },
+    tokensUsed,
   };
 }
 
@@ -191,6 +230,51 @@ function writeReport(report: EvalReport, outArg?: string): string {
   return file;
 }
 
+// ── Threshold gate (PR-2.2) ─────────────────────────────────
+// Turns a report's metrics into a pass/fail verdict against floors (+ optional
+// no-regression check vs a baseline). With --check, a failing gate sets a
+// non-zero exit code so this can back a CI ship-gate later (PR-2.3).
+
+function loadReport(file: string): EvalReport {
+  return JSON.parse(fs.readFileSync(file, "utf8")) as EvalReport;
+}
+
+function loadThresholds(file?: string): EvalThresholds {
+  if (!file) return DEFAULT_THRESHOLDS;
+  const raw = JSON.parse(fs.readFileSync(file, "utf8")) as Partial<EvalThresholds>;
+  return { ...DEFAULT_THRESHOLDS, ...raw };
+}
+
+function loadBaselineMetrics(file?: string): EvalMetrics | null {
+  return file ? loadReport(file).metrics : null;
+}
+
+function printThresholdVerdict(result: ThresholdCheckResult): void {
+  console.log(`\n--- threshold gate: ${result.passed ? "PASS" : "FAIL"} ---`);
+  for (const v of result.violations) console.log(`  ✗ [${v.kind}] ${v.message}`);
+}
+
+/**
+ * Evaluate a report against thresholds. `forceShow` prints the verdict even
+ * without --check (used after live/report runs); --check additionally enforces
+ * the gate via a non-zero exit code.
+ */
+function gate(
+  report: EvalReport,
+  thresholds: EvalThresholds,
+  baseline: EvalMetrics | null,
+  args: Args,
+  forceShow: boolean,
+): void {
+  if (!forceShow && !args.check) return;
+  const result = checkThresholds(report.metrics, thresholds, baseline);
+  printThresholdVerdict(result);
+  if (args.check && !result.passed) {
+    console.error("[eval] FAIL: metrics did not meet thresholds (--check)");
+    process.exitCode = 1;
+  }
+}
+
 // ── Offline self-test ───────────────────────────────────────
 // Proves the harness scores + reports correctly on canned observations, with
 // no backend and no OpenAI cost. Run in CI/dev as a smoke before any live run.
@@ -230,7 +314,7 @@ function syntheticObservation(caseId: string, kind: "good" | "miss" | "abstain")
   return { ...base, answered: true, answerText: "Unsure.", retrievedDocNames: ["Unrelated Doc"], judgeGrounded: false };
 }
 
-function runSelfTest(nowIso: string): void {
+function runSelfTest(nowIso: string): EvalReport {
   const byId = (id: string) => BENCHMARK_CASES.find((c) => c.id === id)!;
   const fixtures: Array<{ c: EvalCase; obs: EvalObservation }> = [
     { c: byId("EV-M-001"), obs: syntheticObservation("EV-M-001", "good") },
@@ -250,6 +334,7 @@ function runSelfTest(nowIso: string): void {
     process.exit(1);
   }
   console.log("\n[eval] self-test OK (offline, no cost)");
+  return report;
 }
 
 // ── Main ────────────────────────────────────────────────────
@@ -257,12 +342,25 @@ function runSelfTest(nowIso: string): void {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const nowIso = new Date().toISOString();
+  const thresholds = loadThresholds(args.thresholds);
+  const baseline = loadBaselineMetrics(args.baseline);
 
-  if (args.selfTest) {
-    runSelfTest(nowIso);
+  // ── Offline: gate a previously-saved report (no backend, no OpenAI cost) ──
+  if (args.report) {
+    const report = loadReport(args.report);
+    printSummary(report);
+    gate(report, thresholds, baseline, args, true);
     return;
   }
 
+  // ── Offline: scoring self-test on canned observations (no cost) ──
+  if (args.selfTest) {
+    const report = runSelfTest(nowIso);
+    gate(report, thresholds, baseline, args, false);
+    return;
+  }
+
+  // ── Live: ask the deployed assistant — this calls OpenAI (costs money) ──
   const cases = args.limit ? BENCHMARK_CASES.slice(0, args.limit) : BENCHMARK_CASES;
   const client = createAIClient(); // throws if env missing
   const tenantId = await resolveTenantId();
@@ -275,19 +373,32 @@ async function main(): Promise<void> {
     TEST_USERS.admin.password,
   );
 
+  const tracker = createCostTracker(args.maxTokens ?? null);
   const results: EvalCaseResult[] = [];
-  for (const c of cases) {
-    const obs = await observeCase(client, adminToken, tenantId, c);
+  for (let i = 0; i < cases.length; i++) {
+    const c = cases[i];
+    if (!tracker.hasRoom()) {
+      console.warn(
+        `[eval] token budget (${args.maxTokens}) reached after ${i} case(s) — ` +
+          `skipping ${cases.length - i} remaining (spent=${tracker.spent()})`,
+      );
+      break;
+    }
+    const { obs, tokensUsed } = await observeCase(client, adminToken, tenantId, c);
     const r = scoreCase(c, obs);
     results.push(r);
+    tracker.record(tokensUsed);
     console.log(
-      `[eval] ${r.passed ? "PASS" : "FAIL"} ${c.id} (answered=${obs.answered} abstained=${obs.abstained} retrieved=${obs.retrievedChunkCount})`,
+      `[eval] ${r.passed ? "PASS" : "FAIL"} ${c.id} (answered=${obs.answered} ` +
+        `abstained=${obs.abstained} retrieved=${obs.retrievedChunkCount} ` +
+        `tokens=${tokensUsed} spent=${tracker.spent()})`,
     );
   }
 
   const report = buildReport("hvac-first-benchmark", results, nowIso);
   const file = writeReport(report, args.out);
   printSummary(report, file);
+  gate(report, thresholds, baseline, args, true);
 }
 
 main().catch((e) => {
