@@ -111,14 +111,39 @@ async function globalSetup(config: FullConfig) {
 
     if (error) throw new Error(`[global-setup] Failed to create tenant: ${error.message}`);
     tenantId = tenant.id;
+    console.log(`[global-setup]   ✓ Created tenant: ${tenantId}`);
+  }
 
-    // Tenant memberships
-    await adminClient.from('tenant_users').insert([
-      { tenant_id: tenantId, user_id: userIds.admin, role: 'owner', is_active: true },
-      { tenant_id: tenantId, user_id: userIds.technician, role: 'technician', is_active: true },
-    ]);
+  // Ensure memberships, settings, and branding exist on BOTH the create AND the
+  // reuse path (idempotently). These used to be seeded only when a NEW tenant
+  // was created, so a *reused* tenant (e.g. one left over from earlier tooling)
+  // could lack the technician membership — leaving the technician with no tenant
+  // context and breaking every technician/role-scoped spec. Insert-if-missing
+  // keeps a freshly-created tenant identical to a reused one.
+  for (const m of [
+    { user_id: userIds.admin, role: 'owner' as const },
+    { user_id: userIds.technician, role: 'technician' as const },
+  ]) {
+    const { data: existingMember } = await adminClient
+      .from('tenant_users')
+      .select('id')
+      .eq('tenant_id', tenantId)
+      .eq('user_id', m.user_id)
+      .maybeSingle();
+    if (!existingMember) {
+      await adminClient
+        .from('tenant_users')
+        .insert({ tenant_id: tenantId, user_id: m.user_id, role: m.role, is_active: true });
+    }
+  }
 
-    // Tenant settings (required for dashboard to load)
+  // Tenant settings (required for dashboard to load)
+  const { data: existingSettings } = await adminClient
+    .from('tenant_settings')
+    .select('tenant_id')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (!existingSettings) {
     await adminClient.from('tenant_settings').insert({
       tenant_id: tenantId,
       equipment_types: ['Air Handler', 'Condenser', 'Furnace', 'Heat Pump'],
@@ -126,16 +151,21 @@ async function globalSetup(config: FullConfig) {
       workflow_stages: ['Scheduled', 'En Route', 'On Site', 'Complete'],
       document_categories: ['Contract', 'Warranty', 'Invoice', 'Manual'],
     });
+  }
 
-    // Tenant branding (required for layout to render)
+  // Tenant branding (required for layout to render)
+  const { data: existingBranding } = await adminClient
+    .from('tenant_branding')
+    .select('tenant_id')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (!existingBranding) {
     await adminClient.from('tenant_branding').insert({
       tenant_id: tenantId,
       company_name: TEST_TENANT.name,
       primary_color: '#1e3a5f',
       secondary_color: '#f59e0b',
     });
-
-    console.log(`[global-setup]   ✓ Created tenant: ${tenantId}`);
   }
 
   // ─── Step 3: Create portal client record ────────────────────────────────
