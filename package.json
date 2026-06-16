@@ -17,7 +17,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
     "generate:og": "npx tsx scripts/generate-og.ts",
-    "generate:e2e-embeddings": "npx tsx scripts/generate-e2e-embeddings.ts"
+    "generate:e2e-embeddings": "npx tsx scripts/generate-e2e-embeddings.ts",
+    "security:zap:baseline": "bash scripts/security-zap-baseline.sh"
   },
   "dependencies": {
     "@elevenlabs/react": "^0.12.3",

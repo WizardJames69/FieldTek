@@ -13,3 +13,6 @@ coverage
 
 # Sentinel AI eval harness — generated report artifacts (evals/run.ts)
 evals/reports/
+
+# OWASP ZAP local passive baseline scan — generated reports (scripts/security-zap-baseline.sh)
+security-reports/zap/
