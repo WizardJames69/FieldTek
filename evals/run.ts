@@ -32,7 +32,7 @@ import * as path from "path";
 import { createAIClient, type AIAPIClient } from "../e2e/helpers/ai-api-client";
 import { waitForAuditLog } from "../e2e/helpers/audit-log-helpers";
 import { getAdminClient } from "../e2e/helpers/supabase-admin";
-import { TEST_USERS } from "../e2e/helpers/test-data";
+import { EVAL_ADMIN_EMAIL, EVAL_ADMIN_PASSWORD } from "./evalIdentity";
 
 import { BENCHMARK_CASES } from "./cases";
 import { scoreCase, aggregate } from "./scoring";
@@ -369,8 +369,8 @@ async function main(): Promise<void> {
     `[eval] tenant=${tenantId} corpus_chunks=${seedInfo.chunkCount} (seeded_now=${seedInfo.seeded})`,
   );
   const adminToken = await client.getAuthToken(
-    TEST_USERS.admin.email,
-    TEST_USERS.admin.password,
+    EVAL_ADMIN_EMAIL,
+    EVAL_ADMIN_PASSWORD,
   );
 
   const tracker = createCostTracker(args.maxTokens ?? null);

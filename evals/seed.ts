@@ -7,26 +7,30 @@
 // documents when chunks already exist for the tenant.
 
 import { getAdminClient } from "../e2e/helpers/supabase-admin";
-import { TEST_TENANT } from "../e2e/helpers/test-data";
+import { EVAL_TENANT_NAME } from "./evalIdentity";
 import {
   seedTestDocuments,
   seedDocumentChunks,
   seedTenantAIPolicy,
 } from "../e2e/helpers/ai-seed-helpers";
 
-/** Resolve the eval tenant id by name (the same tenant the E2E suite seeds). */
+/**
+ * Resolve the dedicated eval tenant id by name. This tenant is separate from
+ * the E2E suite's tenant (see evalIdentity.ts), so it is NOT created or deleted
+ * by E2E global-setup/teardown — it is provisioned by evals/provision.ts.
+ */
 export async function resolveTenantId(): Promise<string> {
   const client = getAdminClient();
   const { data, error } = await client
     .from("tenants")
     .select("id")
-    .eq("name", TEST_TENANT.name)
+    .eq("name", EVAL_TENANT_NAME)
     .maybeSingle();
   if (error) throw new Error(`resolveTenantId failed: ${error.message}`);
   if (!data) {
     throw new Error(
-      `Eval tenant "${TEST_TENANT.name}" not found on this backend. Seed it first ` +
-        `(e.g. run the E2E global-setup) before a live eval run.`,
+      `Eval tenant "${EVAL_TENANT_NAME}" not found on this backend. Provision it ` +
+        `first: npx tsx evals/provision.ts --confirm-project <ref> (before a live eval run).`,
     );
   }
   return data.id;

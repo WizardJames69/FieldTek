@@ -77,7 +77,7 @@ describe("buildWritePlan — narrow, allowlisted footprint", () => {
   const plan = buildWritePlan();
 
   it("targets the exact eval tenant the harness requires", () => {
-    expect(EVAL_TENANT_NAME).toBe("E2E Test Company");
+    expect(EVAL_TENANT_NAME).toBe("Sentinel Eval Company");
     expect(plan.some((w) => w.entity === "tenants")).toBe(true);
   });
 
@@ -112,6 +112,26 @@ describe("buildWritePlan — narrow, allowlisted footprint", () => {
 
   it("describePlan renders one line per planned write", () => {
     expect(describePlan(plan)).toHaveLength(plan.length);
+  });
+});
+
+describe("buildWritePlan — decoupled from the E2E identity", () => {
+  const rendered = describePlan(buildWritePlan()).join("\n");
+
+  it("references the dedicated Sentinel eval tenant + admin", () => {
+    expect(rendered).toContain("Sentinel Eval Company");
+    expect(rendered).toContain("sentinel-eval-admin@fieldtek-test.dev");
+    expect(rendered).toContain("sentinel-eval-company-"); // slug prefix
+  });
+
+  it("never references the E2E suite's tenant name or admin email", () => {
+    expect(rendered).not.toContain("E2E Test Company");
+    expect(rendered).not.toContain("e2e-admin@fieldtek-test.dev");
+    expect(rendered).not.toContain("e2e-test-company-");
+  });
+
+  it("EVAL_TENANT_NAME is not the E2E tenant name", () => {
+    expect(EVAL_TENANT_NAME).not.toBe("E2E Test Company");
   });
 });
 

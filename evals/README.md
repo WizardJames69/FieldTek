@@ -74,23 +74,38 @@ is spent, logging how many cases were skipped (no silent truncation).
 - LIVE runs need `.env.test` (`VITE_SUPABASE_URL`,
   `VITE_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and the
   `E2E_ADMIN_*` credentials) and target whichever backend `.env.test` points at.
-- The eval tenant (`E2E Test Company`) must exist on that backend. The live
+- The eval tenant (`Sentinel Eval Company`) must exist on that backend. The live
   runner seeds the **corpus** idempotently, but it does **not** create the tenant
   or admin login — provision those once with the narrow provisioner below.
 
 ### Provisioning the eval tenant (one-time, narrow)
 
-A live run needs the `E2E Test Company` tenant + an admin login on the target
-backend. The documented E2E global-setup creates far more than the eval needs
-(5 users, a 2nd tenant, **global feature flags**, platform admin, workflow /
-diagnostic / compliance data). `evals/provision.ts` instead creates **only** the
-minimum — idempotent, tenant-scoped, and safe to re-run:
+A live run needs the `Sentinel Eval Company` tenant + an admin login on the
+target backend.
+
+**Why a dedicated identity (decoupled from E2E).** The eval tenant/admin used to
+reuse the Playwright suite's `E2E Test Company` tenant + `e2e-admin@…` login,
+which caused two failures: E2E `global-teardown` deletes the tenant + users it
+recorded (so the eval tenant was destroyed after every CI E2E run — the baseline
+was transient), and resetting / signing in as the **shared** admin during an
+active E2E run revoked the suite's session → Assistant API `401`s. The eval
+harness now has its own identity in [`evalIdentity.ts`](./evalIdentity.ts):
+tenant **`Sentinel Eval Company`**, admin
+**`sentinel-eval-admin@fieldtek-test.dev`**. E2E global-setup resolves its tenant
+by the name `E2E Test Company` and its users from `TEST_USERS`, so it never
+adopts these — teardown can never delete them, and eval provisioning/baseline
+never touch the E2E admin's session.
+
+The documented E2E global-setup creates far more than the eval needs (5 users, a
+2nd tenant, **global feature flags**, platform admin, workflow / diagnostic /
+compliance data). `evals/provision.ts` instead creates **only** the minimum —
+idempotent, tenant-scoped, and safe to re-run:
 
 | Entity | What |
 |---|---|
-| `auth.user` | eval admin login (`e2e-admin@fieldtek-test.dev`), marked `e2e_test_data` |
+| `auth.user` | eval admin login (`sentinel-eval-admin@fieldtek-test.dev`), marked `eval_test_data` |
 | `profiles` | profile row for that admin |
-| `tenants` | eval tenant (enterprise/active; no metadata column, so marked by name + `e2e-test-company-*` slug) |
+| `tenants` | eval tenant `Sentinel Eval Company` (enterprise/active; no metadata column, so identified by name + `sentinel-eval-company-*` slug) |
 | `tenant_users` | admin owner membership |
 | `tenant_ai_policies` | AI enabled for the tenant |
 | `documents` + `document_chunks` | fixture HVAC corpus (pre-computed embeddings — **no model calls**) |
@@ -112,6 +127,10 @@ npx tsx evals/provision.ts --confirm-project fgemfxhwushaiiguqxfe
 A real write also requires `.env.test` (`VITE_SUPABASE_URL`,
 `SUPABASE_SERVICE_ROLE_KEY`).
 
+Provisioning only creates the tenant + corpus; it does **not** run the eval
+baseline. The live baseline is a **separate, explicit** step (`npx tsx
+evals/run.ts --check …`) that calls OpenAI and costs money.
+
 ## Layout
 
 | File | Role |
@@ -122,15 +141,17 @@ A real write also requires `.env.test` (`VITE_SUPABASE_URL`,
 | `observe.ts` | Pure response interpretation (SSE / abstain / block) |
 | `thresholds.ts` | Pure pass/fail + no-regression gate (unit-tested) |
 | `cost.ts` | Pure per-run token budget guard (unit-tested) |
-| `seed.ts` | Resolve tenant + ensure corpus (reuses E2E seed helpers) |
+| `seed.ts` | Resolve the dedicated eval tenant + ensure corpus (reuses E2E *corpus* seed helpers, not its identity) |
 | `run.ts` | Runner: live execution, offline `--self-test` / `--report`, gate, JSON report |
+| `evalIdentity.ts` | Dedicated eval tenant/admin identity, decoupled from the E2E suite (unit-tested) |
 | `provisionPlan.ts` | Pure provisioner plan + gate (allowlist, confirm parsing; unit-tested) |
 | `provision.ts` | Narrow eval-only tenant provisioner (idempotent; `--dry-run` / `--confirm-project`) |
 | `reports/` | Generated reports (git-ignored) |
 
-The pure modules (`scoring.ts`, `observe.ts`, `thresholds.ts`, `cost.ts`) are
-covered by Vitest under `src/test/evals/`, so `npm run test` / CI catch scoring
-and gating regressions without a live backend.
+The pure modules (`scoring.ts`, `observe.ts`, `thresholds.ts`, `cost.ts`,
+`provisionPlan.ts`, `evalIdentity.ts`) are covered by Vitest under
+`src/test/evals/`, so `npm run test` / CI catch scoring, gating, and
+eval-identity regressions without a live backend.
 
 ## Follow-ups (not in PR-2.1)
 

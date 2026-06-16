@@ -1,8 +1,8 @@
 // ============================================================
 // Sentinel AI eval harness — narrow provisioner: planning logic (pure)
 // ============================================================
-// The eval live baseline needs an eval tenant ("E2E Test Company") + an admin
-// login + the fixture corpus on the target backend. The documented E2E
+// The eval live baseline needs an eval tenant ("Sentinel Eval Company") + an
+// admin login + the fixture corpus on the target backend. The documented E2E
 // global-setup creates far more (5 users, a 2nd tenant, GLOBAL feature flags,
 // platform admin, workflow/diagnostic/compliance data). This provisioner does
 // the MINIMUM instead.
@@ -13,11 +13,16 @@
 // so the "narrow + gated, never the broad global-setup" contract is pinned
 // without any backend or fgem writes. The IO lives in evals/provision.ts.
 
-/** The exact tenant name the harness resolves (e2e/helpers/test-data TEST_TENANT.name). */
-export const EVAL_TENANT_NAME = "E2E Test Company";
+import {
+  EVAL_TENANT_NAME,
+  EVAL_TENANT_SLUG_PREFIX,
+  EVAL_ADMIN_EMAIL,
+  EVAL_USER_MARKER,
+} from "./evalIdentity";
 
-/** Default eval admin login (e2e/helpers/test-data TEST_USERS.admin.email). */
-export const EVAL_ADMIN_EMAIL_DEFAULT = "e2e-admin@fieldtek-test.dev";
+// Re-export the eval tenant name so existing importers (provision.ts and the
+// offline unit tests) keep a single import site.
+export { EVAL_TENANT_NAME };
 
 /**
  * The ONLY entities this provisioner may write. `auth.user` is the Supabase
@@ -72,13 +77,13 @@ export function buildWritePlan(): PlannedWrite[] {
     {
       entity: "auth.user",
       action: "insert-if-missing",
-      description: `eval admin login (${EVAL_ADMIN_EMAIL_DEFAULT}), marked e2e_test_data`,
+      description: `eval admin login (${EVAL_ADMIN_EMAIL}), marked ${EVAL_USER_MARKER}`,
     },
     { entity: "profiles", action: "upsert", description: "profile row for the eval admin" },
     {
       entity: "tenants",
       action: "insert-if-missing",
-      description: `eval tenant "${EVAL_TENANT_NAME}" (enterprise/active, slug e2e-test-company-*)`,
+      description: `eval tenant "${EVAL_TENANT_NAME}" (enterprise/active, slug ${EVAL_TENANT_SLUG_PREFIX}-*)`,
     },
     {
       entity: "tenant_users",

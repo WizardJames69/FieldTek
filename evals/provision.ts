@@ -2,7 +2,7 @@
 // Sentinel AI eval harness — narrow eval-only tenant provisioner (runner)
 // ============================================================
 // Creates the MINIMUM data the eval live baseline needs on the target backend:
-// one eval tenant ("E2E Test Company"), one eval admin login, that admin's
+// one eval tenant ("Sentinel Eval Company"), one eval admin login, that admin's
 // profile + owner membership, the tenant AI policy, and the fixture HVAC corpus
 // (pre-computed embeddings — NO paid model calls). It is idempotent, tenant-
 // scoped, and safe to re-run.
@@ -24,7 +24,6 @@ config({ path: ".env.test" });
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getAdminClient } from "../e2e/helpers/supabase-admin";
-import { TEST_TENANT, TEST_USERS } from "../e2e/helpers/test-data";
 import { ensureCorpusSeeded } from "./seed";
 import {
   assertPlanWithinAllowlist,
@@ -32,13 +31,21 @@ import {
   decideGate,
   describePlan,
   parseProvisionArgs,
-  EVAL_TENANT_NAME,
 } from "./provisionPlan";
+import {
+  EVAL_TENANT_NAME,
+  EVAL_TENANT_SLUG_PREFIX,
+  EVAL_TENANT_INDUSTRY,
+  EVAL_ADMIN_EMAIL,
+  EVAL_ADMIN_PASSWORD,
+  EVAL_ADMIN_FULL_NAME,
+  EVAL_USER_MARKER,
+} from "./evalIdentity";
 
-// Marks eval-created auth users so they are unmistakable (the same marker the
-// E2E global-setup uses). There is no metadata column on `tenants`, so the
-// tenant is marked by its required name + the e2e-test-company-* slug instead.
-const E2E_MARKER = "e2e_test_data";
+// Marks eval-created auth users with a DEDICATED eval marker (not the E2E
+// suite's `e2e_test_data` marker — see evalIdentity.ts). There is no metadata
+// column on `tenants`, so the tenant is identified by its required name + the
+// sentinel-eval-company-* slug instead.
 
 interface Tally {
   [entity: string]: { found: number; created: number };
@@ -56,7 +63,9 @@ async function provisionAdminUser(
   admin: SupabaseClient,
   t: Tally,
 ): Promise<string> {
-  const { email, password, fullName } = TEST_USERS.admin;
+  const email = EVAL_ADMIN_EMAIL;
+  const password = EVAL_ADMIN_PASSWORD;
+  const fullName = EVAL_ADMIN_FULL_NAME;
 
   const { data: list } = await admin.auth.admin.listUsers();
   const users = (list?.users ?? []) as Array<{ id: string; email?: string | null }>;
@@ -73,7 +82,7 @@ async function provisionAdminUser(
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fullName, [E2E_MARKER]: true, eval_provisioned: true },
+      user_metadata: { full_name: fullName, [EVAL_USER_MARKER]: true, eval_provisioned: true },
     });
     if (error) throw new Error(`create eval admin user failed: ${error.message}`);
     userId = data.user!.id;
@@ -114,8 +123,8 @@ async function provisionTenant(
     .from("tenants")
     .insert({
       name: EVAL_TENANT_NAME,
-      slug: `e2e-test-company-${Date.now()}`,
-      industry: TEST_TENANT.industry,
+      slug: `${EVAL_TENANT_SLUG_PREFIX}-${Date.now()}`,
+      industry: EVAL_TENANT_INDUSTRY,
       owner_id: ownerId,
       subscription_tier: "enterprise",
       subscription_status: "active",
