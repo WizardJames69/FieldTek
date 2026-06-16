@@ -74,8 +74,43 @@ is spent, logging how many cases were skipped (no silent truncation).
 - LIVE runs need `.env.test` (`VITE_SUPABASE_URL`,
   `VITE_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and the
   `E2E_ADMIN_*` credentials) and target whichever backend `.env.test` points at.
-- The eval tenant (`E2E Test Company`) and its corpus must exist on that backend;
-  the runner seeds the corpus idempotently if chunks are missing.
+- The eval tenant (`E2E Test Company`) must exist on that backend. The live
+  runner seeds the **corpus** idempotently, but it does **not** create the tenant
+  or admin login — provision those once with the narrow provisioner below.
+
+### Provisioning the eval tenant (one-time, narrow)
+
+A live run needs the `E2E Test Company` tenant + an admin login on the target
+backend. The documented E2E global-setup creates far more than the eval needs
+(5 users, a 2nd tenant, **global feature flags**, platform admin, workflow /
+diagnostic / compliance data). `evals/provision.ts` instead creates **only** the
+minimum — idempotent, tenant-scoped, and safe to re-run:
+
+| Entity | What |
+|---|---|
+| `auth.user` | eval admin login (`e2e-admin@fieldtek-test.dev`), marked `e2e_test_data` |
+| `profiles` | profile row for that admin |
+| `tenants` | eval tenant (enterprise/active; no metadata column, so marked by name + `e2e-test-company-*` slug) |
+| `tenant_users` | admin owner membership |
+| `tenant_ai_policies` | AI enabled for the tenant |
+| `documents` + `document_chunks` | fixture HVAC corpus (pre-computed embeddings — **no model calls**) |
+
+It will **never** write global `feature_flags`, a second tenant ("Tenant B"), a
+platform admin, or any workflow / diagnostic / compliance / equipment-graph /
+sample-job data — enforced by an allowlist guard (`assertPlanWithinAllowlist`)
+plus offline unit tests.
+
+```bash
+# Preview the exact write-plan — no DB connection, no writes.
+npx tsx evals/provision.ts --dry-run
+
+# Provision for real — requires --confirm-project to MATCH the project ref in
+# VITE_SUPABASE_URL, so it cannot run against the wrong backend or by accident.
+npx tsx evals/provision.ts --confirm-project fgemfxhwushaiiguqxfe
+```
+
+A real write also requires `.env.test` (`VITE_SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`).
 
 ## Layout
 
@@ -89,6 +124,8 @@ is spent, logging how many cases were skipped (no silent truncation).
 | `cost.ts` | Pure per-run token budget guard (unit-tested) |
 | `seed.ts` | Resolve tenant + ensure corpus (reuses E2E seed helpers) |
 | `run.ts` | Runner: live execution, offline `--self-test` / `--report`, gate, JSON report |
+| `provisionPlan.ts` | Pure provisioner plan + gate (allowlist, confirm parsing; unit-tested) |
+| `provision.ts` | Narrow eval-only tenant provisioner (idempotent; `--dry-run` / `--confirm-project`) |
 | `reports/` | Generated reports (git-ignored) |
 
 The pure modules (`scoring.ts`, `observe.ts`, `thresholds.ts`, `cost.ts`) are
