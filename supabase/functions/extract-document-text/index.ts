@@ -4,8 +4,14 @@ import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.lan
 import OpenAI from "https://esm.sh/openai@4.96.0";
 import { extractText as extractPdfText } from "npm:unpdf";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
-import { chunkTextStructured, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
+import { chunkTextStructuredWithStats, MAX_CHUNKS, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
 import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
+import {
+  buildChunkCapWarning,
+  buildExtractionTruncationWarning,
+  normalizeIngestionWarnings,
+  type IngestionWarning,
+} from "../_shared/ingestionWarnings.ts";
 
 // ── Constants ───────────────────────────────────────────────
 const corsHeaders = {
@@ -149,7 +155,7 @@ async function runInlineEmbedding(documentId: string, text: string, correlationI
     }
 
     // Chunk the extracted text and process one at a time
-    const chunks = chunkTextStructured(text);
+    const { chunks, rawChunkCount, cappedAtMax } = chunkTextStructuredWithStats(text);
     const totalChunks = chunks.length;
     console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding ${totalChunks} chunks for ${documentId}`);
 
@@ -216,7 +222,28 @@ async function runInlineEmbedding(documentId: string, text: string, correlationI
       return;
     }
 
-    await embRestUpdate("documents", `id=eq.${documentId}`, { embedding_status: "completed" });
+    // Record a truthful "partial" warning if this document was capped at
+    // MAX_CHUNKS. Merge with any extraction-truncation warning already stored
+    // at write-back (preserve it; refresh only the chunk-cap entry).
+    const chunkCapWarning = cappedAtMax ? buildChunkCapWarning(rawChunkCount, MAX_CHUNKS) : null;
+    let finalWarnings: IngestionWarning[];
+    try {
+      const existingRows = await embRestSelect<Record<string, unknown>>(
+        "documents",
+        `id=eq.${documentId}&select=ingestion_warnings`,
+      );
+      const preserved = normalizeIngestionWarnings(existingRows[0]?.ingestion_warnings)
+        .filter((w) => w.code !== "CHUNK_LIMIT_REACHED");
+      finalWarnings = chunkCapWarning ? [...preserved, chunkCapWarning] : preserved;
+    } catch (_) {
+      // If prior warnings can't be read, still record this run's chunk-cap warning.
+      finalWarnings = chunkCapWarning ? [chunkCapWarning] : [];
+    }
+
+    await embRestUpdate("documents", `id=eq.${documentId}`, {
+      embedding_status: "completed",
+      ingestion_warnings: finalWarnings.length ? finalWarnings : null,
+    });
     console.log(`[extract-document-text] [correlation_id=${correlationId}] Embedding completed: ${insertedCount} chunks, ${totalTokens} tokens`);
   } catch (embErr) {
     const errMsg = embErr instanceof Error ? embErr.message : String(embErr);
@@ -648,7 +675,13 @@ serve(async (req) => {
     }
 
     // ── Truncate ────────────────────────────────────────────
+    // Record a structured warning when the extraction-length cap is hit so the
+    // document is shown as "Partial" rather than silently fully indexed. The
+    // original file is retained in storage; only the indexed text is capped.
+    const extractionWarnings: IngestionWarning[] = [];
     if (extractedText.length > MAX_EXTRACTED_TEXT_LENGTH) {
+      const w = buildExtractionTruncationWarning(extractedText.length, MAX_EXTRACTED_TEXT_LENGTH);
+      if (w) extractionWarnings.push(w);
       extractedText =
         extractedText.substring(0, MAX_EXTRACTED_TEXT_LENGTH) +
         "\n\n[Content truncated due to length]";
@@ -683,6 +716,7 @@ serve(async (req) => {
         .update({
           extracted_text: sanitized,
           extraction_status: "completed",
+          ingestion_warnings: extractionWarnings.length ? extractionWarnings : null,
         })
         .eq("id", documentId);
       if (writeBackError) {

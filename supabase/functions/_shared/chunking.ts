@@ -38,7 +38,21 @@ interface AnnotatedSection {
 
 // ── Main Entry Point ────────────────────────────────────────
 
-export function chunkTextStructured(text: string): StructuredChunk[] {
+// Safety guard: cap chunk count to prevent runaway processing.
+export const MAX_CHUNKS = 500;
+
+export interface ChunkingResult {
+  chunks: StructuredChunk[];
+  /** Chunk count produced BEFORE the MAX_CHUNKS cap was applied. */
+  rawChunkCount: number;
+  /** True when the document exceeded MAX_CHUNKS and was capped. */
+  cappedAtMax: boolean;
+}
+
+// Returns the chunks plus capping stats so ingestion can record a truthful
+// "partial" warning when a large document is capped. chunkTextStructured()
+// below preserves the original chunks-only signature for existing callers.
+export function chunkTextStructuredWithStats(text: string): ChunkingResult {
   const annotatedLines = parseAndStripPageMarkers(text);
   const sections = splitIntoSections(annotatedLines);
   const chunks: StructuredChunk[] = [];
@@ -67,15 +81,20 @@ export function chunkTextStructured(text: string): StructuredChunk[] {
   }
 
   const result = chunks.filter(c => c.text.length > 50);
+  const rawChunkCount = result.length;
 
-  // Safety guard: cap chunk count to prevent runaway processing
-  const MAX_CHUNKS = 500;
+  let cappedAtMax = false;
   if (result.length > MAX_CHUNKS) {
     console.warn(`[chunking] Truncating ${result.length} chunks to ${MAX_CHUNKS}`);
     result.length = MAX_CHUNKS;
+    cappedAtMax = true;
   }
 
-  return result;
+  return { chunks: result, rawChunkCount, cappedAtMax };
+}
+
+export function chunkTextStructured(text: string): StructuredChunk[] {
+  return chunkTextStructuredWithStats(text).chunks;
 }
 
 // ── Page marker parsing ─────────────────────────────────────

@@ -1,7 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
-import { chunkTextStructured, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
+import { chunkTextStructuredWithStats, MAX_CHUNKS, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
 import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
+import {
+  buildChunkCapWarning,
+  normalizeIngestionWarnings,
+  type IngestionWarning,
+} from "../_shared/ingestionWarnings.ts";
 
 // Raw Supabase REST helpers (no supabase-js SDK to save ~100MB heap)
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -160,7 +165,7 @@ serve(async (req) => {
     // Get document with extracted text (raw REST)
     const docs = await restSelect<Record<string, unknown>>(
       "documents",
-      `id=eq.${documentId}&select=id,tenant_id,name,extracted_text,extraction_status,category,equipment_types`
+      `id=eq.${documentId}&select=id,tenant_id,name,extracted_text,extraction_status,category,equipment_types,ingestion_warnings`
     );
     const doc = docs[0];
 
@@ -211,7 +216,7 @@ serve(async (req) => {
       await restDelete("document_chunks", `document_id=eq.${documentId}`);
 
       // Chunk the document text — keep only boundary info (start/end/type), not text content
-      const rawChunks = chunkTextStructured(doc.extracted_text as string);
+      const { chunks: rawChunks, rawChunkCount, cappedAtMax } = chunkTextStructuredWithStats(doc.extracted_text as string);
       const totalChunks = rawChunks.length;
       console.log(`[generate-embeddings] [correlation_id=${correlationId}] Document split into ${totalChunks} structured chunks`);
 
@@ -306,8 +311,20 @@ serve(async (req) => {
         );
       }
 
+      // Record a truthful chunk-cap warning if this document was capped,
+      // preserving any extraction-truncation warning already stored on the row.
+      const chunkCapWarning = cappedAtMax ? buildChunkCapWarning(rawChunkCount, MAX_CHUNKS) : null;
+      const preserved = normalizeIngestionWarnings(doc.ingestion_warnings)
+        .filter((w) => w.code !== "CHUNK_LIMIT_REACHED");
+      const finalWarnings: IngestionWarning[] = chunkCapWarning
+        ? [...preserved, chunkCapWarning]
+        : preserved;
+
       // Update document embedding status
-      await restUpdate("documents", `id=eq.${documentId}`, { embedding_status: "completed" });
+      await restUpdate("documents", `id=eq.${documentId}`, {
+        embedding_status: "completed",
+        ingestion_warnings: finalWarnings.length ? finalWarnings : null,
+      });
 
       console.log(`[generate-embeddings] [correlation_id=${correlationId}] Completed:`, doc.id, "Chunks:", insertedChunkCount);
 

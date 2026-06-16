@@ -3,7 +3,12 @@ import { describe, it, expect } from 'vitest';
 // The chunker lives under supabase/functions/_shared because it's shared with
 // Deno edge functions, but it is pure ES-module TypeScript and importable
 // from Vitest. Keeping the test under src/test so `npm run test` picks it up.
-import { chunkTextStructured, estimateTokens } from '../../../supabase/functions/_shared/chunking';
+import {
+  chunkTextStructured,
+  chunkTextStructuredWithStats,
+  estimateTokens,
+  MAX_CHUNKS,
+} from '../../../supabase/functions/_shared/chunking';
 
 describe('chunkTextStructured — page markers', () => {
   it('stamps each chunk with the active page number', () => {
@@ -170,6 +175,44 @@ describe('chunkTextStructured — safety guards', () => {
     const bigText = paragraphs.join('\n\n');
     const chunks = chunkTextStructured(bigText);
     expect(chunks.length).toBeLessThanOrEqual(500);
+  });
+});
+
+describe('chunkTextStructuredWithStats — capping stats (PR-1.1)', () => {
+  const bigSentence =
+    'This is a narrative sentence of sufficient length to clear the 50-char floor set by the chunker and contribute to chunk counts. ';
+
+  function manyParagraphs(n: number): string {
+    const paragraphs: string[] = [];
+    for (let i = 0; i < n; i++) {
+      paragraphs.push(`${bigSentence}${bigSentence}Paragraph ${i}.`);
+    }
+    return paragraphs.join('\n\n');
+  }
+
+  it('reports cappedAtMax + the real pre-cap count when over MAX_CHUNKS', () => {
+    const { chunks, rawChunkCount, cappedAtMax } = chunkTextStructuredWithStats(
+      manyParagraphs(700),
+    );
+    expect(cappedAtMax).toBe(true);
+    expect(chunks.length).toBe(MAX_CHUNKS);
+    expect(rawChunkCount).toBeGreaterThan(MAX_CHUNKS);
+  });
+
+  it('does not flag capping for a small document', () => {
+    const { chunks, rawChunkCount, cappedAtMax } = chunkTextStructuredWithStats(
+      manyParagraphs(5),
+    );
+    expect(cappedAtMax).toBe(false);
+    expect(rawChunkCount).toBe(chunks.length);
+    expect(chunks.length).toBeLessThanOrEqual(MAX_CHUNKS);
+  });
+
+  it('chunkTextStructured stays backward-compatible with the stats variant', () => {
+    const text = manyParagraphs(60);
+    expect(chunkTextStructured(text).length).toBe(
+      chunkTextStructuredWithStats(text).chunks.length,
+    );
   });
 });
 

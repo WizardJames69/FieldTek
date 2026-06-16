@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, Trash2, ExternalLink, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Download, Trash2, ExternalLink, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,10 @@ import {
 } from '@/components/ui/tooltip';
 import { useUserRole } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  normalizeIngestionWarnings,
+  INGESTION_PARTIAL_SUMMARY,
+} from '@/lib/ingestionWarnings';
 
 interface Document {
   id: string;
@@ -36,6 +40,8 @@ interface Document {
   extraction_status?: string | null;
   embedding_status?: string | null;
   last_error?: string | null;
+  // Raw JSONB from documents.ingestion_warnings — normalized before use.
+  ingestion_warnings?: unknown;
 }
 
 interface DocumentCardProps {
@@ -215,7 +221,7 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
   );
 }
 
-function DocumentStatusBadge({ document }: { document: Document }) {
+export function DocumentStatusBadge({ document }: { document: Document }) {
   const ext = document.extraction_status;
   const emb = document.embedding_status;
   const hasFailed = ext === 'failed' || emb === 'failed';
@@ -253,6 +259,41 @@ function DocumentStatusBadge({ document }: { document: Document }) {
     );
   }
 
-  // Ready: no badge (lowest-churn). ext/emb are null for legacy rows — same.
+  // Ready: surface a "Partial" badge when ingestion hit the extraction-length
+  // or chunk-count caps, so a partially-indexed document is never silently
+  // presented as fully searchable. The original file is still stored intact.
+  const warnings = normalizeIngestionWarnings(document.ingestion_warnings);
+  if (isReady && warnings.length > 0) {
+    const reasons = warnings.map((w) => w.message);
+    const accessibleName = [INGESTION_PARTIAL_SUMMARY, ...reasons].join(' ');
+    return (
+      <TooltipProvider delayDuration={100}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge
+              variant="outline"
+              data-testid="ingestion-partial-badge"
+              aria-label={accessibleName}
+              className="text-xs gap-1 cursor-help border-warning/50 text-warning"
+            >
+              <AlertTriangle className="h-3 w-3" />
+              Partial
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs break-words">
+            <p className="font-medium">{INGESTION_PARTIAL_SUMMARY}</p>
+            <ul className="mt-1 list-disc pl-4 space-y-0.5">
+              {reasons.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+            </ul>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Ready with no warnings: no badge (lowest-churn). ext/emb are null for
+  // legacy rows — same.
   return null;
 }
