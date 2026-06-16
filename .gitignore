@@ -10,3 +10,6 @@ playwright-report/
 test-results/
 coverage
 .playwright/
+
+# Sentinel AI eval harness — generated report artifacts (evals/run.ts)
+evals/reports/
