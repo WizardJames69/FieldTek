@@ -29,6 +29,7 @@ import { TextToSpeech, playTTS } from "@/components/assistant/TextToSpeech";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SuggestedQuestions, generateSuggestions } from "@/components/assistant/SuggestedQuestions";
 import { DocumentCitation, ContextIndicator, type CitationSource } from "@/components/assistant/DocumentCitation";
+import { DegradedAnswerBanner } from "@/components/assistant/DegradedAnswerBanner";
 import { DiagnosticWizard, getDiagnosticPath, formatDiagnosticData } from "@/components/assistant/DiagnosticWizard";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
 
@@ -43,6 +44,12 @@ type ResponseMetadata = {
   chunk_count: number;
   documents_used: number;
   sources?: CitationSource[];
+  // Set when the answer came from the full-document fallback rather than
+  // targeted retrieval (e.g. search was unavailable or indexing is incomplete).
+  // Surfaced to the user as a banner so a degraded answer is never mistaken for
+  // a retrieval-grounded one. See field-assistant/degradation.ts (PR-1.5a).
+  degraded?: boolean;
+  degraded_reason?: 'retrieval_unavailable' | 'indexing_incomplete';
 };
 
 type Message = {
@@ -951,6 +958,9 @@ export default function Assistant() {
                                       </div>
                                     </div>
                                   </div>
+                                  {msg.metadata?.degraded && msg.metadata.degraded_reason && (
+                                    <DegradedAnswerBanner reason={msg.metadata.degraded_reason} />
+                                  )}
                                   {structuredSources && structuredSources.length > 0 ? (
                                     <DocumentCitation citations={structuredSources} />
                                   ) : regexSources.length > 0 ? (

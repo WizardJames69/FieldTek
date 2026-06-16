@@ -6,6 +6,7 @@ import {
   assertStringIncludes,
 } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { MIN_RELEVANT_CHUNKS } from "./constants.ts";
+import { classifyDegradedAnswer } from "./degradation.ts";
 
 // NOTE: This test file intentionally duplicates a small subset of helper logic
 // from index.ts so we can unit test security guardrails without importing
@@ -1173,4 +1174,97 @@ Deno.test("Zero-result signal - does NOT fire when tenant has no indexed docs", 
     docsWithEmbeddingsCount: 0,
     semanticSearchResultsCount: 0,
   }), false);
+});
+
+// ----------------------------
+// Degraded-answer classification (PR-1.5a)
+// ----------------------------
+// When retrieval produces no semantic chunks but the tenant has document
+// content, the orchestrator answers from the full-document fallback instead of
+// the strict insufficient-coverage abstain path. That answer is NOT
+// retrieval-grounded and must be surfaced as "degraded" (metadata flag + UI
+// banner + audit signal) rather than presented as if it were grounded.
+// classifyDegradedAnswer is the single source of truth for that decision and is
+// imported here for real (not mirrored) so it cannot drift from index.ts.
+
+Deno.test("classifyDegradedAnswer - indexed docs but retrieval never ran → retrieval_unavailable", () => {
+  // The plan's core hole: embedding/adapter failure (or skipped retrieval)
+  // leaves retrievalRan=false while grounding material exists. The full-doc
+  // fallback answer must be flagged degraded, not served as grounded.
+  assertEquals(
+    classifyDegradedAnswer({
+      docsWithContentCount: 8,
+      docsWithEmbeddingsCount: 8,
+      retrievalRan: false,
+      semanticSearchResultsCount: 0,
+    }),
+    "retrieval_unavailable",
+  );
+});
+
+Deno.test("classifyDegradedAnswer - document content present but not yet embedded → indexing_incomplete", () => {
+  // Docs extracted but embeddings still processing: retrieval can't run, the
+  // answer comes from the full-document fallback. Honest to flag as degraded.
+  assertEquals(
+    classifyDegradedAnswer({
+      docsWithContentCount: 3,
+      docsWithEmbeddingsCount: 0,
+      retrievalRan: false,
+      semanticSearchResultsCount: 0,
+    }),
+    "indexing_incomplete",
+  );
+});
+
+Deno.test("classifyDegradedAnswer - real semantic chunks used → not degraded", () => {
+  assertEquals(
+    classifyDegradedAnswer({
+      docsWithContentCount: 5,
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: true,
+      semanticSearchResultsCount: 4,
+    }),
+    null,
+  );
+});
+
+Deno.test("classifyDegradedAnswer - no document content at all → not degraded (general-knowledge mode)", () => {
+  // No docs uploaded yet: the model answers from general knowledge. This is an
+  // expected onboarding state, not a degraded retrieval fallback.
+  assertEquals(
+    classifyDegradedAnswer({
+      docsWithContentCount: 0,
+      docsWithEmbeddingsCount: 0,
+      retrievalRan: false,
+      semanticSearchResultsCount: 0,
+    }),
+    null,
+  );
+});
+
+Deno.test("classifyDegradedAnswer - indexed docs, retrieval ran, zero chunks → not degraded (abstain owns this)", () => {
+  // This combination is short-circuited by the insufficient-coverage abstain
+  // gate before the answer is served, so it must NOT be classified as a
+  // degraded fallback answer.
+  assertEquals(
+    classifyDegradedAnswer({
+      docsWithContentCount: 5,
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: true,
+      semanticSearchResultsCount: 0,
+    }),
+    null,
+  );
+});
+
+Deno.test("classifyDegradedAnswer - a single retrieved chunk still counts as grounded", () => {
+  assertEquals(
+    classifyDegradedAnswer({
+      docsWithContentCount: 5,
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: true,
+      semanticSearchResultsCount: 1,
+    }),
+    null,
+  );
 });

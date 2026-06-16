@@ -55,6 +55,7 @@ import { writeAuditLog, trackConversation } from "./audit.ts";
 import type { AuditLogData } from "./audit.ts";
 
 import { createRetrievalAdapter } from "./retrieval.ts";
+import { classifyDegradedAnswer } from "./degradation.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
 import { evaluateWithJudge, evaluateWithJudgeBlocking } from "./judge.ts";
@@ -1390,6 +1391,35 @@ serve(async (req) => {
         // so they never carry chips. Both metadata consumers read this event
         // position-agnostically, so emitting it here (still before the content
         // flush and [DONE]) keeps the existing aggregate-metadata contract.
+        // ── Degraded-answer detection (PR-1.5a) ───────────────────
+        // When no semantic chunks were used but document content exists, the
+        // answer came from the full-document fallback rather than targeted
+        // retrieval (e.g. query-embedding failure leaves retrievalRan=false).
+        // Surface that honestly — metadata flag + UI banner + audit signal —
+        // instead of presenting an ungrounded fallback as grounded. A
+        // validationFailed response is a refusal, not a served answer, so it is
+        // never flagged degraded. The strict insufficient-coverage abstain gate
+        // still owns the "retrieval ran but found nothing" case upstream.
+        // NOTE: forcing the LLM judge to evaluate this path is deferred to
+        // PR-2.5 (judge-as-guardrail), where it can be measured by the eval
+        // harness before being turned on.
+        const degradedReason = validationFailed
+          ? null
+          : classifyDegradedAnswer({
+              docsWithContentCount: docsWithContent.length,
+              docsWithEmbeddingsCount: docsWithEmbeddings.length,
+              retrievalRan,
+              semanticSearchResultsCount: semanticSearchResults.length,
+            });
+        if (degradedReason) {
+          enforcementRulesTriggered.push(`DEGRADED_RETRIEVAL_FALLBACK:${degradedReason}`);
+          console.warn(
+            `[degraded] retrieval_fallback tenant_id=${tenantUser.tenant_id} ` +
+            `correlation_id=${correlationId} reason=${degradedReason} ` +
+            `docs_with_content=${docsWithContent.length} docs_indexed=${docsWithEmbeddings.length}`,
+          );
+        }
+
         const citationSources = !validationFailed
           ? buildSourceCitations(semanticSearchResults)
           : [];
@@ -1401,6 +1431,7 @@ serve(async (req) => {
             documents_used: docNames.length,
             correlation_id: correlationId,
             ...(citationSources.length > 0 ? { sources: citationSources } : {}),
+            ...(degradedReason ? { degraded: true, degraded_reason: degradedReason } : {}),
           },
         };
         await writer.write(encoder.encode(`data: ${JSON.stringify(metadataEvent)}\n\n`));
