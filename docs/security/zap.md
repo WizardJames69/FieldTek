@@ -97,6 +97,29 @@ The baseline is **informational and non-blocking**: it exits `0` even when it
 finds WARN-level alerts (`-I`), and a FAIL-level alert is surfaced as a warning
 in the log rather than aborting the run.
 
+### Security headers are set at the hosting layer, not by `vite preview`
+
+The baseline's header-hygiene findings (CSP not set, missing anti-clickjacking,
+etc.) are response-header concerns owned by the **production hosting layer**, not
+by the app bundle. They are configured in [vercel.json](../../vercel.json) under
+`headers` (Content-Security-Policy, X-Frame-Options, X-Content-Type-Options,
+Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy).
+
+**Important:** `vite preview` — the local target this baseline scans — does **not**
+read `vercel.json` and does **not** emit those headers. So re-running this local
+passive baseline will **still report** the header findings even though they are
+fixed in production. That is expected: the local preview is only the static
+bundle, while the headers are added by Vercel at the edge. Validate the headers
+against the **deployed** site instead, e.g. `curl -sI https://<deploy-host>/`
+(your own, authorized deployment — never an active scan, and never against a
+host you are not authorized to test).
+
+Sub-Resource Integrity (SRI) for Google Fonts and Google Tag Manager is
+**deliberately not added**: those endpoints rotate their content, so a pinned
+hash would break fonts/analytics on the next upstream change. The durable fix is
+to self-host fonts and/or drop GTM if unused — tracked as future work, not done
+here.
+
 ### Why `host.docker.internal` is an allowed preview host
 
 ZAP runs inside Docker, so it cannot reach the host's preview as `127.0.0.1`
