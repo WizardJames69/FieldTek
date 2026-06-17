@@ -24,13 +24,19 @@ config({ path: ".env.test" });
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getAdminClient } from "../e2e/helpers/supabase-admin";
-import { ensureCorpusSeeded } from "./seed";
+import { ensureCorpusSeeded, chunkCount } from "./seed";
+import { seedTestDocuments, seedDocumentChunks } from "../e2e/helpers/ai-seed-helpers";
 import {
   assertPlanWithinAllowlist,
   buildWritePlan,
   decideGate,
   describePlan,
   parseProvisionArgs,
+  decideRefreshGate,
+  buildRefreshDeletePlan,
+  assertRefreshDeleteScoped,
+  assertIsEvalTenant,
+  extractProjectRef,
 } from "./provisionPlan";
 import {
   EVAL_TENANT_NAME,
@@ -192,10 +198,108 @@ function printResult(t: Tally, corpus: { seeded: boolean; chunkCount: number }):
   console.log("  ✓ no model calls (corpus uses checked-in embeddings)");
 }
 
+// ── Corpus refresh (explicit, tenant-scoped delete + reseed) ─
+
+interface RefreshResult {
+  tenantId: string;
+  deletedChunks: number;
+  deletedDocs: number;
+  seededDocs: number;
+  chunkCount: number;
+}
+
+/**
+ * Refresh ONLY the eval tenant's corpus: resolve + hard-verify the tenant, then
+ * delete its document_chunks and documents (tenant-scoped), then reseed via the
+ * current-main seed logic. Leaves the auth user, profile, tenant, owner
+ * membership and tenant AI policy untouched.
+ */
+async function refreshCorpus(
+  admin: SupabaseClient,
+  confirmTenantId: string,
+): Promise<RefreshResult> {
+  // Resolve by name and hard-verify identity BEFORE any delete.
+  const { data: tenants, error } = await admin
+    .from("tenants")
+    .select("id,name,slug")
+    .eq("name", EVAL_TENANT_NAME);
+  if (error) throw new Error(`refresh: resolve tenant failed: ${error.message}`);
+  if (!tenants || tenants.length !== 1) {
+    throw new Error(
+      `refresh: expected exactly one "${EVAL_TENANT_NAME}" tenant, found ${tenants?.length ?? 0}`,
+    );
+  }
+  const t = tenants[0] as { id: string; name: string; slug: string | null };
+  assertIsEvalTenant({ id: t.id, name: t.name, slug: t.slug }, confirmTenantId);
+
+  // Build + assert the tenant-scoped, corpus-only delete plan.
+  const deletePlan = buildRefreshDeletePlan(t.id);
+  assertRefreshDeleteScoped(deletePlan, t.id);
+  console.log("\n[refresh] tenant-scoped delete plan:");
+  for (const d of deletePlan) {
+    console.log(`  • DELETE ${d.table.padEnd(16)} WHERE tenant_id = ${d.scope.tenant_id}`);
+  }
+
+  // Execute deletes (chunks first — they reference documents), tenant-scoped.
+  const { data: delChunks, error: ce } = await admin
+    .from("document_chunks")
+    .delete()
+    .eq("tenant_id", t.id)
+    .select("id");
+  if (ce) throw new Error(`refresh: delete document_chunks failed: ${ce.message}`);
+  const { data: delDocs, error: de } = await admin
+    .from("documents")
+    .delete()
+    .eq("tenant_id", t.id)
+    .select("id");
+  if (de) throw new Error(`refresh: delete documents failed: ${de.message}`);
+
+  // Reseed with the existing current-main seed logic (pre-computed embeddings).
+  const docIds = await seedTestDocuments(t.id);
+  await seedDocumentChunks(t.id, docIds);
+
+  return {
+    tenantId: t.id,
+    deletedChunks: delChunks?.length ?? 0,
+    deletedDocs: delDocs?.length ?? 0,
+    seededDocs: docIds.length,
+    chunkCount: await chunkCount(t.id),
+  };
+}
+
 // ── Main ────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const args = parseProvisionArgs(process.argv.slice(2));
+
+  // Corpus refresh is a distinct, harder-gated path — handle it first.
+  if (args.refreshCorpus) {
+    const rgate = decideRefreshGate(args, process.env.VITE_SUPABASE_URL);
+    if (!rgate.ok) {
+      console.error("=== EVAL CORPUS REFRESH ===");
+      console.error(`\n[refresh] REFUSED: ${rgate.reason}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log("=== EVAL CORPUS REFRESH (delete + reseed, eval tenant only) ===");
+    console.log(`target project (VITE_SUPABASE_URL): ${extractProjectRef(process.env.VITE_SUPABASE_URL)}`);
+    console.log(`eval tenant: "${EVAL_TENANT_NAME}"`);
+    console.log(`confirm-tenant-id: ${rgate.tenantId}`);
+    console.log(
+      "\nwill NOT touch: auth user, profile, tenant row, owner membership, tenant AI policy, " +
+        "or any non-corpus table.",
+    );
+    const admin = getAdminClient();
+    const res = await refreshCorpus(admin, rgate.tenantId);
+    console.log("\n--- refresh result ---");
+    console.log(`  deleted document_chunks: ${res.deletedChunks}`);
+    console.log(`  deleted documents:       ${res.deletedDocs}`);
+    console.log(`  reseeded documents:      ${res.seededDocs}`);
+    console.log(`  document_chunks now:     ${res.chunkCount}`);
+    console.log(`\n[refresh] done. eval tenant id=${res.tenantId}`);
+    return;
+  }
+
   const gate = decideGate(args, process.env.VITE_SUPABASE_URL);
 
   if (!gate.ok) {

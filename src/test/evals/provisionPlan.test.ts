@@ -14,14 +14,25 @@ import {
   PROVISION_ALLOWED_ENTITIES,
   PROVISION_FORBIDDEN_ENTITIES,
   EVAL_TENANT_NAME,
+  decideRefreshGate,
+  buildRefreshDeletePlan,
+  assertRefreshDeleteScoped,
+  assertIsEvalTenant,
+  REFRESH_CORPUS_TABLES,
   type PlannedWrite,
+  type RefreshDelete,
 } from "../../../evals/provisionPlan";
 
 const FGEM_URL = "https://fgemfxhwushaiiguqxfe.supabase.co";
 
 describe("parseProvisionArgs", () => {
   it("defaults to no-dry-run and no confirmation", () => {
-    expect(parseProvisionArgs([])).toEqual({ dryRun: false, confirmProject: null });
+    expect(parseProvisionArgs([])).toEqual({
+      dryRun: false,
+      confirmProject: null,
+      refreshCorpus: false,
+      confirmTenantId: null,
+    });
   });
   it("parses --dry-run", () => {
     expect(parseProvisionArgs(["--dry-run"]).dryRun).toBe(true);
@@ -132,6 +143,180 @@ describe("buildWritePlan — decoupled from the E2E identity", () => {
 
   it("EVAL_TENANT_NAME is not the E2E tenant name", () => {
     expect(EVAL_TENANT_NAME).not.toBe("E2E Test Company");
+  });
+});
+
+const EVAL_TENANT_ID = "2c9067cf-7c50-422f-ace1-85469975d622";
+
+describe("parseProvisionArgs — refresh flags are explicit, never default", () => {
+  it("defaults refreshCorpus=false and confirmTenantId=null", () => {
+    const a = parseProvisionArgs([]);
+    expect(a.refreshCorpus).toBe(false);
+    expect(a.confirmTenantId).toBeNull();
+  });
+  it("a normal (non-refresh) provision never turns refresh on", () => {
+    const a = parseProvisionArgs(["--confirm-project", "fgemfxhwushaiiguqxfe"]);
+    expect(a.refreshCorpus).toBe(false);
+    expect(a.confirmTenantId).toBeNull();
+  });
+  it("parses --refresh-corpus and --confirm-tenant-id <id>", () => {
+    const a = parseProvisionArgs([
+      "--confirm-project",
+      "fgemfxhwushaiiguqxfe",
+      "--refresh-corpus",
+      "--confirm-tenant-id",
+      EVAL_TENANT_ID,
+    ]);
+    expect(a.refreshCorpus).toBe(true);
+    expect(a.confirmTenantId).toBe(EVAL_TENANT_ID);
+  });
+});
+
+describe("decideRefreshGate — harder-gated than a normal write", () => {
+  const baseArgs = {
+    dryRun: false,
+    confirmProject: "fgemfxhwushaiiguqxfe",
+    refreshCorpus: true,
+    confirmTenantId: EVAL_TENANT_ID,
+  };
+
+  it("allows refresh when project matches and tenant id is supplied", () => {
+    const d = decideRefreshGate(baseArgs, FGEM_URL);
+    expect(d).toMatchObject({ ok: true, projectRef: "fgemfxhwushaiiguqxfe", tenantId: EVAL_TENANT_ID });
+  });
+
+  it("REFUSES refresh against the wrong project", () => {
+    const d = decideRefreshGate({ ...baseArgs, confirmProject: "some-other-ref" }, FGEM_URL);
+    expect(d.ok).toBe(false);
+    if (!d.ok) expect(d.reason).toMatch(/does not match/);
+  });
+
+  it("REFUSES refresh with no --confirm-project at all", () => {
+    const d = decideRefreshGate({ ...baseArgs, confirmProject: null }, FGEM_URL);
+    expect(d.ok).toBe(false);
+    if (!d.ok) expect(d.reason).toMatch(/--confirm-project/);
+  });
+
+  it("REFUSES refresh in dry-run mode (never destructive without a real write)", () => {
+    const d = decideRefreshGate({ ...baseArgs, dryRun: true }, FGEM_URL);
+    expect(d.ok).toBe(false);
+    if (!d.ok) expect(d.reason).toMatch(/dry-run cannot refresh/);
+  });
+
+  it("REFUSES refresh without --confirm-tenant-id", () => {
+    const d = decideRefreshGate({ ...baseArgs, confirmTenantId: null }, FGEM_URL);
+    expect(d.ok).toBe(false);
+    if (!d.ok) expect(d.reason).toMatch(/--confirm-tenant-id/);
+  });
+
+  it("REFUSES refresh with an empty --confirm-tenant-id", () => {
+    const d = decideRefreshGate({ ...baseArgs, confirmTenantId: "   " }, FGEM_URL);
+    expect(d.ok).toBe(false);
+  });
+});
+
+describe("buildRefreshDeletePlan — tenant-scoped, corpus-only", () => {
+  const plan = buildRefreshDeletePlan(EVAL_TENANT_ID);
+
+  it("deletes ONLY document_chunks and documents", () => {
+    expect(plan.map((d) => d.table).sort()).toEqual(["document_chunks", "documents"]);
+    expect([...REFRESH_CORPUS_TABLES].sort()).toEqual(["document_chunks", "documents"]);
+  });
+
+  it("deletes chunks before documents (FK order)", () => {
+    expect(plan[0].table).toBe("document_chunks");
+    expect(plan[1].table).toBe("documents");
+  });
+
+  it("every delete is scoped to the supplied eval tenant id", () => {
+    for (const d of plan) expect(d.scope.tenant_id).toBe(EVAL_TENANT_ID);
+  });
+
+  it("touches NONE of the broad/global-setup tables", () => {
+    const tables = new Set(plan.map((d) => d.table));
+    for (const forbidden of PROVISION_FORBIDDEN_ENTITIES) {
+      expect(tables.has(forbidden as never)).toBe(false);
+    }
+  });
+});
+
+describe("assertRefreshDeleteScoped — refuses broad or cross-table deletes", () => {
+  it("passes for a correct tenant-scoped corpus plan", () => {
+    expect(() => assertRefreshDeleteScoped(buildRefreshDeletePlan(EVAL_TENANT_ID), EVAL_TENANT_ID)).not.toThrow();
+  });
+
+  it("throws when a delete is not scoped to the eval tenant id", () => {
+    const bad: RefreshDelete[] = [
+      { table: "document_chunks", scope: { tenant_id: "other-tenant" }, description: "x" },
+    ];
+    expect(() => assertRefreshDeleteScoped(bad, EVAL_TENANT_ID)).toThrow(/not scoped/);
+  });
+
+  it("throws when a delete targets a non-corpus table", () => {
+    const bad = [
+      { table: "tenant_users", scope: { tenant_id: EVAL_TENANT_ID }, description: "x" },
+    ] as unknown as RefreshDelete[];
+    expect(() => assertRefreshDeleteScoped(bad, EVAL_TENANT_ID)).toThrow(/non-corpus|FORBIDDEN/);
+  });
+
+  it("throws when a delete targets a forbidden global table", () => {
+    const bad = [
+      { table: "feature_flags", scope: { tenant_id: EVAL_TENANT_ID }, description: "x" },
+    ] as unknown as RefreshDelete[];
+    expect(() => assertRefreshDeleteScoped(bad, EVAL_TENANT_ID)).toThrow(/FORBIDDEN|non-corpus/);
+  });
+
+  it("throws on an empty tenant id (never an unscoped delete)", () => {
+    expect(() => assertRefreshDeleteScoped(buildRefreshDeletePlan(""), "")).toThrow(/non-empty/);
+  });
+});
+
+describe("assertIsEvalTenant — final identity guard before delete", () => {
+  const evalTenant = {
+    id: EVAL_TENANT_ID,
+    name: "Sentinel Eval Company",
+    slug: "sentinel-eval-company-1781633414911",
+  };
+
+  it("passes for the real eval tenant with a matching confirm id", () => {
+    expect(() => assertIsEvalTenant(evalTenant, EVAL_TENANT_ID)).not.toThrow();
+  });
+
+  it("REFUSES the E2E suite tenant", () => {
+    expect(() =>
+      assertIsEvalTenant({ id: EVAL_TENANT_ID, name: "E2E Test Company", slug: "e2e-test-company-1" }, EVAL_TENANT_ID),
+    ).toThrow(/E2E/);
+  });
+
+  it("REFUSES a tenant whose name is not the eval tenant", () => {
+    expect(() =>
+      assertIsEvalTenant({ ...evalTenant, name: "Some Other Co" }, EVAL_TENANT_ID),
+    ).toThrow(/is not/);
+  });
+
+  it("REFUSES a tenant whose slug prefix is wrong", () => {
+    expect(() =>
+      assertIsEvalTenant({ ...evalTenant, slug: "wrong-prefix-1" }, EVAL_TENANT_ID),
+    ).toThrow(/slug/);
+  });
+
+  it("REFUSES when the resolved id does not match --confirm-tenant-id", () => {
+    expect(() =>
+      assertIsEvalTenant(evalTenant, "00000000-0000-0000-0000-000000000000"),
+    ).toThrow(/does not match/);
+  });
+});
+
+describe("normal provision behavior is unchanged by the refresh additions", () => {
+  it("buildWritePlan still has the same 7 narrow entities", () => {
+    const entities = buildWritePlan().map((w) => w.entity).sort();
+    expect(entities).toEqual(
+      ["auth.user", "document_chunks", "documents", "profiles", "tenant_ai_policies", "tenant_users", "tenants"].sort(),
+    );
+  });
+  it("decideGate still allows a normal write with matching project", () => {
+    const d = decideGate({ dryRun: false, confirmProject: "fgemfxhwushaiiguqxfe", refreshCorpus: false, confirmTenantId: null }, FGEM_URL);
+    expect(d).toMatchObject({ ok: true, mode: "write" });
   });
 });
 
