@@ -97,6 +97,28 @@ The baseline is **informational and non-blocking**: it exits `0` even when it
 finds WARN-level alerts (`-I`), and a FAIL-level alert is surfaced as a warning
 in the log rather than aborting the run.
 
+### Why `host.docker.internal` is an allowed preview host
+
+ZAP runs inside Docker, so it cannot reach the host's preview as `127.0.0.1`
+(that address is the container itself). It reaches the host via the Docker
+gateway alias **`host.docker.internal:4173`**. Vite's `preview` server has
+DNS-rebinding protection (`allowedHosts`) that returns **403 Forbidden** for any
+non-loopback `Host` header — which otherwise causes the scan to crawl **0** app
+pages (the spider only ever sees 403s). To let the local Docker-to-host scan
+through, [vite.config.ts](../../vite.config.ts) adds exactly one entry:
+
+```ts
+preview: { allowedHosts: ["host.docker.internal"] }
+```
+
+This is **local-only and safe**: it adds a single hostname — it does **not** set
+`allowedHosts: true` and does **not** disable the protection — and `vite preview`
+is never used in production (Vercel serves the static `dist/` build), so there is
+no production, hosting, or Vercel impact. The scan target stays local: the
+browser/preview is `http://127.0.0.1:4173` and the ZAP container reaches it at
+`http://host.docker.internal:4173`. The script's denylist still blocks
+`*.supabase.co`, known Supabase project refs, and `vercel.app` / `.com` / `.sh`.
+
 ### Tuning (environment variables)
 
 All optional; sensible local-only defaults are baked in:

@@ -12,6 +12,18 @@ export default defineConfig(({ mode }) => {
     host: "::",
     port: 8080,
   },
+  preview: {
+    // Local-only: allow the Docker host-gateway alias so the OWASP ZAP passive
+    // baseline (scripts/security-zap-baseline.sh) can reach `vite preview` from
+    // inside its container as host.docker.internal:4173. `vite preview` always
+    // permits loopback (127.0.0.1 / localhost) and IP literals regardless; this
+    // ADDS only that single hostname — it does NOT set `allowedHosts: true` and
+    // does NOT disable Vite's DNS-rebinding (allowed-host) protection. Note that
+    // `vite preview` is a local dev/preview server only and is never used in
+    // production (Vercel serves the static dist/ build), so this has no
+    // production, hosting, or Vercel impact.
+    allowedHosts: ["host.docker.internal"],
+  },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
