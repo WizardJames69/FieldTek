@@ -219,14 +219,28 @@ export const TEST_DOCUMENTS = [
     name: 'Warranty Terms - Carrier Equipment',
     category: 'Contract',
     chunks: [
+      // Warranty coverage (q: "what does the Carrier warranty cover for parts
+      // and the compressor?"). Two focused, on-topic coverage chunks so at least
+      // two clear the 0.55 similarity bar — mirrors a real warranty document that
+      // states coverage in a summary section and then details parts vs. compressor.
       {
         text: 'Warranty coverage: parts warranty is 5 years from the installation date and the compressor warranty is 10 years. Labor is not included, and the warranty is void if the equipment is not installed by a certified technician.',
         page_number: 1,
         section_name: 'Coverage',
       },
       {
-        text: 'Warranty claims process: to file a warranty claim for Carrier equipment, submit the installation date, model and serial number, and proof of certified installation within the applicable coverage period.',
+        text: 'What the Carrier warranty covers for parts and the compressor: covered parts are repaired or replaced at no charge for materials for 5 years from installation, while the sealed compressor carries extended coverage for 10 years. Coverage applies only to failures caused by manufacturing defects in covered parts.',
         page_number: 1,
+        section_name: 'Coverage',
+      },
+      {
+        text: 'Warranty exclusions and registration: the parts and compressor warranty does not cover labor, refrigerant, filters, or damage from improper maintenance, and the equipment must be registered within 90 days of installation. The 5 year parts and 10 year compressor coverage is honored only with proof of certified installation.',
+        page_number: 2,
+        section_name: 'Coverage',
+      },
+      {
+        text: 'Warranty claims process: to file a warranty claim for Carrier equipment, submit the installation date, model and serial number, and proof of certified installation within the applicable coverage period.',
+        page_number: 2,
         section_name: 'Claims Process',
       },
     ],
