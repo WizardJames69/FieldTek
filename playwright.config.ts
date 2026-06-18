@@ -119,6 +119,7 @@ export default defineConfig({
         'e2e/specs/ai-audit.spec.ts',
         'e2e/specs/ai-rag-quality.spec.ts',
         'e2e/specs/ai-feature-flags.spec.ts',
+        'e2e/specs/lesson-review.spec.ts',
       ],
     },
 

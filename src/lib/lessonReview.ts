@@ -104,6 +104,82 @@ export function buildReviewUpdate(input: BuildReviewUpdateInput): LessonReviewUp
   };
 }
 
+// ── Candidate intake (PR-2) ────────────────────────────────────────────────
+// A pure builder for a new lesson_candidates INSERT payload. Used by the admin
+// AI-audit intake dialog so the validation/shaping rules live in one place and
+// can be unit-tested without a backend. It does NOT make a lesson citable — it
+// only produces a `pending` row; retrieval/citation/abstain are untouched.
+
+export interface BuildCandidateInsertInput {
+  tenantId: string;
+  createdBy: string;
+  question: string;
+  proposedAnswer: string;
+  sourceType: LessonSourceType;
+  equipmentType?: string | null;
+  auditLogId?: string | null;
+  correlationId?: string | null;
+}
+
+export interface LessonCandidateInsert {
+  tenant_id: string;
+  created_by: string;
+  question: string;
+  proposed_answer: string;
+  source_type: LessonSourceType;
+  status: LessonStatus;
+  equipment_type: string | null;
+  audit_log_id: string | null;
+  correlation_id: string | null;
+}
+
+function isValidSourceType(value: string): value is LessonSourceType {
+  return (LESSON_SOURCE_TYPES as readonly string[]).includes(value);
+}
+
+// Validates required fields and trims free text, returning a typed payload
+// compatible with the lesson_candidates Insert type. Throws (rather than
+// silently persisting a bad row) on any missing/invalid required field so the
+// caller surfaces the error to the reviewer. New candidates always start
+// `pending`.
+export function buildCandidateInsert(
+  input: BuildCandidateInsertInput,
+): LessonCandidateInsert {
+  const tenantId = (input.tenantId ?? "").trim();
+  const createdBy = (input.createdBy ?? "").trim();
+  const question = (input.question ?? "").trim();
+  const proposedAnswer = (input.proposedAnswer ?? "").trim();
+  const equipmentType = (input.equipmentType ?? "").trim();
+
+  if (!tenantId) {
+    throw new Error("A tenant id is required to create a lesson candidate.");
+  }
+  if (!createdBy) {
+    throw new Error("A creator id is required to create a lesson candidate.");
+  }
+  if (!question) {
+    throw new Error("A non-empty question is required to create a lesson candidate.");
+  }
+  if (!proposedAnswer) {
+    throw new Error("A non-empty proposed answer is required to create a lesson candidate.");
+  }
+  if (!isValidSourceType(input.sourceType)) {
+    throw new Error(`Invalid lesson source type: "${input.sourceType}".`);
+  }
+
+  return {
+    tenant_id: tenantId,
+    created_by: createdBy,
+    question,
+    proposed_answer: proposedAnswer,
+    source_type: input.sourceType,
+    status: "pending",
+    equipment_type: equipmentType.length > 0 ? equipmentType : null,
+    audit_log_id: input.auditLogId ?? null,
+    correlation_id: input.correlationId ?? null,
+  };
+}
+
 export interface BadgeDisplay {
   label: string;
   className: string;

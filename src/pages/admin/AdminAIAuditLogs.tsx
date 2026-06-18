@@ -1,17 +1,31 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { AlertTriangle, CheckCircle, Search, Eye, FileText, Clock, Shield } from "lucide-react";
+import { AlertTriangle, CheckCircle, Search, Eye, FileText, Clock, Shield, GraduationCap } from "lucide-react";
+import { buildCandidateInsert } from "@/lib/lessonReview";
 
 interface AuditLog {
   id: string;
@@ -31,13 +45,89 @@ interface AuditLog {
   had_citations: boolean | null;
   response_time_ms: number | null;
   model_used: string | null;
+  correlation_id: string | null;
   created_at: string;
 }
 
 export default function AdminAIAuditLogs() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBlocked, setFilterBlocked] = useState<string>("all");
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
+  // ── Lesson candidate intake (PR-2) ──────────────────────────────────────
+  // Staff-controlled: an admin curates a pending lesson_candidates row from a
+  // real AI interaction. Nothing here makes a lesson citable.
+  const [intakeLog, setIntakeLog] = useState<AuditLog | null>(null);
+  const [intakeQuestion, setIntakeQuestion] = useState("");
+  const [intakeAnswer, setIntakeAnswer] = useState("");
+  const [intakeEquipment, setIntakeEquipment] = useState("");
+
+  const openIntake = (log: AuditLog) => {
+    setIntakeQuestion(log.user_message ?? "");
+    setIntakeAnswer(log.ai_response ?? "");
+    setIntakeEquipment(log.equipment_type ?? "");
+    setIntakeLog(log);
+  };
+
+  const closeIntake = () => {
+    setIntakeLog(null);
+    setIntakeQuestion("");
+    setIntakeAnswer("");
+    setIntakeEquipment("");
+  };
+
+  // Non-blocking duplicate check: surface (but do not prevent) creating a
+  // second candidate from the same audit log.
+  const { data: existingCandidateCount } = useQuery({
+    queryKey: ["lesson-candidate-dup", intakeLog?.id],
+    enabled: !!intakeLog?.id,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("lesson_candidates")
+        .select("id", { count: "exact", head: true })
+        .eq("audit_log_id", intakeLog!.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  const intakeMutation = useMutation({
+    mutationFn: async () => {
+      if (!intakeLog) throw new Error("No audit log selected.");
+      // buildCandidateInsert validates required fields and shapes the payload;
+      // it throws on invalid input so we never insert a bad row.
+      const payload = buildCandidateInsert({
+        tenantId: intakeLog.tenant_id,
+        createdBy: user?.id ?? "",
+        question: intakeQuestion,
+        proposedAnswer: intakeAnswer,
+        sourceType: "ai_interaction",
+        equipmentType: intakeEquipment,
+        auditLogId: intakeLog.id,
+        correlationId: intakeLog.correlation_id,
+      });
+      const { error } = await supabase.from("lesson_candidates").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Lesson candidate created",
+        description: "It is now pending review in Lesson Review.",
+      });
+      closeIntake();
+    },
+    onError: (err) => {
+      toast({
+        title: "Could not create lesson candidate",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const intakeValid = intakeQuestion.trim().length > 0 && intakeAnswer.trim().length > 0;
 
   const { data: auditLogs, isLoading } = useQuery({
     queryKey: ["ai-audit-logs", filterBlocked],
@@ -379,11 +469,115 @@ export default function AdminAIAuditLogs() {
                       {selectedLog.ai_response || "No response captured"}
                     </div>
                   </div>
+
+                  {/* Lesson candidate intake (PR-2) */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold mb-2">Learning Loop</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Curate this interaction into a pending lesson candidate for human review.
+                      Approved lessons are not yet citable.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => openIntake(selectedLog)}
+                      data-testid="audit-create-candidate"
+                    >
+                      <GraduationCap className="h-4 w-4" />
+                      Create lesson candidate
+                    </Button>
+                  </div>
                 </div>
               </ScrollArea>
             )}
           </SheetContent>
         </Sheet>
+
+        {/* Lesson candidate intake dialog */}
+        <Dialog open={!!intakeLog} onOpenChange={(open) => !open && closeIntake()}>
+          <DialogContent className="sm:max-w-[600px]" data-testid="candidate-dialog">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" />
+                Create lesson candidate
+              </DialogTitle>
+              <DialogDescription>
+                Review and edit the curated lesson, then file it as pending. Source provenance
+                (audit log, correlation id, tenant) is carried automatically.
+              </DialogDescription>
+            </DialogHeader>
+
+            {!!existingCandidateCount && existingCandidateCount > 0 && (
+              <div
+                className="flex items-start gap-2 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800"
+                data-testid="candidate-duplicate-warning"
+              >
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  {existingCandidateCount} lesson candidate
+                  {existingCandidateCount > 1 ? "s" : ""} already exist
+                  {existingCandidateCount > 1 ? "" : "s"} for this interaction. You can still create
+                  another.
+                </span>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="candidate-question">Question</Label>
+                <Textarea
+                  id="candidate-question"
+                  value={intakeQuestion}
+                  onChange={(e) => setIntakeQuestion(e.target.value)}
+                  className="min-h-[70px]"
+                  data-testid="candidate-question"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="candidate-answer">Proposed answer</Label>
+                <Textarea
+                  id="candidate-answer"
+                  value={intakeAnswer}
+                  onChange={(e) => setIntakeAnswer(e.target.value)}
+                  className="min-h-[120px]"
+                  data-testid="candidate-proposed-answer"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="candidate-equipment">Equipment type (optional)</Label>
+                <Input
+                  id="candidate-equipment"
+                  value={intakeEquipment}
+                  onChange={(e) => setIntakeEquipment(e.target.value)}
+                  data-testid="candidate-equipment-type"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <Link
+                to="/admin/lesson-review"
+                className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                View Lesson Review
+              </Link>
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={closeIntake}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => intakeMutation.mutate()}
+                  disabled={!intakeValid || intakeMutation.isPending}
+                  className="gap-2"
+                  data-testid="candidate-submit"
+                >
+                  <GraduationCap className="h-4 w-4" />
+                  Create candidate
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
   );
 }
