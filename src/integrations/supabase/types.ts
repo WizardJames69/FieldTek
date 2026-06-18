@@ -1387,6 +1387,79 @@ export type Database = {
           },
         ]
       }
+      lesson_candidates: {
+        Row: {
+          audit_log_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string
+          equipment_type: string | null
+          id: string
+          proposed_answer: string
+          question: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source_type: string
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          audit_log_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by: string
+          equipment_type?: string | null
+          id?: string
+          proposed_answer: string
+          question: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_type: string
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          audit_log_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string
+          equipment_type?: string | null
+          id?: string
+          proposed_answer?: string
+          question?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source_type?: string
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_candidates_audit_log_id_fkey"
+            columns: ["audit_log_id"]
+            isOneToOne: false
+            referencedRelation: "ai_audit_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_candidates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_candidates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string

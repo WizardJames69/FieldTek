@@ -89,6 +89,7 @@ const AdminBetaApplications = lazy(() => import("./pages/admin/AdminBetaApplicat
 const AdminSystemHealth = lazy(() => import("./pages/admin/AdminSystemHealth"));
 const AdminVoiceUsage = lazy(() => import("./pages/admin/AdminVoiceUsage"));
 const AdminRAGQuality = lazy(() => import("./pages/admin/AdminRAGQuality"));
+const AdminLessonReview = lazy(() => import("./pages/admin/AdminLessonReview"));
 const AdminWorkflowDiscovery = lazy(() => import("./pages/admin/AdminWorkflowDiscovery"));
 
 // Demo sandbox routes
@@ -268,6 +269,7 @@ function App() {
                           <Route path="system-health" element={<AdminSystemHealth />} />
                           <Route path="voice-usage" element={<AdminVoiceUsage />} />
                           <Route path="rag-quality" element={<AdminRAGQuality />} />
+                          <Route path="lesson-review" element={<AdminLessonReview />} />
                           <Route path="workflow-discovery" element={<AdminWorkflowDiscovery />} />
                         </Route>
                         
