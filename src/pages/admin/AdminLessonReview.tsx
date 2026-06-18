@@ -91,7 +91,8 @@ export default function AdminLessonReview() {
     },
     onSuccess: (_data, { action }) => {
       queryClient.invalidateQueries({ queryKey: ["lesson-candidates"] });
-      toast({ title: `Lesson candidate ${action}d` });
+      const pastTense = { approve: "approved", reject: "rejected", archive: "archived" } as const;
+      toast({ title: `Lesson candidate ${pastTense[action]}` });
       setSelected(null);
       setReviewNotes("");
     },
