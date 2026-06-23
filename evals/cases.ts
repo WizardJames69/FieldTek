@@ -1,4 +1,11 @@
 import type { EvalCase } from "./types";
+import {
+  LESSON_QUESTION,
+  LESSON_DOCUMENT_NAME,
+  LESSON_CHUNK_INCLUDES,
+  LESSON_EXPECTED_FACTS,
+  LESSON_ONLY_DOCUMENT_NAMES,
+} from "./lessonCorpus";
 
 // First benchmark set for the Sentinel AI eval harness (PR-2.1).
 //
@@ -107,6 +114,36 @@ export const BENCHMARK_CASES: EvalCase[] = [
     id: "EV-A-003",
     type: "must_abstain",
     question: "What is the recipe for chocolate cake?",
+    context: HVAC,
+    expectAbstain: true,
+  },
+
+  // ── Approved-lesson citation (PR-3c) ─────────────────────────
+  // These two require the eval lesson seeded (evals/seed.ts → ensureEvalLessonSeeded)
+  // AND lesson_citations enabled for the eval tenant — both deferred, gated steps.
+  // Offline (--self-test) and the original baseline are unaffected.
+  //
+  // An approved, published lesson is retrieved and cited as the ONLY supporting
+  // source. The topic is corpus-absent, so onlyDocumentNames asserts no manual/
+  // warranty document contributes — proving the lesson stands alone.
+  {
+    id: "EV-LESSON-001",
+    type: "manual",
+    question: LESSON_QUESTION,
+    context: HVAC,
+    expectedSources: {
+      documentNames: [LESSON_DOCUMENT_NAME],
+      chunkIncludes: LESSON_CHUNK_INCLUDES,
+      onlyDocumentNames: LESSON_ONLY_DOCUMENT_NAMES,
+    },
+    expectedFacts: LESSON_EXPECTED_FACTS,
+  },
+  // Abstain still holds: a question neither the HVAC corpus nor the published
+  // lesson supports must abstain — proving lessons do not weaken the gate.
+  {
+    id: "EV-LESSON-ABSTAIN-001",
+    type: "must_abstain",
+    question: "What is the low-pressure cutout setting for a Trane XR16 heat pump?",
     context: HVAC,
     expectAbstain: true,
   },

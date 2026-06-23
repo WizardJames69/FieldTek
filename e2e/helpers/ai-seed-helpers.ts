@@ -57,7 +57,7 @@ function loadEmbeddingFixture(): EmbeddingFixture | null {
 }
 
 /** Resolve the real embedding for a chunk text, or a loud-warning fallback. */
-function resolveChunkEmbedding(text: string): number[] {
+export function resolveChunkEmbedding(text: string): number[] {
   const emb = loadEmbeddingFixture()?.embeddings?.[chunkEmbeddingKey(text)];
   if (Array.isArray(emb) && emb.length === EMBEDDING_DIMENSION) return emb;
   console.warn(
