@@ -805,10 +805,12 @@ export type Database = {
           extraction_status: string | null
           file_size: number | null
           file_type: string | null
-          file_url: string
+          file_url: string | null
           id: string
           is_public: boolean | null
           name: string
+          source: string
+          source_id: string | null
           tenant_id: string
           updated_at: string
           uploaded_by: string | null
@@ -823,10 +825,12 @@ export type Database = {
           extraction_status?: string | null
           file_size?: number | null
           file_type?: string | null
-          file_url: string
+          file_url?: string | null
           id?: string
           is_public?: boolean | null
           name: string
+          source?: string
+          source_id?: string | null
           tenant_id: string
           updated_at?: string
           uploaded_by?: string | null
@@ -841,10 +845,12 @@ export type Database = {
           extraction_status?: string | null
           file_size?: number | null
           file_type?: string | null
-          file_url?: string
+          file_url?: string | null
           id?: string
           is_public?: boolean | null
           name?: string
+          source?: string
+          source_id?: string | null
           tenant_id?: string
           updated_at?: string
           uploaded_by?: string | null
@@ -1396,6 +1402,7 @@ export type Database = {
           equipment_type: string | null
           id: string
           proposed_answer: string
+          published_document_id: string | null
           question: string
           review_notes: string | null
           reviewed_at: string | null
@@ -1412,6 +1419,7 @@ export type Database = {
           equipment_type?: string | null
           id?: string
           proposed_answer: string
+          published_document_id?: string | null
           question: string
           review_notes?: string | null
           reviewed_at?: string | null
@@ -1428,6 +1436,7 @@ export type Database = {
           equipment_type?: string | null
           id?: string
           proposed_answer?: string
+          published_document_id?: string | null
           question?: string
           review_notes?: string | null
           reviewed_at?: string | null

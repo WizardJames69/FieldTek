@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, ExternalLink, FileText } from "lucide-react";
+import { BookOpen, ExternalLink, FileText, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ export interface CitationSource {
   page_number?: number | null;
   section_name?: string | null;
   similarity?: number;
+  /** "lesson" for published-approved-lesson sources; "document" otherwise. */
+  source_type?: "lesson" | "document";
 }
 
 interface DocumentCitationProps {
@@ -25,6 +27,11 @@ interface DocumentCitationProps {
 
 const BADGE_CLASS =
   "text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors";
+
+// Lesson-sourced citations get a distinct, non-clickable style — they have no
+// uploaded file (file_url is null) so there is no PDF to open.
+const LESSON_BADGE_CLASS =
+  "text-xs bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/30 flex items-center gap-1";
 
 export function DocumentCitation({
   sources,
@@ -53,6 +60,25 @@ export function DocumentCitation({
         {citations.map((c, idx) => {
           const label =
             c.page_number != null ? `${c.document_name} · p.${c.page_number}` : c.document_name;
+
+          // Lesson-sourced citation: clearly labeled "Approved Lesson", no PDF
+          // link (no file to open), not clickable.
+          if (c.source_type === "lesson") {
+            return (
+              <Badge
+                key={idx}
+                variant="outline"
+                title={c.section_name ?? undefined}
+                className={LESSON_BADGE_CLASS}
+                data-testid="lesson-citation"
+              >
+                <GraduationCap className="h-3 w-3" />
+                <span className="font-medium">Approved Lesson</span>
+                <span className="opacity-70">· {label}</span>
+              </Badge>
+            );
+          }
+
           return (
             <Badge
               key={idx}

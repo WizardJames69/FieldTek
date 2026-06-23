@@ -80,6 +80,24 @@ test.describe('Lesson Review queue', () => {
     const latest = await getLatestLessonCandidate(tenantId);
     expect(latest?.status).toBe('rejected');
   });
+
+  // PR-3b: with lesson_citations OFF (its default on fgem), an approved lesson
+  // shows the disabled message and NO Publish button. This asserts the gate is
+  // respected without enabling the flag, deploying promote-lesson, or creating
+  // any lesson document — all of which are out of scope for this pass.
+  test('an approved lesson hides Publish while lesson_citations is off', async () => {
+    const marker = `E2E publish-gate ${Date.now()}`;
+    await seedLessonCandidate(tenantId, adminUserId, { status: 'approved', question: marker });
+
+    await lessonPage.goto();
+    await lessonPage.waitForPage();
+    await lessonPage.filterByStatus('approved');
+    await lessonPage.openDetailByText(marker);
+
+    await expect(lessonPage.publishSection()).toBeVisible();
+    await expect(lessonPage.publishDisabledMessage()).toBeVisible();
+    await expect(lessonPage.publishButton()).toHaveCount(0);
+  });
 });
 
 // ── Intake from AI audit log (browser) ──────────────────────────────────────

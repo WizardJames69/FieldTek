@@ -20,6 +20,10 @@ export interface RetrievalOptions {
   matchThreshold: number;
   enableReranking: boolean;
   rerankTopN: number;
+  // When true, drop lesson-sourced chunks (document_category === "Approved
+  // Lesson") from the results before they count toward retrieval, citations,
+  // or the abstain decision. Set when the lesson_citations flag is OFF.
+  excludeLessonChunks?: boolean;
 }
 
 export interface RetrievalQuery {

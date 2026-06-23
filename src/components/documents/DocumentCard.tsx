@@ -33,7 +33,8 @@ interface Document {
   name: string;
   description: string | null;
   category: string;
-  file_url: string;
+  // Null for lesson-sourced documents (no uploaded file).
+  file_url: string | null;
   file_type: string;
   file_size: number;
   created_at: string;
@@ -82,10 +83,14 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Lesson-sourced documents have no uploaded file → no PDF/signed-URL actions.
+  const hasFile = !!document.file_url;
+
   // Generate signed URL for private bucket access
   const getSignedUrl = async () => {
     if (signedUrl) return signedUrl;
-    
+    if (!document.file_url) return null;
+
     setIsLoading(true);
     try {
       const filePath = extractFilePath(document.file_url);
@@ -157,34 +162,40 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
         </div>
 
         <div className="flex items-center gap-1 mt-3 pt-3 border-t">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1 h-8 text-xs"
-            onClick={handleView}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-            ) : (
-              <ExternalLink className="h-3.5 w-3.5 mr-1" />
-            )}
-            View
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1 h-8 text-xs"
-            onClick={handleDownload}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5 mr-1" />
-            )}
-            Download
-          </Button>
+          {hasFile ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 h-8 text-xs"
+                onClick={handleView}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                )}
+                View
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 h-8 text-xs"
+                onClick={handleDownload}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                )}
+                Download
+              </Button>
+            </>
+          ) : (
+            <span className="flex-1 text-xs text-muted-foreground">No file (lesson)</span>
+          )}
           {isAdmin && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

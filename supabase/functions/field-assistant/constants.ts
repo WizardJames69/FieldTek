@@ -44,6 +44,13 @@ export const MAX_RESPONSE_CHARS = 20000;
 export const MIN_RELEVANT_CHUNKS = 2;
 export const ESCALATION_SIMILARITY_THRESHOLD = 0.65;
 
+// Reserved documents.category for documents published from approved lessons.
+// Lesson-sourced chunks carry this in document_chunks.document_category (copied
+// from documents.category at ingestion). Retrieval uses it to exclude lessons
+// when the lesson_citations flag is off, and citations use it to label
+// lesson-sourced content. Must match promote-lesson's LESSON_DOCUMENT_CATEGORY.
+export const LESSON_DOCUMENT_CATEGORY = "Approved Lesson";
+
 // ── Rate Limiting ───────────────────────────────────────────
 
 export const TIER_DAILY_LIMITS: Record<string, number> = {

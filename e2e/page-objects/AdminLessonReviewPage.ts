@@ -74,6 +74,23 @@ export class AdminLessonReviewPage {
     return (await card.locator('.text-2xl, .text-xl').first().textContent({ timeout: 10_000 })) ?? '';
   }
 
+  // ── Knowledge Base / Publish gating (PR-3b) ──────────────────────────────
+  publishSection(): Locator {
+    return this.page.getByTestId('lesson-publish-section');
+  }
+
+  publishButton(): Locator {
+    return this.page.getByTestId('lesson-publish');
+  }
+
+  publishDisabledMessage(): Locator {
+    return this.page.getByTestId('lesson-publish-disabled');
+  }
+
+  publishedState(): Locator {
+    return this.page.getByTestId('lesson-published-state');
+  }
+
   // ── Intake flow (originates on the AI Audit Logs page) ───────────────────
   async gotoAudit() {
     await this.page.goto('/admin/ai-audit');
