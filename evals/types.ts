@@ -19,6 +19,13 @@ export interface EvalExpectedSources {
   documentNames?: string[];
   /** Each substring should appear in the text of at least one retrieved chunk. */
   chunkIncludes?: string[];
+  /**
+   * Sole-source allowlist. When set, EVERY retrieved AND cited document name must
+   * loosely match one of these — i.e. no source outside this list may contribute.
+   * Used to assert a single document (e.g. an approved lesson) is the ONLY
+   * supporting source. Backward-compatible: omit it and scoring is unchanged.
+   */
+  onlyDocumentNames?: string[];
 }
 
 export interface EvalCase {

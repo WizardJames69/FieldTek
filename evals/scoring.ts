@@ -27,6 +27,15 @@ function anyDocMatches(expected: string[], actual: string[]): boolean {
   return expected.some((e) => actual.some((a) => looseMatch(e, a)));
 }
 
+/**
+ * Sole-source gate: every actual name must loosely match at least one allowed
+ * name. Vacuously true for an empty actual list (the "expected doc retrieved"
+ * check handles the empty case separately).
+ */
+function everyDocAllowed(actual: string[], allowed: string[]): boolean {
+  return actual.every((a) => allowed.some((al) => looseMatch(a, al)));
+}
+
 function allSubstringsPresent(needles: string[], haystack: string): boolean {
   const h = norm(haystack);
   return needles.every((n) => h.includes(norm(n)));
@@ -41,7 +50,8 @@ export function scoreCase(c: EvalCase, obs: EvalObservation): EvalCaseResult {
   const hasRetrievalExpectation =
     !!expSrc &&
     ((expSrc.documentNames?.length ?? 0) > 0 ||
-      (expSrc.chunkIncludes?.length ?? 0) > 0);
+      (expSrc.chunkIncludes?.length ?? 0) > 0 ||
+      (expSrc.onlyDocumentNames?.length ?? 0) > 0);
   if (hasRetrievalExpectation) {
     const docOk = expSrc!.documentNames?.length
       ? anyDocMatches(expSrc!.documentNames, obs.retrievedDocNames)
@@ -49,14 +59,28 @@ export function scoreCase(c: EvalCase, obs: EvalObservation): EvalCaseResult {
     const chunkOk = expSrc!.chunkIncludes?.length
       ? allSubstringsPresent(expSrc!.chunkIncludes, obs.retrievedChunkTexts.join("\n"))
       : true;
-    retrievalHit = docOk && chunkOk;
+    // Sole-source: no retrieved document may fall outside the allowlist.
+    const retrievedOnlyOk = expSrc!.onlyDocumentNames?.length
+      ? everyDocAllowed(obs.retrievedDocNames, expSrc!.onlyDocumentNames)
+      : true;
+    retrievalHit = docOk && chunkOk && retrievedOnlyOk;
   }
 
   // ── Citation support ─────────────────────────────────────
   let citationSupported: boolean | null = null;
-  if (answerable && (expSrc?.documentNames?.length ?? 0) > 0) {
-    citationSupported =
-      obs.hadCitations && anyDocMatches(expSrc!.documentNames!, obs.citedDocNames);
+  if (
+    answerable &&
+    ((expSrc?.documentNames?.length ?? 0) > 0 ||
+      (expSrc?.onlyDocumentNames?.length ?? 0) > 0)
+  ) {
+    const citedExpectedOk = expSrc!.documentNames?.length
+      ? anyDocMatches(expSrc!.documentNames, obs.citedDocNames)
+      : true;
+    // Sole-source: no cited document may fall outside the allowlist.
+    const citedOnlyOk = expSrc!.onlyDocumentNames?.length
+      ? everyDocAllowed(obs.citedDocNames, expSrc!.onlyDocumentNames)
+      : true;
+    citationSupported = obs.hadCitations && citedExpectedOk && citedOnlyOk;
   }
 
   // ── Fact coverage ────────────────────────────────────────

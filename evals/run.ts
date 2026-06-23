@@ -35,6 +35,7 @@ import { getAdminClient } from "../e2e/helpers/supabase-admin";
 import { EVAL_ADMIN_EMAIL, EVAL_ADMIN_PASSWORD } from "./evalIdentity";
 
 import { BENCHMARK_CASES } from "./cases";
+import { LESSON_DOCUMENT_NAME, LESSON_CHUNKS } from "./lessonCorpus";
 import { scoreCase, aggregate } from "./scoring";
 import { buildCaseReport } from "./report";
 import {
@@ -346,7 +347,10 @@ function gate(
 // Proves the harness scores + reports correctly on canned observations, with
 // no backend and no OpenAI cost. Run in CI/dev as a smoke before any live run.
 
-function syntheticObservation(caseId: string, kind: "good" | "miss" | "abstain"): EvalObservation {
+function syntheticObservation(
+  caseId: string,
+  kind: "good" | "miss" | "abstain" | "lessonGood",
+): EvalObservation {
   const base: EvalObservation = {
     caseId,
     answered: false,
@@ -375,6 +379,23 @@ function syntheticObservation(caseId: string, kind: "good" | "miss" | "abstain")
       judgeVerdict: "pass",
     };
   }
+  // An approved lesson retrieved + cited as the ONLY supporting source.
+  if (kind === "lessonGood") {
+    return {
+      ...base,
+      answered: true,
+      answerText:
+        `Put the unit in standby, then press and hold MODE and DOWN together for 10 seconds ` +
+        `to clear the E5 firmware fault. [Source: ${LESSON_DOCUMENT_NAME}]`,
+      retrievedChunkCount: LESSON_CHUNKS.length,
+      retrievedDocNames: [LESSON_DOCUMENT_NAME],
+      retrievedChunkTexts: LESSON_CHUNKS.map((c) => c.text),
+      citedDocNames: [LESSON_DOCUMENT_NAME],
+      hadCitations: true,
+      judgeGrounded: true,
+      judgeVerdict: "pass",
+    };
+  }
   if (kind === "abstain") {
     return { ...base, abstained: true, answerText: "I cannot find this information in the uploaded documents." };
   }
@@ -387,15 +408,27 @@ function runSelfTest(nowIso: string): EvalReport {
     { c: byId("EV-M-001"), obs: syntheticObservation("EV-M-001", "good") },
     { c: byId("EV-M-004"), obs: syntheticObservation("EV-M-004", "miss") },
     { c: byId("EV-A-003"), obs: syntheticObservation("EV-A-003", "abstain") },
+    // PR-3c: an approved lesson retrieved + cited as the sole supporting source.
+    { c: byId("EV-LESSON-001"), obs: syntheticObservation("EV-LESSON-001", "lessonGood") },
   ];
   const results = fixtures.map(({ c, obs }) => buildCaseReport(c, obs, scoreCase(c, obs)));
   const report = buildReport("self-test (offline)", results, nowIso);
   printSummary(report);
-  // Sanity: the canned good/abstain cases pass and the miss fails.
+
+  // The onlyDocumentNames sole-source gate must REJECT a foreign retrieved source.
+  const lessonCase = byId("EV-LESSON-001");
+  const foreignObs = syntheticObservation("EV-LESSON-001", "lessonGood");
+  foreignObs.retrievedDocNames = [...foreignObs.retrievedDocNames, "Carrier 24ACC636 Installation Manual"];
+  const soleSourceEnforced = scoreCase(lessonCase, foreignObs).passed === false;
+
+  // Sanity: the canned good/lesson/abstain cases pass, the miss fails, and the
+  // sole-source gate rejects a foreign source.
   const ok =
     results.find((r) => r.caseId === "EV-M-001")?.passed === true &&
     results.find((r) => r.caseId === "EV-M-004")?.passed === false &&
-    results.find((r) => r.caseId === "EV-A-003")?.passed === true;
+    results.find((r) => r.caseId === "EV-A-003")?.passed === true &&
+    results.find((r) => r.caseId === "EV-LESSON-001")?.passed === true &&
+    soleSourceEnforced;
   if (!ok) {
     console.error("\n[eval] SELF-TEST FAILED: scoring did not match expectations");
     process.exit(1);

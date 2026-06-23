@@ -131,6 +131,72 @@ describe("scoreCase — answerable (manual) cases", () => {
   });
 });
 
+describe("scoreCase — onlyDocumentNames (sole-source gate)", () => {
+  const lessonCase: EvalCase = {
+    id: "lesson1",
+    type: "manual",
+    question: "How do I clear the E5 firmware fault?",
+    expectedSources: {
+      documentNames: ["Approved Lesson: How do I clear the E5 firmware fault?"],
+      chunkIncludes: ["E5 firmware fault"],
+      onlyDocumentNames: ["Approved Lesson:"],
+    },
+    expectedFacts: ["MODE"],
+  };
+
+  const soleSourceObs = () =>
+    obs({
+      retrievedDocNames: ["Approved Lesson: How do I clear the E5 firmware fault?"],
+      retrievedChunkTexts: ["Hold MODE and DOWN for 10 seconds to clear the E5 firmware fault."],
+      citedDocNames: ["Approved Lesson: How do I clear the E5 firmware fault?"],
+      hadCitations: true,
+      answerText:
+        "Hold MODE and DOWN for 10 seconds. [Source: Approved Lesson: How do I clear the E5 firmware fault?]",
+      judgeGrounded: true,
+    });
+
+  it("passes when the lesson is the only retrieved AND cited source", () => {
+    const r = scoreCase(lessonCase, soleSourceObs());
+    expect(r.retrievalHit).toBe(true);
+    expect(r.citationSupported).toBe(true);
+    expect(r.factsCovered).toBe(true);
+    expect(r.passed).toBe(true);
+  });
+
+  it("fails retrieval when a non-allowed document is also retrieved", () => {
+    const o = soleSourceObs();
+    o.retrievedDocNames = [...o.retrievedDocNames, "Carrier 24ACC636 Installation Manual"];
+    const r = scoreCase(lessonCase, o);
+    expect(r.retrievalHit).toBe(false);
+    expect(r.passed).toBe(false);
+  });
+
+  it("fails citation when a non-allowed document is also cited", () => {
+    const o = soleSourceObs();
+    o.citedDocNames = [...o.citedDocNames, "Warranty Terms - Carrier Equipment"];
+    const r = scoreCase(lessonCase, o);
+    expect(r.citationSupported).toBe(false);
+    expect(r.passed).toBe(false);
+  });
+
+  it("is backward-compatible: extra sources are allowed when onlyDocumentNames is absent", () => {
+    const r = scoreCase(
+      manualCase,
+      obs({
+        retrievedDocNames: ["Carrier 24ACC6 Manual", "Some Other Doc"],
+        retrievedChunkTexts: ["The proper refrigerant charge is 6 lb 4 oz."],
+        citedDocNames: ["Carrier 24ACC6 Manual", "Some Other Doc"],
+        hadCitations: true,
+        answerText: "Use R-410A; the proper refrigerant charge is 6 lb 4 oz. [Source: Carrier 24ACC6 Manual]",
+        judgeGrounded: true,
+      }),
+    );
+    expect(r.retrievalHit).toBe(true);
+    expect(r.citationSupported).toBe(true);
+    expect(r.passed).toBe(true);
+  });
+});
+
 describe("scoreCase — must_abstain cases", () => {
   it("passes when the assistant correctly abstains", () => {
     const r = scoreCase(abstainCase, obs({ answered: false, abstained: true }));

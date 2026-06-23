@@ -24,7 +24,7 @@ config({ path: ".env.test" });
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getAdminClient } from "../e2e/helpers/supabase-admin";
-import { ensureCorpusSeeded, chunkCount } from "./seed";
+import { ensureCorpusSeeded, ensureEvalLessonSeeded, chunkCount } from "./seed";
 import { seedTestDocuments, seedDocumentChunks } from "../e2e/helpers/ai-seed-helpers";
 import {
   assertPlanWithinAllowlist,
@@ -181,7 +181,10 @@ function printBanner(targetRef: string | null): void {
   );
 }
 
-function printResult(t: Tally, corpus: { seeded: boolean; chunkCount: number }): void {
+function printResult(
+  t: Tally,
+  corpus: { seeded: boolean; chunkCount: number; lessonSeeded: boolean },
+): void {
   console.log("\n--- provisioning result ---");
   for (const entity of ["auth.user", "profiles", "tenants", "tenant_users"]) {
     const c = t[entity] ?? { found: 0, created: 0 };
@@ -190,6 +193,10 @@ function printResult(t: Tally, corpus: { seeded: boolean; chunkCount: number }):
   console.log(
     `  corpus           ${corpus.seeded ? "seeded now" : "already present"} ` +
       `(chunks=${corpus.chunkCount}, tenant_ai_policies upserted, embeddings=pre-computed)`,
+  );
+  console.log(
+    `  approved lesson  ${corpus.lessonSeeded ? "seeded now" : "already present"} ` +
+      `(citability gated by lesson_citations — NOT enabled here)`,
   );
   console.log("\nconfirmations:");
   console.log("  ✓ no global feature_flags written");
@@ -206,6 +213,7 @@ interface RefreshResult {
   deletedDocs: number;
   seededDocs: number;
   chunkCount: number;
+  lessonSeeded: boolean;
 }
 
 /**
@@ -257,6 +265,8 @@ async function refreshCorpus(
   // Reseed with the existing current-main seed logic (pre-computed embeddings).
   const docIds = await seedTestDocuments(t.id);
   await seedDocumentChunks(t.id, docIds);
+  // PR-3c: the delete above removed the lesson too — reseed it (idempotent).
+  const lesson = await ensureEvalLessonSeeded(t.id);
 
   return {
     tenantId: t.id,
@@ -264,6 +274,7 @@ async function refreshCorpus(
     deletedDocs: delDocs?.length ?? 0,
     seededDocs: docIds.length,
     chunkCount: await chunkCount(t.id),
+    lessonSeeded: lesson.seeded,
   };
 }
 
@@ -295,6 +306,7 @@ async function main(): Promise<void> {
     console.log(`  deleted document_chunks: ${res.deletedChunks}`);
     console.log(`  deleted documents:       ${res.deletedDocs}`);
     console.log(`  reseeded documents:      ${res.seededDocs}`);
+    console.log(`  approved lesson:         ${res.lessonSeeded ? "reseeded" : "already present"}`);
     console.log(`  document_chunks now:     ${res.chunkCount}`);
     console.log(`\n[refresh] done. eval tenant id=${res.tenantId}`);
     return;
