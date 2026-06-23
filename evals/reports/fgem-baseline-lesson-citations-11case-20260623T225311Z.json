@@ -1,0 +1,485 @@
+{
+  "generatedAtIso": "2026-06-23T22:53:11.767Z",
+  "label": "hvac-first-benchmark",
+  "total": 11,
+  "passed": 11,
+  "metrics": {
+    "retrievalAccuracy": 1,
+    "citationSupport": 1,
+    "factCoverage": 1,
+    "abstainRate": 1,
+    "hallucinationRate": 0
+  },
+  "cases": [
+    {
+      "caseId": "EV-M-001",
+      "type": "manual",
+      "answered": true,
+      "retrievalHit": true,
+      "citationSupported": true,
+      "factsCovered": true,
+      "abstainCorrect": null,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What is the startup procedure for the Carrier 24ACC636?",
+      "expectedSources": {
+        "documentNames": [
+          "Carrier 24ACC636 Installation Manual"
+        ],
+        "chunkIncludes": [
+          "startup"
+        ]
+      },
+      "expectedFacts": [
+        "thermostat",
+        "disconnect"
+      ],
+      "answerText": "According to the Carrier 24ACC636 Installation Manual: The recommended startup sequence is to verify the thermostat is set to off, turn on the main disconnect, switch the thermostat to cool mode, and wait five minutes for the compressor delay timer before the unit starts. Additionally, before performing the startup procedure, confirm all electrical connections are torqued to specification, verify the disconnect is correctly rated, and check that the thermostat wiring matches the installation diagram. [Source: Carrier 24ACC636 Installation Manual]",
+      "hadCitations": true,
+      "citedDocNames": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citedDocNamesFromMetadata": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citedDocNamesFromText": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "retrievedDocNames": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citationDensity": 1.81159420289855,
+      "abstainFlag": false,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": [
+        0.709640292764591,
+        0.704398972041268,
+        0.635487571445763
+      ],
+      "auditLogId": "f361ce66-bd80-4b81-9314-e131a70046d6",
+      "correlationId": "66c29933-8614-4cb2-8969-578d40ef37fb",
+      "error": null
+    },
+    {
+      "caseId": "EV-M-002",
+      "type": "manual",
+      "answered": true,
+      "retrievalHit": true,
+      "citationSupported": true,
+      "factsCovered": true,
+      "abstainCorrect": null,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What are the operating temperature limits for the Carrier 24ACC636?",
+      "expectedSources": {
+        "documentNames": [
+          "Carrier 24ACC636 Installation Manual"
+        ],
+        "chunkIncludes": [
+          "operating temperature"
+        ]
+      },
+      "expectedFacts": [
+        "65",
+        "85"
+      ],
+      "answerText": "According to the Carrier 24ACC636 Installation Manual: The unit is rated to operate between 65°F and 85°F and must not run below 55°F without a low-ambient kit installed. Confirm the operating temperature is within these limits before startup. [Source: Carrier 24ACC636 Installation Manual]",
+      "hadCitations": true,
+      "citedDocNames": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citedDocNamesFromMetadata": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citedDocNamesFromText": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "retrievedDocNames": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citationDensity": 3.44827586206897,
+      "abstainFlag": false,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": [
+        0.813557038799793,
+        0.612517615251263,
+        0.580131784129472,
+        0.55971962220115
+      ],
+      "auditLogId": "08518170-ba2c-4c62-a645-09d3ec3fb47c",
+      "correlationId": "5c801f09-dd6d-4002-a838-e8ba1bd4a8d2",
+      "error": null
+    },
+    {
+      "caseId": "EV-M-003",
+      "type": "manual",
+      "answered": true,
+      "retrievalHit": true,
+      "citationSupported": true,
+      "factsCovered": true,
+      "abstainCorrect": null,
+      "hallucinated": false,
+      "passed": true,
+      "question": "How do I check the refrigerant charge on the Carrier 24ACC636?",
+      "expectedSources": {
+        "documentNames": [
+          "Carrier 24ACC636 Installation Manual"
+        ],
+        "chunkIncludes": [
+          "refrigerant"
+        ]
+      },
+      "expectedFacts": [
+        "manifold",
+        "subcooling"
+      ],
+      "answerText": "According to the Carrier 24ACC636 Installation Manual: To check the refrigerant charge, connect manifold gauges and compare the suction and liquid pressures against the nameplate charge table. Then verify subcooling and superheat to confirm proper refrigerant levels. Low refrigerant reduces cooling capacity, so it is important to read the manifold gauge pressures and compare the measured subcooling and superheat against the operating specifications. [Source: Carrier 24ACC636 Installation Manual]",
+      "hadCitations": true,
+      "citedDocNames": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citedDocNamesFromMetadata": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citedDocNamesFromText": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "retrievedDocNames": [
+        "Carrier 24ACC636 Installation Manual"
+      ],
+      "citationDensity": 2,
+      "abstainFlag": false,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": [
+        0.794702393526675,
+        0.584464700420226,
+        0.576376400367084,
+        0.550597458737319
+      ],
+      "auditLogId": "5825511a-1391-4a83-8ea2-237ac0bcd422",
+      "correlationId": "3a9a5b4d-dd11-4b91-9777-347299620f07",
+      "error": null
+    },
+    {
+      "caseId": "EV-M-004",
+      "type": "manual",
+      "answered": true,
+      "retrievalHit": true,
+      "citationSupported": true,
+      "factsCovered": true,
+      "abstainCorrect": null,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What is the air filter replacement schedule?",
+      "expectedSources": {
+        "documentNames": [
+          "HVAC Maintenance Best Practices"
+        ],
+        "chunkIncludes": [
+          "filter"
+        ]
+      },
+      "expectedFacts": [
+        "90 days",
+        "60 days"
+      ],
+      "answerText": "The air filter replacement schedule is as follows: replace standard filters every 90 days and pleated filters every 60 days in high-use environments. Additionally, check the filter monthly during peak cooling season. Following the recommended filter replacement schedule helps maintain airflow and system efficiency. [Source: HVAC Maintenance Best Practices]",
+      "hadCitations": true,
+      "citedDocNames": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "citedDocNamesFromMetadata": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "citedDocNamesFromText": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "retrievedDocNames": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "citationDensity": 2.79329608938547,
+      "abstainFlag": false,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": [
+        0.847274077562483,
+        0.697500196676575,
+        0.536935194934228,
+        0.531187427400596
+      ],
+      "auditLogId": "fd0b9795-5967-4faa-a85f-dca7547a8ba2",
+      "correlationId": "a0935fd2-7295-490d-bea0-263d98153f31",
+      "error": null
+    },
+    {
+      "caseId": "EV-M-005",
+      "type": "manual",
+      "answered": true,
+      "retrievalHit": true,
+      "citationSupported": true,
+      "factsCovered": true,
+      "abstainCorrect": null,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What are the recommended maintenance intervals?",
+      "expectedSources": {
+        "documentNames": [
+          "HVAC Maintenance Best Practices"
+        ],
+        "chunkIncludes": [
+          "maintenance interval"
+        ]
+      },
+      "expectedFacts": [
+        "quarterly"
+      ],
+      "answerText": "The recommended maintenance intervals are as follows: quarterly for air filter inspection and replacement, semi-annual for coil cleaning, and annual for a full system inspection. These intervals should be adjusted based on equipment runtime and operating environment. Additionally, routine HVAC maintenance on a quarterly schedule includes inspecting and replacing air filters, checking belt tension, and cleaning the condenser coil. The exact intervals depend on equipment usage. [Source: HVAC Maintenance Best Practices]",
+      "hadCitations": true,
+      "citedDocNames": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "citedDocNamesFromMetadata": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "citedDocNamesFromText": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "retrievedDocNames": [
+        "HVAC Maintenance Best Practices"
+      ],
+      "citationDensity": 1.91570881226054,
+      "abstainFlag": false,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": [
+        0.634789093795427,
+        0.594825766637824
+      ],
+      "auditLogId": "bd9cc059-b594-4371-9ed6-4cefa54fb450",
+      "correlationId": "0257f941-e732-4ba9-88ac-bf8c35230290",
+      "error": null
+    },
+    {
+      "caseId": "EV-M-006",
+      "type": "manual",
+      "answered": true,
+      "retrievalHit": true,
+      "citationSupported": true,
+      "factsCovered": true,
+      "abstainCorrect": null,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What does the Carrier warranty cover for parts and the compressor?",
+      "expectedSources": {
+        "documentNames": [
+          "Warranty Terms - Carrier Equipment"
+        ],
+        "chunkIncludes": [
+          "warranty"
+        ]
+      },
+      "expectedFacts": [
+        "5 years",
+        "10 years"
+      ],
+      "answerText": "According to the Warranty Terms - Carrier Equipment: The Carrier warranty covers parts that are repaired or replaced at no charge for materials for 5 years from installation. The sealed compressor carries extended coverage for 10 years. Coverage applies only to failures caused by manufacturing defects in covered parts. Labor is not included, and the warranty is void if the equipment is not installed by a certified technician. Additionally, the equipment must be registered within 90 days of installation to honor the warranty coverage. The warranty does not cover labor, refrigerant, filters, or damage from improper maintenance. Proof of certified installation is required for the 5-year parts and 10-year compressor coverage to be honored. [Source: Warranty Terms - Carrier Equipment]",
+      "hadCitations": true,
+      "citedDocNames": [
+        "Warranty Terms - Carrier Equipment"
+      ],
+      "citedDocNamesFromMetadata": [
+        "Warranty Terms - Carrier Equipment"
+      ],
+      "citedDocNamesFromText": [
+        "Warranty Terms - Carrier Equipment"
+      ],
+      "retrievedDocNames": [
+        "Warranty Terms - Carrier Equipment"
+      ],
+      "citationDensity": 1.26582278481013,
+      "abstainFlag": false,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": [
+        "ESCALATION_SIMILARITY_FILTER"
+      ],
+      "similarityScores": [
+        0.856418361300915,
+        0.678347649222948,
+        0.668694321172294
+      ],
+      "auditLogId": "7dd1881a-2602-47a7-87d3-4b42918bbba9",
+      "correlationId": "e1ea744a-9fa7-48cf-9cd1-9ec568575b1b",
+      "error": null
+    },
+    {
+      "caseId": "EV-A-001",
+      "type": "must_abstain",
+      "answered": false,
+      "retrievalHit": null,
+      "citationSupported": null,
+      "factsCovered": null,
+      "abstainCorrect": true,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What is the torque spec for the gas valve on a Lennox G61 furnace?",
+      "answerText": "I couldn't find enough grounded context in your uploaded documents to answer that confidently. Try rephrasing the question with more specific terminology (e.g. model numbers, fault codes), or upload additional reference material covering this topic.",
+      "hadCitations": false,
+      "citedDocNames": [],
+      "citedDocNamesFromMetadata": [],
+      "citedDocNamesFromText": [],
+      "retrievedDocNames": [],
+      "citationDensity": null,
+      "abstainFlag": null,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": null,
+      "auditLogId": null,
+      "correlationId": null,
+      "error": null
+    },
+    {
+      "caseId": "EV-A-002",
+      "type": "must_abstain",
+      "answered": false,
+      "retrievalHit": null,
+      "citationSupported": null,
+      "factsCovered": null,
+      "abstainCorrect": true,
+      "hallucinated": false,
+      "passed": true,
+      "question": "How do I size a tankless water heater for a three-bathroom house?",
+      "answerText": "I couldn't find enough grounded context in your uploaded documents to answer that confidently. Try rephrasing the question with more specific terminology (e.g. model numbers, fault codes), or upload additional reference material covering this topic.",
+      "hadCitations": false,
+      "citedDocNames": [],
+      "citedDocNamesFromMetadata": [],
+      "citedDocNamesFromText": [],
+      "retrievedDocNames": [],
+      "citationDensity": null,
+      "abstainFlag": null,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": null,
+      "auditLogId": null,
+      "correlationId": null,
+      "error": null
+    },
+    {
+      "caseId": "EV-A-003",
+      "type": "must_abstain",
+      "answered": false,
+      "retrievalHit": null,
+      "citationSupported": null,
+      "factsCovered": null,
+      "abstainCorrect": true,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What is the recipe for chocolate cake?",
+      "answerText": "I couldn't find enough grounded context in your uploaded documents to answer that confidently. Try rephrasing the question with more specific terminology (e.g. model numbers, fault codes), or upload additional reference material covering this topic.",
+      "hadCitations": false,
+      "citedDocNames": [],
+      "citedDocNamesFromMetadata": [],
+      "citedDocNamesFromText": [],
+      "retrievedDocNames": [],
+      "citationDensity": null,
+      "abstainFlag": null,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": null,
+      "auditLogId": null,
+      "correlationId": null,
+      "error": null
+    },
+    {
+      "caseId": "EV-LESSON-001",
+      "type": "manual",
+      "answered": true,
+      "retrievalHit": true,
+      "citationSupported": true,
+      "factsCovered": true,
+      "abstainCorrect": null,
+      "hallucinated": false,
+      "passed": true,
+      "question": "How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?",
+      "expectedSources": {
+        "documentNames": [
+          "Approved Lesson: How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?"
+        ],
+        "chunkIncludes": [
+          "E5 firmware fault"
+        ],
+        "onlyDocumentNames": [
+          "Approved Lesson:"
+        ]
+      },
+      "expectedFacts": [
+        "MODE",
+        "10 seconds"
+      ],
+      "answerText": "According to the \"Approved Lesson: How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?\":\n\nThe E5 fault latches after a controller firmware update interrupts the EEPROM write. To clear the E5 fault, put the unit in standby, then press and hold the MODE and DOWN buttons together for 10 seconds until the display flashes \"CLr\". Release the buttons and the E5 firmware fault clears.\n\nAfter clearing the fault, confirm the firmware reload completed: the display should return to the home screen within 30 seconds and the E5 code should not reappear on the next compressor cycle. If the E5 fault recurs after another firmware update, repeat the MODE and DOWN hold for 10 seconds. A persistent E5 indicates the controller board must be reflashed at the service bench. [Source: Approved Lesson: How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?]",
+      "hadCitations": true,
+      "citedDocNames": [
+        "Approved Lesson: How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?"
+      ],
+      "citedDocNamesFromMetadata": [
+        "Approved Lesson: How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?"
+      ],
+      "citedDocNamesFromText": [
+        "Approved Lesson: How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?"
+      ],
+      "retrievedDocNames": [
+        "Approved Lesson: How do I clear the recurring E5 firmware fault on the ACME RTU-7 rooftop unit?"
+      ],
+      "citationDensity": 1.11856823266219,
+      "abstainFlag": false,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": [
+        0.924792139906764,
+        0.799986649307192
+      ],
+      "auditLogId": "6564f36f-b07a-4e1e-a3f4-2de59f5cc407",
+      "correlationId": "30ebe60e-f811-47cb-b074-4796e521883d",
+      "error": null
+    },
+    {
+      "caseId": "EV-LESSON-ABSTAIN-001",
+      "type": "must_abstain",
+      "answered": false,
+      "retrievalHit": null,
+      "citationSupported": null,
+      "factsCovered": null,
+      "abstainCorrect": true,
+      "hallucinated": false,
+      "passed": true,
+      "question": "What is the low-pressure cutout setting for a Trane XR16 heat pump?",
+      "answerText": "I couldn't find enough grounded context in your uploaded documents to answer that confidently. Try rephrasing the question with more specific terminology (e.g. model numbers, fault codes), or upload additional reference material covering this topic.",
+      "hadCitations": false,
+      "citedDocNames": [],
+      "citedDocNamesFromMetadata": [],
+      "citedDocNamesFromText": [],
+      "retrievedDocNames": [],
+      "citationDensity": null,
+      "abstainFlag": null,
+      "degraded": null,
+      "degradedReason": null,
+      "enforcementRulesTriggered": null,
+      "similarityScores": null,
+      "auditLogId": null,
+      "correlationId": null,
+      "error": null
+    }
+  ]
+}
