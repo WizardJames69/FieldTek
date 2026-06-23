@@ -2,7 +2,7 @@
 // Field Assistant — Utility & Helper Functions
 // ============================================================
 
-import { SYMPTOM_CATEGORIES, EMBEDDING_MODEL, EMBEDDING_DIMENSION, detectSymptomsInText as sharedDetectSymptomsInText } from "./constants.ts";
+import { SYMPTOM_CATEGORIES, EMBEDDING_MODEL, EMBEDDING_DIMENSION, LESSON_DOCUMENT_CATEGORY, detectSymptomsInText as sharedDetectSymptomsInText } from "./constants.ts";
 import type {
   ChatMessage,
   ServiceJob,
@@ -138,6 +138,10 @@ export interface SourceCitation {
   page_number: number | null;
   section_name: string | null;
   similarity: number;
+  // "lesson" when the cited chunk came from a published approved lesson
+  // (document_category === "Approved Lesson"); "document" otherwise. Lets the
+  // client render an "Approved Lesson" label and skip the PDF link.
+  source_type: "lesson" | "document";
 }
 
 interface SourceCitationInput {
@@ -146,6 +150,7 @@ interface SourceCitationInput {
   page_number?: number | null;
   section_name?: string | null;
   similarity?: number | null;
+  document_category?: string | null;
 }
 
 export function buildSourceCitations(
@@ -161,6 +166,8 @@ export function buildSourceCitations(
     const pageNumber = typeof r.page_number === "number" ? r.page_number : null;
     const sectionName = (r.section_name ?? "").trim() || null;
     const similarity = typeof r.similarity === "number" ? r.similarity : 0;
+    const sourceType: "lesson" | "document" =
+      (r.document_category ?? "") === LESSON_DOCUMENT_CATEGORY ? "lesson" : "document";
 
     // Group by document + page. Fall back to the document name when no id is
     // present so same-document chunks still collapse into one chip.
@@ -173,6 +180,7 @@ export function buildSourceCitations(
         page_number: pageNumber,
         section_name: sectionName,
         similarity,
+        source_type: sourceType,
       });
     } else {
       if (similarity > existing.similarity) existing.similarity = similarity;

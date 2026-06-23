@@ -175,7 +175,7 @@ serve(async (req) => {
     console.log(`[tenant_ai_policies] tenant=${tenantUser.tenant_id} threshold=${policySimThreshold} blocked_topics=${policyBlockedTopics.length}`);
 
     // ── 3. Feature Flags (parallel) ──────────────────────────
-    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled, graphExpansionEnabled, judgeBlockingEnabled, judgeFullBlockingEnabled, diagnosticLearningEnabled] = await Promise.all([
+    const [judgeEnabled, rerankingEnabled, complianceEngineEnabled, graphExpansionEnabled, judgeBlockingEnabled, judgeFullBlockingEnabled, diagnosticLearningEnabled, lessonCitationsEnabled] = await Promise.all([
       evaluateFeatureFlag(serviceRoleClient, "rag_judge", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "rag_reranking", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "compliance_engine", tenantUser.tenant_id),
@@ -183,6 +183,7 @@ serve(async (req) => {
       evaluateFeatureFlag(serviceRoleClient, "judge_blocking_mode", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "judge_full_blocking", tenantUser.tenant_id),
       evaluateFeatureFlag(serviceRoleClient, "diagnostic_learning", tenantUser.tenant_id),
+      evaluateFeatureFlag(serviceRoleClient, "lesson_citations", tenantUser.tenant_id),
     ]);
     const complianceActive = complianceEngineEnabled && aiPolicy?.compliance_engine_enabled === true;
 
@@ -583,6 +584,8 @@ serve(async (req) => {
                 matchThreshold: policySimThreshold,
                 enableReranking: rerankingEnabled,
                 rerankTopN: 8,
+                // Flag OFF → exclude lesson-sourced chunks before they count.
+                excludeLessonChunks: !lessonCitationsEnabled,
               },
               correlationId,
             };

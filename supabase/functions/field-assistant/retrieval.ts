@@ -18,6 +18,7 @@ import type {
   RetrievalResult,
 } from "./types.ts";
 import { rerankChunks } from "./rerank.ts";
+import { LESSON_DOCUMENT_CATEGORY } from "./constants.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -48,7 +49,7 @@ export class PgVectorAdapter implements RetrievalAdapter {
       throw new Error(`PgVector retrieval failed: ${error.message}`);
     }
 
-    const results: RetrievalResult[] = (data || []).map(
+    let results: RetrievalResult[] = (data || []).map(
       // deno-lint-ignore no-explicit-any
       (r: any) => ({
         id: r.id,
@@ -66,6 +67,21 @@ export class PgVectorAdapter implements RetrievalAdapter {
         sectionName: r.section_name ?? null,
       })
     );
+
+    // Lesson-citation gate: when the lesson_citations flag is OFF, drop
+    // lesson-sourced chunks BEFORE reranking or counting so they can never be
+    // cited and never help avoid abstain. Keyed on document_category because
+    // search_document_chunks does not return documents.source (and we must not
+    // change that RPC). Non-lesson chunks are unaffected.
+    if (query.options.excludeLessonChunks) {
+      const before = results.length;
+      results = results.filter((r) => r.documentCategory !== LESSON_DOCUMENT_CATEGORY);
+      if (results.length < before) {
+        console.log(
+          `[lesson-gate] lesson_citations off: dropped ${before - results.length} lesson chunk(s) (${before} → ${results.length})`,
+        );
+      }
+    }
 
     // Cross-encoder re-ranking (if enabled and results warrant it)
     if (query.options.enableReranking && results.length > 2) {

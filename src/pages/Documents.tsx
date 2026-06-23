@@ -80,11 +80,12 @@ export default function Documents() {
       const doc = documents?.find((d) => d.id === id);
       if (!doc) throw new Error('Document not found');
 
-      // Extract file path (handles both old URLs and new paths)
-      const filePath = extractFilePath(doc.file_url);
-
-      // Delete from storage
-      await supabase.storage.from('documents').remove([filePath]);
+      // Lesson-sourced documents have no uploaded file (file_url is null) —
+      // skip storage removal for them; only uploaded documents have an object.
+      if (doc.file_url) {
+        const filePath = extractFilePath(doc.file_url);
+        await supabase.storage.from('documents').remove([filePath]);
+      }
 
       // Delete from database
       const { error } = await supabase.from('documents').delete().eq('id', id);

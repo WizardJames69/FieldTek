@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Search, Eye, CheckCircle, XCircle, Archive, GraduationCap, Inbox } from "lucide-react";
+import { Search, Eye, CheckCircle, XCircle, Archive, GraduationCap, Inbox, BookOpen, RefreshCw } from "lucide-react";
 import {
   buildReviewUpdate,
   canApprove,
@@ -26,6 +26,8 @@ import {
   type LessonStatus,
   type ReviewAction,
 } from "@/lib/lessonReview";
+import { isFeatureFlagEnabledForTenant } from "@/lib/featureFlagClient";
+import type { FeatureFlag } from "@/hooks/useFeatureFlags";
 
 interface LessonCandidate {
   id: string;
@@ -42,6 +44,7 @@ interface LessonCandidate {
   reviewed_at: string | null;
   review_notes: string | null;
   created_at: string;
+  published_document_id: string | null;
 }
 
 export default function AdminLessonReview() {
@@ -99,6 +102,69 @@ export default function AdminLessonReview() {
     onError: (err) => {
       toast({
         title: "Review failed",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // The lesson_citations flag gates the Publish action. This admin page is
+  // cross-tenant and has no TenantProvider, so we fetch the flag row directly
+  // and evaluate it against the selected lesson's tenant (not the admin's).
+  // The server (promote-lesson) re-checks the flag authoritatively.
+  const { data: lessonFlag } = useQuery({
+    queryKey: ["feature-flag", "lesson_citations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("feature_flags")
+        .select("*")
+        .eq("key", "lesson_citations")
+        .maybeSingle();
+      if (error) throw error;
+      return (data as FeatureFlag | null) ?? null;
+    },
+    staleTime: 60_000,
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: async (candidate: LessonCandidate) => {
+      const { data, error } = await supabase.functions.invoke("promote-lesson", {
+        body: { lessonId: candidate.id },
+      });
+      if (error) {
+        // Surface the function's typed error (flag_disabled / not_approved /
+        // permission) instead of a generic "non-2xx" message.
+        let message = error instanceof Error ? error.message : "Publish failed";
+        try {
+          const ctx = (error as { context?: Response }).context;
+          const body = ctx ? await ctx.json() : null;
+          if (body?.code === "flag_disabled") {
+            message = "Lesson citations are not enabled for this tenant.";
+          } else if (body?.code === "not_approved") {
+            message = "Only approved lessons can be published.";
+          } else if (body?.error) {
+            message = body.error;
+          }
+        } catch {
+          /* keep the default message */
+        }
+        throw new Error(message);
+      }
+      return data as { document_id?: string } | null;
+    },
+    onSuccess: (data, candidate) => {
+      queryClient.invalidateQueries({ queryKey: ["lesson-candidates"] });
+      // Reflect the published state immediately in the open sheet.
+      setSelected((prev) =>
+        prev && prev.id === candidate.id
+          ? { ...prev, published_document_id: data?.document_id ?? prev.published_document_id ?? "published" }
+          : prev,
+      );
+      toast({ title: "Lesson published to knowledge base" });
+    },
+    onError: (err) => {
+      toast({
+        title: "Publish failed",
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       });
@@ -428,6 +494,61 @@ export default function AdminLessonReview() {
                         </Button>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* Knowledge Base — publish an approved lesson into the document
+                    pipeline so Sentinel can cite it. Gated by the
+                    lesson_citations flag (evaluated for the lesson's tenant);
+                    the server re-checks it authoritatively. */}
+                {selected.status === "approved" && (
+                  <div className="space-y-3" data-testid="lesson-publish-section">
+                    <h4 className="font-semibold">Knowledge Base</h4>
+                    {selected.published_document_id ? (
+                      <div className="rounded-lg border p-4 text-sm space-y-2">
+                        <div className="flex items-center gap-2 text-green-700">
+                          <BookOpen className="h-4 w-4" />
+                          <span data-testid="lesson-published-state">Published to knowledge base</span>
+                        </div>
+                        <p className="font-mono text-xs text-muted-foreground break-all">
+                          document_id: {selected.published_document_id}
+                        </p>
+                        {isFeatureFlagEnabledForTenant(lessonFlag, selected.tenant_id) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => publishMutation.mutate(selected)}
+                            disabled={publishMutation.isPending}
+                            className="gap-2"
+                            data-testid="lesson-republish"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Republish
+                          </Button>
+                        )}
+                      </div>
+                    ) : isFeatureFlagEnabledForTenant(lessonFlag, selected.tenant_id) ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Publishing makes this approved lesson retrievable and citable by Sentinel,
+                          like an uploaded document.
+                        </p>
+                        <Button
+                          onClick={() => publishMutation.mutate(selected)}
+                          disabled={publishMutation.isPending}
+                          className="gap-2"
+                          data-testid="lesson-publish"
+                        >
+                          <BookOpen className="h-4 w-4" />
+                          Publish to knowledge base
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground" data-testid="lesson-publish-disabled">
+                        Lesson citations are disabled for this tenant. Enable the{" "}
+                        <code className="font-mono text-xs">lesson_citations</code> flag to publish.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
