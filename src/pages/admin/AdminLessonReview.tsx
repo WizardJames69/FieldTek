@@ -12,10 +12,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { Search, Eye, CheckCircle, XCircle, Archive, GraduationCap, Inbox, BookOpen, RefreshCw } from "lucide-react";
+import { Search, Eye, CheckCircle, XCircle, Archive, GraduationCap, Inbox, BookOpen, RefreshCw, Trash2 } from "lucide-react";
 import {
   buildReviewUpdate,
   canApprove,
@@ -55,6 +65,7 @@ export default function AdminLessonReview() {
   const [filterStatus, setFilterStatus] = useState<string>("pending");
   const [selected, setSelected] = useState<LessonCandidate | null>(null);
   const [reviewNotes, setReviewNotes] = useState("");
+  const [unpublishOpen, setUnpublishOpen] = useState(false);
 
   const { data: candidates, isLoading } = useQuery({
     queryKey: ["lesson-candidates", filterStatus],
@@ -165,6 +176,50 @@ export default function AdminLessonReview() {
     onError: (err) => {
       toast({
         title: "Publish failed",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Unpublish removes the lesson's published document from the knowledge base.
+  // Unlike Publish/Republish it is intentionally NOT gated by lesson_citations:
+  // it is a rollback/cleanup action that must work when the flag is off. The
+  // server (unpublish-lesson) authoritatively checks platform-admin auth and
+  // that the document is this lesson's own lesson document.
+  const unpublishMutation = useMutation({
+    mutationFn: async (candidate: LessonCandidate) => {
+      const { data, error } = await supabase.functions.invoke("unpublish-lesson", {
+        body: { lessonId: candidate.id },
+      });
+      if (error) {
+        let message = error instanceof Error ? error.message : "Unpublish failed";
+        try {
+          const ctx = (error as { context?: Response }).context;
+          const body = ctx ? await ctx.json() : null;
+          if (body?.code === "mismatch") {
+            message = "The published document does not match this lesson; it was not removed.";
+          } else if (body?.error) {
+            message = body.error;
+          }
+        } catch {
+          /* keep the default message */
+        }
+        throw new Error(message);
+      }
+      return data as { unpublished?: boolean } | null;
+    },
+    onSuccess: (_data, candidate) => {
+      queryClient.invalidateQueries({ queryKey: ["lesson-candidates"] });
+      // Reflect the unpublished state immediately in the open sheet.
+      setSelected((prev) =>
+        prev && prev.id === candidate.id ? { ...prev, published_document_id: null } : prev,
+      );
+      toast({ title: "Lesson removed from knowledge base" });
+    },
+    onError: (err) => {
+      toast({
+        title: "Unpublish failed",
         description: err instanceof Error ? err.message : undefined,
         variant: "destructive",
       });
@@ -513,19 +568,36 @@ export default function AdminLessonReview() {
                         <p className="font-mono text-xs text-muted-foreground break-all">
                           document_id: {selected.published_document_id}
                         </p>
-                        {isFeatureFlagEnabledForTenant(lessonFlag, selected.tenant_id) && (
+                        <div className="flex flex-wrap gap-2">
+                          {/* Republish stays flag-gated. */}
+                          {isFeatureFlagEnabledForTenant(lessonFlag, selected.tenant_id) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => publishMutation.mutate(selected)}
+                              disabled={publishMutation.isPending}
+                              className="gap-2"
+                              data-testid="lesson-republish"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                              Republish
+                            </Button>
+                          )}
+                          {/* Unpublish is a removal/cleanup action and is NOT
+                              flag-gated — it must work during a rollback when
+                              lesson_citations is already off. */}
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => publishMutation.mutate(selected)}
-                            disabled={publishMutation.isPending}
-                            className="gap-2"
-                            data-testid="lesson-republish"
+                            onClick={() => setUnpublishOpen(true)}
+                            disabled={unpublishMutation.isPending}
+                            className="gap-2 text-destructive hover:text-destructive"
+                            data-testid="lesson-unpublish"
                           >
-                            <RefreshCw className="h-4 w-4" />
-                            Republish
+                            <Trash2 className="h-4 w-4" />
+                            Unpublish
                           </Button>
-                        )}
+                        </div>
                       </div>
                     ) : isFeatureFlagEnabledForTenant(lessonFlag, selected.tenant_id) ? (
                       <div className="space-y-2">
@@ -556,6 +628,33 @@ export default function AdminLessonReview() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Unpublish confirmation. Removing deletes the lesson's knowledge-base
+          document and its chunks so Sentinel can no longer cite it. */}
+      <AlertDialog open={unpublishOpen} onOpenChange={setUnpublishOpen}>
+        <AlertDialogContent data-testid="lesson-unpublish-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove lesson from knowledge base?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This deletes the published lesson document and its embeddings, so Sentinel will stop
+              retrieving and citing it. The lesson candidate itself is kept and can be published
+              again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selected) unpublishMutation.mutate(selected);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="lesson-unpublish-confirm"
+            >
+              Unpublish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
