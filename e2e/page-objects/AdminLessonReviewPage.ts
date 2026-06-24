@@ -91,6 +91,27 @@ export class AdminLessonReviewPage {
     return this.page.getByTestId('lesson-published-state');
   }
 
+  republishButton(): Locator {
+    return this.page.getByTestId('lesson-republish');
+  }
+
+  unpublishButton(): Locator {
+    return this.page.getByTestId('lesson-unpublish');
+  }
+
+  /** Click Publish and wait for the published state to appear. */
+  async clickPublish() {
+    await this.publishButton().click();
+    await expect(this.publishedState()).toBeVisible({ timeout: 20_000 });
+  }
+
+  /** Open the Unpublish confirm dialog and confirm the removal. */
+  async confirmUnpublish() {
+    await this.unpublishButton().click();
+    await expect(this.page.getByTestId('lesson-unpublish-dialog')).toBeVisible();
+    await this.page.getByTestId('lesson-unpublish-confirm').click();
+  }
+
   // ── Intake flow (originates on the AI Audit Logs page) ───────────────────
   async gotoAudit() {
     await this.page.goto('/admin/ai-audit');
