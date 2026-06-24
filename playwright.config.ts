@@ -120,6 +120,11 @@ export default defineConfig({
         'e2e/specs/ai-rag-quality.spec.ts',
         'e2e/specs/ai-feature-flags.spec.ts',
         'e2e/specs/lesson-review.spec.ts',
+        // Guarded live publish→unpublish path. All tests skip unless
+        // LESSON_FUNCTIONS_DEPLOYED=true (promote-lesson + unpublish-lesson must
+        // be deployed). Collected here so the spec is discoverable; it does not
+        // run in default CI.
+        'e2e/specs/lesson-publish-lifecycle.spec.ts',
       ],
     },
 
