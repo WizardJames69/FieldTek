@@ -56,7 +56,7 @@ import { writeAuditLog, trackConversation } from "./audit.ts";
 import type { AuditLogData } from "./audit.ts";
 
 import { createRetrievalAdapter } from "./retrieval.ts";
-import { classifyDegradedAnswer } from "./degradation.ts";
+import { classifyDegradedAnswer, decideRetrievalAbstain } from "./degradation.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
 import { evaluateWithJudge, evaluateWithJudgeBlocking } from "./judge.ts";
@@ -1118,14 +1118,25 @@ serve(async (req) => {
       });
     }
 
-    // ── 14b. Insufficient-Coverage Abstain Gate ───────────────
-    // If the tenant has indexed documents but retrieval could not find
-    // enough relevant chunks, refuse to answer rather than let the model
-    // hallucinate citations from training data. This is the single
-    // biggest trust lever: "Sentinel doesn't guess when grounding is thin."
-    const tenantHasIndexedDocs = docsWithEmbeddings.length > 0;
-    const retrievalBelowMinimum = semanticSearchResults.length < MIN_RELEVANT_CHUNKS;
-    if (tenantHasIndexedDocs && retrievalRan && retrievalBelowMinimum) {
+    // ── 14b. Retrieval Abstain Gate ───────────────────────────
+    // If the tenant has indexed documents but retrieval could not produce
+    // enough qualifying grounded chunks — whether retrieval ran and returned
+    // too few (insufficient_retrieval_coverage) OR never ran at all because of
+    // a query-embedding failure, adapter error, skipped short query, or
+    // disabled semantic search (retrieval_unavailable) — abstain rather than
+    // let an ungrounded full-document fallback reach the answer model. This is
+    // the single biggest trust lever: "Sentinel doesn't guess when grounding
+    // is thin." decideRetrievalAbstain (degradation.ts) is the pure source of
+    // truth so the rule is unit-tested and cannot drift. Returning here BEFORE
+    // the LLM call (§15) guarantees no document body is sent on a failed or
+    // unavailable retrieval.
+    const retrievalAbstainReason = decideRetrievalAbstain({
+      docsWithEmbeddingsCount: docsWithEmbeddings.length,
+      retrievalRan,
+      semanticSearchResultsCount: semanticSearchResults.length,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
+    });
+    if (retrievalAbstainReason) {
       const abstainText =
         "I couldn't find enough grounded context in your uploaded documents to answer that confidently. " +
         "Try rephrasing the question with more specific terminology (e.g. model numbers, fault codes), " +
@@ -1133,9 +1144,17 @@ serve(async (req) => {
       const abstainHashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(abstainText));
       const abstainOutputHash = Array.from(new Uint8Array(abstainHashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
 
+      // Reason-specific enforcement rule keeps the audit trail accurate so
+      // operators can distinguish an outage/retrieval-unavailable abstain from
+      // an ordinary unsupported-question (insufficient-coverage) abstain.
+      const abstainEnforcementRule = retrievalAbstainReason === "retrieval_unavailable"
+        ? "RETRIEVAL_UNAVAILABLE"
+        : "INSUFFICIENT_RETRIEVAL_COVERAGE";
+
       console.warn(
-        `[abstain] insufficient_retrieval_coverage tenant_id=${tenantUser.tenant_id} ` +
-        `correlation_id=${correlationId} semantic_results=${semanticSearchResults.length} ` +
+        `[abstain] ${retrievalAbstainReason} tenant_id=${tenantUser.tenant_id} ` +
+        `correlation_id=${correlationId} retrieval_ran=${retrievalRan} ` +
+        `semantic_results=${semanticSearchResults.length} ` +
         `docs_indexed=${docsWithEmbeddings.length}`,
       );
 
@@ -1153,7 +1172,7 @@ serve(async (req) => {
           token_count_prompt: 0, token_count_response: abstainText.length,
           injection_detected: injectionDetected, semantic_search_count: semanticSearchResults.length,
           response_modified: false, human_review_required: false, refusal_flag: false,
-          enforcement_rules_triggered: ["INSUFFICIENT_RETRIEVAL_COVERAGE"],
+          enforcement_rules_triggered: [abstainEnforcementRule],
           model_output_hash: abstainOutputHash,
           correlation_id: correlationId,
           abstain_flag: true,
@@ -1165,11 +1184,12 @@ serve(async (req) => {
         JSON.stringify({
           response: abstainText,
           abstained: true,
-          abstainReason: "insufficient_retrieval_coverage",
+          abstainReason: retrievalAbstainReason,
           metadata: {
             semantic_search_count: semanticSearchResults.length,
             required_chunks: MIN_RELEVANT_CHUNKS,
             docs_indexed: docsWithEmbeddings.length,
+            retrieval_ran: retrievalRan,
           },
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -1396,12 +1416,17 @@ serve(async (req) => {
         // ── Degraded-answer detection (PR-1.5a) ───────────────────
         // When no semantic chunks were used but document content exists, the
         // answer came from the full-document fallback rather than targeted
-        // retrieval (e.g. query-embedding failure leaves retrievalRan=false).
-        // Surface that honestly — metadata flag + UI banner + audit signal —
-        // instead of presenting an ungrounded fallback as grounded. A
+        // retrieval. Surface that honestly — metadata flag + UI banner + audit
+        // signal — instead of presenting an ungrounded fallback as grounded. A
         // validationFailed response is a refusal, not a served answer, so it is
-        // never flagged degraded. The strict insufficient-coverage abstain gate
-        // still owns the "retrieval ran but found nothing" case upstream.
+        // never flagged degraded.
+        // NOTE (PR-A, retrieval-abstain gate §14b): the `retrieval_unavailable`
+        // case (tenant HAS indexed docs but retrieval never ran) now abstains
+        // upstream before the LLM is ever called, so it can no longer reach
+        // this served-answer path. In practice the only degraded reason that
+        // still surfaces here is `indexing_incomplete` (document content exists
+        // but nothing is embedded yet → no indexed docs → the abstain gate does
+        // not apply, preserving the onboarding full-document fallback).
         // NOTE: forcing the LLM judge to evaluate this path is deferred to
         // PR-2.5 (judge-as-guardrail), where it can be measured by the eval
         // harness before being turned on.

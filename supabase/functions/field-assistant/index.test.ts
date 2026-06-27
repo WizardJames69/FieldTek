@@ -6,7 +6,7 @@ import {
   assertStringIncludes,
 } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import { MIN_RELEVANT_CHUNKS } from "./constants.ts";
-import { classifyDegradedAnswer } from "./degradation.ts";
+import { classifyDegradedAnswer, decideRetrievalAbstain } from "./degradation.ts";
 
 // NOTE: This test file intentionally duplicates a small subset of helper logic
 // from index.ts so we can unit test security guardrails without importing
@@ -1033,111 +1033,130 @@ Deno.test("Failure mode - technical response without citation is blocked", () =>
 });
 
 // ----------------------------
-// Insufficient-coverage abstain gate
+// Retrieval-abstain gate (Grounding-Trust Hardening, PR-A)
 // ----------------------------
-// Mirrors the boolean in index.ts: tenant has at least one indexed document,
-// retrieval actually ran, and it returned fewer than MIN_RELEVANT_CHUNKS
-// relevant chunks. The handler short-circuits to an abstain response before
-// calling the LLM so the model does not hallucinate citations from training
-// data. When retrieval never ran (short query, embedding failure, adapter
-// error, semantic search disabled) the request must fall through to the
-// pre-existing full-document-context path instead of abstaining.
-// MIN_RELEVANT_CHUNKS is imported from constants.ts (side-effect-free) so
-// these tests cannot drift from the deployed threshold.
+// decideRetrievalAbstain is the single source of truth for when the handler
+// short-circuits to the canonical abstain response BEFORE calling the LLM, so
+// the model never hallucinates citations from training data and no document
+// body reaches the answer model on a failed/unavailable retrieval. It is
+// imported for real (not mirrored) from degradation.ts so these tests cannot
+// drift from the deployed decision. MIN_RELEVANT_CHUNKS is imported from
+// constants.ts (side-effect-free) so the threshold cannot drift either.
+//
+// Decision rules:
+//   - tenant has NO indexed (embedded) docs            → null  (general-knowledge / onboarding; preserved)
+//   - tenant HAS indexed docs but retrieval never ran  → "retrieval_unavailable"  (bypass now CLOSED)
+//   - tenant HAS indexed docs, retrieval ran < MIN      → "insufficient_retrieval_coverage" (unchanged)
+//   - tenant HAS indexed docs, retrieval ran >= MIN     → null  (answerable; preserved)
 
-function shouldAbstainForCoverage(params: {
-  docsWithEmbeddingsCount: number;
-  retrievalRan: boolean;
-  semanticSearchResultsCount: number;
-}): boolean {
-  const tenantHasIndexedDocs = params.docsWithEmbeddingsCount > 0;
-  const retrievalBelowMinimum = params.semanticSearchResultsCount < MIN_RELEVANT_CHUNKS;
-  return tenantHasIndexedDocs && params.retrievalRan && retrievalBelowMinimum;
-}
-
-Deno.test("Abstain gate - tenant has docs, retrieval returned zero chunks", () => {
-  assert(shouldAbstainForCoverage({
-    docsWithEmbeddingsCount: 5,
-    retrievalRan: true,
-    semanticSearchResultsCount: 0,
-  }), "Zero-result with indexed docs must abstain");
-});
-
-Deno.test("Abstain gate - tenant has docs, retrieval returned exactly one chunk", () => {
-  assert(shouldAbstainForCoverage({
-    docsWithEmbeddingsCount: 5,
-    retrievalRan: true,
-    semanticSearchResultsCount: 1,
-  }), "Single-chunk retrieval with indexed docs must abstain");
-});
-
-Deno.test("Abstain gate - tenant has docs, retrieval returned MIN chunks", () => {
+Deno.test("decideRetrievalAbstain - tenant has docs, retrieval ran, zero chunks → insufficient_retrieval_coverage", () => {
   assertEquals(
-    shouldAbstainForCoverage({
+    decideRetrievalAbstain({
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: true,
+      semanticSearchResultsCount: 0,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
+    }),
+    "insufficient_retrieval_coverage",
+  );
+});
+
+Deno.test("decideRetrievalAbstain - tenant has docs, retrieval ran, exactly one chunk → insufficient_retrieval_coverage", () => {
+  assertEquals(
+    decideRetrievalAbstain({
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: true,
+      semanticSearchResultsCount: 1,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
+    }),
+    "insufficient_retrieval_coverage",
+  );
+});
+
+Deno.test("decideRetrievalAbstain - tenant has docs, retrieval ran, MIN chunks → answerable (null)", () => {
+  assertEquals(
+    decideRetrievalAbstain({
       docsWithEmbeddingsCount: 5,
       retrievalRan: true,
       semanticSearchResultsCount: MIN_RELEVANT_CHUNKS,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
     }),
-    false,
+    null,
     "Meeting MIN_RELEVANT_CHUNKS must NOT abstain",
   );
 });
 
-Deno.test("Abstain gate - tenant has no indexed docs, zero chunks is legitimate", () => {
-  // Degraded mode: no docs uploaded yet. The model should answer from general
-  // knowledge, not abstain with a "need more context" message.
+Deno.test("decideRetrievalAbstain - healthy retrieval with surplus chunks → answerable (null)", () => {
+  // Preserves the answerable path; lesson-sourced chunks that pass the retrieval
+  // gate count here exactly like any other chunk, so lesson_citations is unaffected.
   assertEquals(
-    shouldAbstainForCoverage({
-      docsWithEmbeddingsCount: 0,
-      retrievalRan: false,
-      semanticSearchResultsCount: 0,
+    decideRetrievalAbstain({
+      docsWithEmbeddingsCount: 5,
+      retrievalRan: true,
+      semanticSearchResultsCount: 6,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
     }),
-    false,
-    "Zero-result WITHOUT indexed docs must NOT abstain — fall through to degraded mode",
+    null,
   );
 });
 
-Deno.test("Abstain gate - tenant has no docs, legacy degraded mode untouched", () => {
-  // Even if the documents table has rows, nothing with embedding_status=completed
-  // means retrieval has nothing to search and the user is implicitly in degraded mode.
+Deno.test("decideRetrievalAbstain - tenant has no indexed docs, zero chunks → answerable (null)", () => {
+  // Onboarding / general-knowledge mode: no docs embedded yet. The model should
+  // answer from general knowledge, not abstain with a "need more context" message.
   assertEquals(
-    shouldAbstainForCoverage({
+    decideRetrievalAbstain({
+      docsWithEmbeddingsCount: 0,
+      retrievalRan: false,
+      semanticSearchResultsCount: 0,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
+    }),
+    null,
+    "No indexed docs must NOT abstain — preserve general-knowledge mode",
+  );
+});
+
+Deno.test("decideRetrievalAbstain - no indexed docs short-circuits regardless of retrieval count", () => {
+  // Nothing with embedding_status=completed means retrieval has nothing to
+  // search; the tenant is implicitly in degraded/onboarding mode.
+  assertEquals(
+    decideRetrievalAbstain({
       docsWithEmbeddingsCount: 0,
       retrievalRan: true,
       semanticSearchResultsCount: 3,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
     }),
-    false,
-    "No indexed docs always falls through to degraded mode regardless of retrieval count",
+    null,
+    "No indexed docs always falls through regardless of retrieval count",
   );
 });
 
-Deno.test("Abstain gate - retrieval skipped (short query) must NOT abstain", () => {
-  // Queries of <= 10 chars skip semantic search entirely. The empty result
-  // set means "never searched", not "nothing relevant exists" — falling
-  // through keeps the pre-existing full-document-context behavior.
+Deno.test("decideRetrievalAbstain - retrieval skipped (short query) with indexed docs → retrieval_unavailable (bypass CLOSED)", () => {
+  // Queries of <= 10 chars skip semantic search, leaving retrievalRan=false.
+  // Previously this fell through to an ungrounded full-document fallback answer.
+  // Product decision (PR-A): retrieval unavailable → abstain by default.
   assertEquals(
-    shouldAbstainForCoverage({
+    decideRetrievalAbstain({
       docsWithEmbeddingsCount: 5,
       retrievalRan: false,
       semanticSearchResultsCount: 0,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
     }),
-    false,
-    "Skipped retrieval must NOT abstain even with indexed docs",
+    "retrieval_unavailable",
   );
 });
 
-Deno.test("Abstain gate - retrieval failure (embedding/adapter error) must NOT abstain", () => {
-  // Infra failures (query-embedding generation, adapter exception) leave
-  // retrievalRan=false. Abstaining here would tell users to "rephrase"
-  // during an outage and pollute the abstain_count rollout metric.
+Deno.test("decideRetrievalAbstain - retrieval failure (embedding/adapter error) with indexed docs → retrieval_unavailable (bypass CLOSED)", () => {
+  // Infra failures (query-embedding generation, adapter exception, semantic
+  // search disabled) leave retrievalRan=false. The only available answer would
+  // be an ungrounded full-document fallback, so abstain instead of serving it.
   assertEquals(
-    shouldAbstainForCoverage({
+    decideRetrievalAbstain({
       docsWithEmbeddingsCount: 12,
       retrievalRan: false,
       semanticSearchResultsCount: 0,
+      minRelevantChunks: MIN_RELEVANT_CHUNKS,
     }),
-    false,
-    "Failed retrieval must NOT abstain — fall through to degraded answer",
+    "retrieval_unavailable",
   );
 });
 
@@ -1188,9 +1207,12 @@ Deno.test("Zero-result signal - does NOT fire when tenant has no indexed docs", 
 // imported here for real (not mirrored) so it cannot drift from index.ts.
 
 Deno.test("classifyDegradedAnswer - indexed docs but retrieval never ran → retrieval_unavailable", () => {
-  // The plan's core hole: embedding/adapter failure (or skipped retrieval)
-  // leaves retrievalRan=false while grounding material exists. The full-doc
-  // fallback answer must be flagged degraded, not served as grounded.
+  // The pure classifier still recognizes this state as a degraded retrieval
+  // fallback. As of PR-A this state no longer reaches the served-answer path:
+  // decideRetrievalAbstain (§14b) abstains upstream before the LLM is called
+  // whenever a tenant has indexed docs but retrieval never ran. This test pins
+  // the classifier's behavior in isolation; the orchestrator wiring is what
+  // guarantees the fallback answer is never actually served.
   assertEquals(
     classifyDegradedAnswer({
       docsWithContentCount: 8,
