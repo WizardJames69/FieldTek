@@ -253,3 +253,113 @@ describe("aggregate", () => {
     expect(m.abstainRate).toBeCloseTo(1);
   });
 });
+
+// Judge expectations (feat/judge-eval-harness) -------------------------------
+// A case may carry `expectedJudge` to assert the existing LLM judge actually ran
+// and produced the right verdict. These assertions are OPT-IN: when a case omits
+// `expectedJudge`, scoring is byte-for-byte unchanged (judgeChecked=false,
+// judgePassed=null, `passed` unaffected). When present, judgePassed folds into
+// `passed`. The judge probe is what proves judge wiring works without enabling
+// rag_judge in production.
+
+// A grounded answerable case that also asserts the judge ran and approved it.
+const judgeProbeCase: EvalCase = {
+  id: "jp1",
+  type: "manual",
+  question: "What refrigerant does the 24ACC6 use?",
+  expectedSources: {
+    documentNames: ["Carrier 24ACC6 Manual"],
+    chunkIncludes: ["refrigerant charge"],
+  },
+  expectedFacts: ["R-410A"],
+  expectedJudge: { ran: true, grounded: true, noContradiction: true, minConfidence: 3 },
+};
+
+// A fully-grounded observation that ALSO passes retrieval/citation/fact checks,
+// so the only thing the judge expectation can change is judgePassed/passed.
+function groundedProbeObs(partial: Partial<EvalObservation> = {}): EvalObservation {
+  return obs({
+    retrievedDocNames: ["Carrier 24ACC6 Manual"],
+    retrievedChunkTexts: ["The proper refrigerant charge is 6 lb 4 oz."],
+    citedDocNames: ["Carrier 24ACC6 Manual"],
+    hadCitations: true,
+    answerText: "Use R-410A; the proper refrigerant charge is 6 lb 4 oz. [Source: Carrier 24ACC6 Manual p.12]",
+    judgeRan: true,
+    judgeGrounded: true,
+    judgeContradiction: false,
+    judgeConfidence: 5,
+    judgeVerdict: "pass",
+    ...partial,
+  });
+}
+
+describe("scoreCase — judge expectations", () => {
+  it("omitted expectedJudge → judgeChecked=false, judgePassed=null, scoring unchanged", () => {
+    const r = scoreCase(manualCase, groundedProbeObs());
+    expect(r.judgeChecked).toBe(false);
+    expect(r.judgePassed).toBeNull();
+    expect(r.passed).toBe(true);
+  });
+
+  it("judge ran + grounded + no contradiction + confident → judgePassed=true and passes", () => {
+    const r = scoreCase(judgeProbeCase, groundedProbeObs());
+    expect(r.judgeChecked).toBe(true);
+    expect(r.judgePassed).toBe(true);
+    expect(r.passed).toBe(true);
+  });
+
+  it("judge did NOT run (judge_grounded null) but was expected → judgePassed=false, fail", () => {
+    const r = scoreCase(
+      judgeProbeCase,
+      groundedProbeObs({ judgeRan: false, judgeGrounded: null, judgeContradiction: null, judgeConfidence: null, judgeVerdict: "none" }),
+    );
+    expect(r.judgePassed).toBe(false);
+    expect(r.passed).toBe(false);
+  });
+
+  it("judge ran but ungrounded → judgePassed=false, fail", () => {
+    const r = scoreCase(
+      judgeProbeCase,
+      groundedProbeObs({ judgeGrounded: false }),
+    );
+    expect(r.judgePassed).toBe(false);
+    expect(r.passed).toBe(false);
+  });
+
+  it("judge detected a contradiction → judgePassed=false, fail", () => {
+    const r = scoreCase(
+      judgeProbeCase,
+      groundedProbeObs({ judgeContradiction: true }),
+    );
+    expect(r.judgePassed).toBe(false);
+    expect(r.passed).toBe(false);
+  });
+
+  it("judge confidence below minConfidence → judgePassed=false, fail", () => {
+    const r = scoreCase(
+      judgeProbeCase,
+      groundedProbeObs({ judgeConfidence: 2 }),
+    );
+    expect(r.judgePassed).toBe(false);
+    expect(r.passed).toBe(false);
+  });
+
+  it("supports a future blocking assertion via expectedJudge.verdict (no live case here)", () => {
+    const blockingCase: EvalCase = {
+      ...judgeProbeCase,
+      id: "jp-block",
+      expectedJudge: { ran: true, verdict: "blocked" },
+    };
+    // verdict "pass" does not satisfy an expected "blocked" verdict.
+    expect(scoreCase(blockingCase, groundedProbeObs()).judgePassed).toBe(false);
+    // verdict "blocked" satisfies it.
+    expect(scoreCase(blockingCase, groundedProbeObs({ judgeVerdict: "blocked" })).judgePassed).toBe(true);
+  });
+
+  it("an existing must_abstain case is unaffected by judge machinery", () => {
+    const r = scoreCase(abstainCase, obs({ answered: false, abstained: true }));
+    expect(r.judgeChecked).toBe(false);
+    expect(r.judgePassed).toBeNull();
+    expect(r.passed).toBe(true);
+  });
+});

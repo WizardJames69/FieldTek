@@ -28,6 +28,30 @@ export interface EvalExpectedSources {
   onlyDocumentNames?: string[];
 }
 
+/**
+ * Optional assertions about the existing LLM judge (judge.ts → ai_audit_logs
+ * judge_* columns). Used by the opt-in `--judge-check` probe to prove the judge
+ * actually ran and reached the right verdict, WITHOUT enabling rag_judge in
+ * production. Every field is optional and only checked when present.
+ * Backward-compatible: a case that omits `expectedJudge` scores exactly as before.
+ */
+export interface EvalExpectedJudge {
+  /** The judge must have run for this case (judge_grounded non-null / judge_model set). */
+  ran?: boolean;
+  /** judge_grounded must equal this. */
+  grounded?: boolean;
+  /** judge_contradiction must be false (no contradiction detected). */
+  noContradiction?: boolean;
+  /** judge_confidence must be >= this (clamped 1–5 by the judge). */
+  minConfidence?: number;
+  /**
+   * Future blocking assertion: required judge_verdict
+   * ("pass" | "warn_appended" | "blocked"). Harness support only — no live
+   * blocking case ships in this PR and blocking is NOT enabled here.
+   */
+  verdict?: string;
+}
+
 export interface EvalCase {
   id: string;
   type: EvalCaseType;
@@ -40,6 +64,11 @@ export interface EvalCase {
   expectedFacts?: string[];
   /** True for must_abstain cases: a confident answer is a failure. */
   expectAbstain?: boolean;
+  /**
+   * Opt-in judge assertion. Omit it and scoring is unchanged; set it (e.g. in
+   * the --judge-check probe) to assert the judge ran and approved the answer.
+   */
+  expectedJudge?: EvalExpectedJudge;
 }
 
 /**
@@ -68,8 +97,19 @@ export interface EvalObservation {
   hadCitations: boolean;
   /** judge_grounded from the LLM judge (null if judge did not run). */
   judgeGrounded: boolean | null;
-  /** judge_verdict: pass | warn_appended | blocked (null if judge did not run). */
+  /** judge_verdict: none | pass | warn_appended | blocked (null if not persisted). */
   judgeVerdict: string | null;
+  /** judge_contradiction from the LLM judge (null if judge did not run). */
+  judgeContradiction?: boolean | null;
+  /** judge_confidence 1–5 from the LLM judge (null if judge did not run). */
+  judgeConfidence?: number | null;
+  /**
+   * Whether the judge ran at all. Derived by the runner from the audit row
+   * (judge_grounded non-null or judge_model present). Optional/undefined for
+   * synthetic observations that don't set it — scoring falls back to
+   * judgeGrounded !== null.
+   */
+  judgeRan?: boolean | null;
 
   // ── Diagnostic fields (optional; populated by the live runner for the
   //    enriched report). Kept optional so the pure scorer + its tests are
@@ -112,6 +152,10 @@ export interface EvalCaseResult {
   abstainCorrect: boolean | null;
   /** Confident answer where it should have abstained, or judge-flagged ungrounded. */
   hallucinated: boolean;
+  /** True when the case carried an `expectedJudge` assertion (judge probe). */
+  judgeChecked: boolean;
+  /** All judge expectations held (null = no expectedJudge → not applicable). */
+  judgePassed: boolean | null;
   /** Overall per-case pass (boolean expectations; thresholds arrive in PR-2.2). */
   passed: boolean;
 }
@@ -143,6 +187,14 @@ export interface EvalCaseReport extends EvalCaseResult {
   auditLogId: string | null;
   correlationId: string | null;
   error: string | null;
+  // ── Judge signals (for judge-probe runs; null/absent on normal runs where
+  //    the judge is off). Surfaced so a --judge-check failure is diagnosable
+  //    from the report alone. ──
+  judgeRan: boolean | null;
+  judgeGrounded: boolean | null;
+  judgeContradiction: boolean | null;
+  judgeConfidence: number | null;
+  judgeVerdict: string | null;
 }
 
 export interface EvalMetrics {

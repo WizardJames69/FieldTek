@@ -8,6 +8,7 @@
 import type {
   EvalCase,
   EvalCaseResult,
+  EvalExpectedJudge,
   EvalMetrics,
   EvalObservation,
 } from "./types";
@@ -39,6 +40,51 @@ function everyDocAllowed(actual: string[], allowed: string[]): boolean {
 function allSubstringsPresent(needles: string[], haystack: string): boolean {
   const h = norm(haystack);
   return needles.every((n) => h.includes(norm(n)));
+}
+
+/**
+ * Did the LLM judge run for this observation? Both the async and blocking judge
+ * paths set judge_grounded (and judge_model), so a non-null judgeGrounded means
+ * it ran. The runner may also set judgeRan explicitly; honor that when present.
+ */
+export function judgeRanOf(obs: EvalObservation): boolean {
+  if (obs.judgeRan === true) return true;
+  if (obs.judgeRan === false) return false;
+  return obs.judgeGrounded !== null && obs.judgeGrounded !== undefined;
+}
+
+/**
+ * Evaluate an `expectedJudge` assertion against the observation. Returns true
+ * only when EVERY specified expectation holds. Any expectation about the
+ * verdict/grounding/contradiction/confidence implicitly requires the judge to
+ * have run (an absent judge fails the probe — that is the point). Pure.
+ */
+export function evaluateJudgeExpectation(
+  exp: EvalExpectedJudge,
+  obs: EvalObservation,
+): boolean {
+  const ran = judgeRanOf(obs);
+
+  if (exp.ran === true && !ran) return false;
+  if (exp.ran === false && ran) return false;
+
+  // Any verdict-level expectation needs the judge to have actually run.
+  const needsRun =
+    exp.grounded !== undefined ||
+    exp.noContradiction !== undefined ||
+    exp.minConfidence !== undefined ||
+    exp.verdict !== undefined;
+  if (needsRun && !ran) return false;
+
+  if (exp.grounded === true && obs.judgeGrounded !== true) return false;
+  if (exp.grounded === false && obs.judgeGrounded !== false) return false;
+  if (exp.noContradiction === true && obs.judgeContradiction === true) return false;
+  if (exp.minConfidence !== undefined && (obs.judgeConfidence ?? 0) < exp.minConfidence) {
+    return false;
+  }
+  if (exp.verdict !== undefined && obs.judgeVerdict !== exp.verdict) return false;
+
+  return true;
 }
 
 export function scoreCase(c: EvalCase, obs: EvalObservation): EvalCaseResult {
@@ -102,6 +148,15 @@ export function scoreCase(c: EvalCase, obs: EvalObservation): EvalCaseResult {
     ? obs.answered && !obs.abstained
     : obs.answered && obs.judgeGrounded === false;
 
+  // ── Judge expectation (opt-in) ───────────────────────────
+  // Only evaluated when the case carries `expectedJudge`. When omitted,
+  // judgeChecked=false and judgePassed=null, and `passed` below is unaffected
+  // (`null !== false` is true), so existing cases score exactly as before.
+  const judgeChecked = c.expectedJudge !== undefined;
+  const judgePassed: boolean | null = judgeChecked
+    ? evaluateJudgeExpectation(c.expectedJudge!, obs)
+    : null;
+
   // ── Overall pass ─────────────────────────────────────────
   let passed: boolean;
   if (c.expectAbstain || c.type === "must_abstain") {
@@ -114,6 +169,8 @@ export function scoreCase(c: EvalCase, obs: EvalObservation): EvalCaseResult {
       citationSupported !== false &&
       factsCovered !== false;
   }
+  // A present judge expectation that fails turns the whole case red.
+  passed = passed && judgePassed !== false;
 
   return {
     caseId: c.id,
@@ -124,6 +181,8 @@ export function scoreCase(c: EvalCase, obs: EvalObservation): EvalCaseResult {
     factsCovered,
     abstainCorrect,
     hallucinated,
+    judgeChecked,
+    judgePassed,
     passed,
   };
 }

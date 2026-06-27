@@ -59,5 +59,10 @@ export function buildCaseReport(
     auditLogId: obs.auditLogId ?? null,
     correlationId: obs.correlationId ?? null,
     error: obs.error ? redactSecrets(obs.error) : null,
+    judgeRan: obs.judgeRan ?? null,
+    judgeGrounded: obs.judgeGrounded ?? null,
+    judgeContradiction: obs.judgeContradiction ?? null,
+    judgeConfidence: obs.judgeConfidence ?? null,
+    judgeVerdict: obs.judgeVerdict ?? null,
   };
 }

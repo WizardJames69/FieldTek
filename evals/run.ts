@@ -8,6 +8,7 @@
 //   npx tsx evals/run.ts --self-test          # offline scoring smoke (no cost)
 //   npx tsx evals/run.ts --report r.json --check   # offline: gate a saved report
 //   npx tsx evals/run.ts                       # LIVE: hits field-assistant (OpenAI $)
+//   npx tsx evals/run.ts --judge-check        # LIVE judge probe (needs rag_judge ON)
 //   npx tsx evals/run.ts --limit 3            # first N cases
 //   npx tsx evals/run.ts --max-tokens 50000   # stop the live run at a token budget
 //   npx tsx evals/run.ts --check              # LIVE + exit non-zero if below thresholds
@@ -35,6 +36,7 @@ import { getAdminClient } from "../e2e/helpers/supabase-admin";
 import { EVAL_ADMIN_EMAIL, EVAL_ADMIN_PASSWORD } from "./evalIdentity";
 
 import { BENCHMARK_CASES } from "./cases";
+import { JUDGE_PROBE_CASES } from "./judgeProbe";
 import { LESSON_DOCUMENT_NAME, LESSON_CHUNKS } from "./lessonCorpus";
 import { scoreCase, aggregate } from "./scoring";
 import { buildCaseReport } from "./report";
@@ -64,6 +66,13 @@ interface Args {
   selfTest: boolean;
   /** Enforce thresholds: print the gate verdict and exit non-zero on failure. */
   check: boolean;
+  /**
+   * Opt-in judge probe: run JUDGE_PROBE_CASES (not the 11-case benchmark) and
+   * exit non-zero if any judge expectation fails. Proves the LLM judge ran and
+   * approved a grounded answer. Requires rag_judge enabled for the eval tenant;
+   * NOT run as part of the default suite or this PR.
+   */
+  judgeCheck: boolean;
   limit?: number;
   out?: string;
   /** Offline: load + gate this saved report JSON instead of running live. */
@@ -77,11 +86,12 @@ interface Args {
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { selfTest: false, check: false };
+  const args: Args = { selfTest: false, check: false, judgeCheck: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--self-test") args.selfTest = true;
     else if (a === "--check") args.check = true;
+    else if (a === "--judge-check") args.judgeCheck = true;
     else if (a === "--limit") args.limit = Number(argv[++i]);
     else if (a === "--out") args.out = argv[++i];
     else if (a === "--report") args.report = argv[++i];
@@ -110,6 +120,9 @@ function emptyObservation(caseId: string, error: string | null = null): EvalObse
     hadCitations: false,
     judgeGrounded: null,
     judgeVerdict: null,
+    judgeContradiction: null,
+    judgeConfidence: null,
+    judgeRan: false,
     error,
   };
 }
@@ -179,6 +192,9 @@ async function observeCase(
   let hadCitations = interp.answered && citedDocNames.length > 0;
   let judgeGrounded: boolean | null = null;
   let judgeVerdict: string | null = null;
+  let judgeContradiction: boolean | null = null;
+  let judgeConfidence: number | null = null;
+  let judgeRan: boolean | null = null;
   let citationDensity: number | null = null;
   let abstainFlag: boolean | null = null;
   let enforcementRulesTriggered: string[] | null = null;
@@ -201,6 +217,16 @@ async function observeCase(
       }
       if (typeof log.judge_grounded === "boolean") judgeGrounded = log.judge_grounded;
       if (typeof log.judge_verdict === "string") judgeVerdict = log.judge_verdict;
+      if (typeof log.judge_contradiction === "boolean") judgeContradiction = log.judge_contradiction;
+      if (typeof log.judge_confidence === "number") judgeConfidence = log.judge_confidence;
+      // The judge ran iff it produced a grounding verdict (async + blocking
+      // paths both set judge_grounded) or stamped its model on the row.
+      judgeRan =
+        log.judge_grounded !== null && log.judge_grounded !== undefined
+          ? true
+          : typeof log.judge_model === "string" && log.judge_model.length > 0
+            ? true
+            : false;
       if (typeof log.citation_density === "number") citationDensity = log.citation_density;
       if (typeof log.abstain_flag === "boolean") abstainFlag = log.abstain_flag;
       if (Array.isArray(log.enforcement_rules_triggered)) {
@@ -236,6 +262,9 @@ async function observeCase(
       hadCitations,
       judgeGrounded,
       judgeVerdict,
+      judgeContradiction,
+      judgeConfidence,
+      judgeRan,
       citedDocNamesFromMetadata,
       citedDocNamesFromText,
       citationDensity,
@@ -421,19 +450,73 @@ function runSelfTest(nowIso: string): EvalReport {
   foreignObs.retrievedDocNames = [...foreignObs.retrievedDocNames, "Carrier 24ACC636 Installation Manual"];
   const soleSourceEnforced = scoreCase(lessonCase, foreignObs).passed === false;
 
-  // Sanity: the canned good/lesson/abstain cases pass, the miss fails, and the
-  // sole-source gate rejects a foreign source.
+  // ── Judge-probe scoring proofs (offline, synthetic) ──────────────────────
+  // Prove the judge-expectation machinery: a judge probe passes only when the
+  // judge ran + grounded + no contradiction + confident; and an existing case
+  // WITHOUT expectedJudge scores identically whether or not judge fields appear.
+  const judgeCase = JUDGE_PROBE_CASES[0];
+  // A grounded observation that satisfies the probe's retrieval/citation/fact +
+  // judge expectations.
+  const judgeBaseObs: EvalObservation = {
+    caseId: judgeCase.id,
+    answered: true,
+    abstained: false,
+    answerText: "Maintenance interval guidance: service on a quarterly schedule. [Source: HVAC Maintenance Best Practices]",
+    retrievedChunkCount: 2,
+    retrievedDocNames: ["HVAC Maintenance Best Practices"],
+    retrievedChunkTexts: ["Recommended maintenance interval: quarterly."],
+    citedDocNames: ["HVAC Maintenance Best Practices"],
+    hadCitations: true,
+    judgeGrounded: true,
+    judgeVerdict: "pass",
+    judgeContradiction: false,
+    judgeConfidence: 5,
+    judgeRan: true,
+  };
+  const judgeGoodPass = scoreCase(judgeCase, judgeBaseObs).passed === true;
+  const judgeMissingFails =
+    scoreCase(judgeCase, { ...judgeBaseObs, judgeRan: false, judgeGrounded: null, judgeContradiction: null, judgeConfidence: null, judgeVerdict: "none" }).passed === false;
+  const judgeUngroundedFails =
+    scoreCase(judgeCase, { ...judgeBaseObs, judgeGrounded: false }).passed === false;
+  const judgeContradictionFails =
+    scoreCase(judgeCase, { ...judgeBaseObs, judgeContradiction: true }).passed === false;
+  // An existing benchmark case (no expectedJudge) is unaffected by the NEW
+  // judge-expectation machinery: setting the new judge fields (contradiction /
+  // confidence / ran / verdict) must not change its score. (judgeGrounded is
+  // deliberately held constant — the pre-existing hallucination rule already
+  // consumes judge_grounded and is out of scope for this PR.)
+  const noJudgeCase = byId("EV-M-001");
+  const noJudgeBase = syntheticObservation("EV-M-001", "good");
+  const withJudgeFields: EvalObservation = { ...noJudgeBase, judgeContradiction: true, judgeConfidence: 1, judgeRan: true, judgeVerdict: "blocked" };
+  const r1 = scoreCase(noJudgeCase, noJudgeBase);
+  const r2 = scoreCase(noJudgeCase, withJudgeFields);
+  const existingUnaffected =
+    r1.judgeChecked === false && r1.judgePassed === null &&
+    r2.judgeChecked === false && r2.judgePassed === null &&
+    r1.passed === r2.passed;
+
+  // Sanity: the canned good/lesson/abstain cases pass, the miss fails, the
+  // sole-source gate rejects a foreign source, and the judge proofs all hold.
   const ok =
     results.find((r) => r.caseId === "EV-M-001")?.passed === true &&
     results.find((r) => r.caseId === "EV-M-004")?.passed === false &&
     results.find((r) => r.caseId === "EV-A-003")?.passed === true &&
     results.find((r) => r.caseId === "EV-LESSON-001")?.passed === true &&
-    soleSourceEnforced;
+    soleSourceEnforced &&
+    judgeGoodPass &&
+    judgeMissingFails &&
+    judgeUngroundedFails &&
+    judgeContradictionFails &&
+    existingUnaffected;
   if (!ok) {
     console.error("\n[eval] SELF-TEST FAILED: scoring did not match expectations");
     process.exit(1);
   }
-  console.log("\n[eval] self-test OK (offline, no cost)");
+  console.log(
+    "\n[eval] self-test OK (offline, no cost) — incl. judge proofs " +
+      `[good=${judgeGoodPass} missing→fail=${judgeMissingFails} ungrounded→fail=${judgeUngroundedFails} ` +
+      `contradiction→fail=${judgeContradictionFails} existing-unaffected=${existingUnaffected}]`,
+  );
   return report;
 }
 
@@ -461,7 +544,10 @@ async function main(): Promise<void> {
   }
 
   // ── Live: ask the deployed assistant — this calls OpenAI (costs money) ──
-  const cases = args.limit ? BENCHMARK_CASES.slice(0, args.limit) : BENCHMARK_CASES;
+  // --judge-check swaps in the judge probe suite; the default 11-case benchmark
+  // is otherwise untouched.
+  const benchmark = args.judgeCheck ? JUDGE_PROBE_CASES : BENCHMARK_CASES;
+  const cases = args.limit ? benchmark.slice(0, args.limit) : benchmark;
   const client = createAIClient(); // throws if env missing
   const tenantId = await resolveTenantId();
   const seedInfo = await ensureCorpusSeeded(tenantId);
@@ -500,16 +586,40 @@ async function main(): Promise<void> {
     const r = scoreCase(c, obs);
     results.push(buildCaseReport(c, obs, r));
     tracker.record(tokensUsed);
+    const judgeInfo = r.judgeChecked
+      ? ` judge_ran=${obs.judgeRan} grounded=${obs.judgeGrounded} ` +
+        `contradiction=${obs.judgeContradiction} confidence=${obs.judgeConfidence} ` +
+        `verdict=${obs.judgeVerdict} judge_pass=${r.judgePassed}`
+      : "";
     console.log(
       `[eval] ${r.passed ? "PASS" : "FAIL"} ${c.id} (answered=${obs.answered} ` +
         `abstained=${obs.abstained} retrieved=${obs.retrievedChunkCount} ` +
-        `tokens=${tokensUsed} spent=${tracker.spent()})`,
+        `tokens=${tokensUsed} spent=${tracker.spent()})${judgeInfo}`,
     );
   }
 
-  const report = buildReport("hvac-first-benchmark", results, nowIso);
+  const report = buildReport(
+    args.judgeCheck ? "judge-probe" : "hvac-first-benchmark",
+    results,
+    nowIso,
+  );
   const file = writeReport(report, args.out);
   printSummary(report, file);
+
+  if (args.judgeCheck) {
+    // The judge probe gates on per-case pass (the metric thresholds target the
+    // benchmark, not a 1-case judge probe). Fails clearly when the judge did not
+    // run, was ungrounded, or detected a contradiction.
+    const failed = report.cases.filter((c) => !c.passed);
+    console.log(`\n--- judge-check: ${failed.length === 0 ? "PASS" : "FAIL"} ---`);
+    for (const c of failed) {
+      console.log(`  ✗ ${c.caseId} judgePassed=${c.judgePassed} judgeRan=${c.judgeRan} ` +
+        `judgeGrounded=${c.judgeGrounded} judgeContradiction=${c.judgeContradiction}`);
+    }
+    if (failed.length > 0) process.exitCode = 1;
+    return;
+  }
+
   gate(report, thresholds, baseline, args, true);
 }
 
