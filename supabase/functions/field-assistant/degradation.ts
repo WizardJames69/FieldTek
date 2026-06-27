@@ -62,3 +62,64 @@ export function classifyDegradedAnswer(state: AnswerGroundingState): DegradedRea
   // the answer path), so this is not a degraded fallback answer.
   return null;
 }
+
+/**
+ * Why the orchestrator abstains before calling the answer model.
+ *
+ * - `retrieval_unavailable`: the tenant has indexed (embedded) documents but
+ *   retrieval never ran for this request (query-embedding failure, retrieval
+ *   adapter error, a skipped short query, or semantic search disabled). There
+ *   are no grounded chunks to answer from, so the only available answer would
+ *   be an ungrounded full-document fallback.
+ * - `insufficient_retrieval_coverage`: retrieval ran but produced fewer
+ *   qualifying chunks than the minimum required to answer confidently.
+ */
+export type RetrievalAbstainReason =
+  | "retrieval_unavailable"
+  | "insufficient_retrieval_coverage";
+
+export interface RetrievalAbstainState {
+  /** Documents with embedding_status = "completed" (i.e. retrievable). */
+  docsWithEmbeddingsCount: number;
+  /** True only when the retrieval adapter actually executed and returned. */
+  retrievalRan: boolean;
+  /** Number of qualifying semantic chunks retrieval produced. */
+  semanticSearchResultsCount: number;
+  /** Minimum qualifying chunks required to answer (MIN_RELEVANT_CHUNKS). */
+  minRelevantChunks: number;
+}
+
+/**
+ * Decide whether to abstain instead of serving an answer, and why. This closes
+ * the retrieval-failure abstain bypass: when a tenant has indexed documents but
+ * retrieval could not produce qualifying grounded chunks — whether because it
+ * never ran or because it ran with too few results — Sentinel abstains with the
+ * canonical grounded-context response rather than letting an ungrounded
+ * full-document fallback reach the answer model.
+ *
+ * Returns `null` (answerable) for:
+ *   - tenants with no indexed documents (general-knowledge / onboarding mode), and
+ *   - healthy retrieval that met the minimum qualifying-chunk count.
+ *
+ * Pure — no side effects.
+ */
+export function decideRetrievalAbstain(state: RetrievalAbstainState): RetrievalAbstainReason | null {
+  // Only tenants with indexed (embedded) documents are gated. With nothing
+  // embedded, the model answers from general knowledge / the onboarding
+  // full-document fallback — preserved behavior, this gate does not apply.
+  if (state.docsWithEmbeddingsCount <= 0) return null;
+
+  // Retrieval never ran for a tenant that HAS embedded docs. The only available
+  // answer would be an ungrounded full-document fallback, so abstain instead of
+  // serving it. (Closes the bypass the master plan flagged as the #1 safety fix.)
+  if (!state.retrievalRan) return "retrieval_unavailable";
+
+  // Retrieval ran but produced fewer qualifying chunks than the minimum →
+  // ordinary insufficient-coverage abstain (unchanged behavior).
+  if (state.semanticSearchResultsCount < state.minRelevantChunks) {
+    return "insufficient_retrieval_coverage";
+  }
+
+  // Indexed docs + retrieval ran + enough qualifying chunks → answerable.
+  return null;
+}

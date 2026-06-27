@@ -112,3 +112,58 @@ test.describe('Feature Flag Fallback', () => {
     }
   });
 });
+
+// Grounding-Trust Hardening (PR-A): when a tenant HAS indexed documents but
+// retrieval cannot produce qualifying grounded chunks, Sentinel must abstain by
+// default rather than stream an ungrounded full-document fallback answer.
+//
+// A query whose extracted search text is <= 10 chars skips semantic search
+// entirely (retrievalRan=false) — the same code path as a query-embedding
+// failure or retrieval adapter error — so it is a deterministic, offline-safe
+// trigger for the `retrieval_unavailable` abstain branch.
+//
+// Guarded: this asserts the NEW behavior and therefore only holds once
+// field-assistant is redeployed with the PR-A abstain gate. It is skipped by
+// default so it never reds the suite against the currently-deployed version.
+// Run after deploy with ABSTAIN_HARDENING_DEPLOYED=true (separate approval).
+const RUN_ABSTAIN_HARDENING = process.env.ABSTAIN_HARDENING_DEPLOYED === 'true';
+const abstainDescribe = RUN_ABSTAIN_HARDENING ? test.describe : test.describe.skip;
+
+abstainDescribe('Retrieval Unavailable Abstain (PR-A)', () => {
+  test('short query (retrieval skipped) on an indexed tenant abstains, does not stream a fallback', async () => {
+    test.slow();
+    // <= 10 char extracted query → semantic search skipped → retrievalRan=false.
+    const res = await client.sendChatMessage({
+      messages: [{ role: 'user', content: 'AC?' }],
+      context: { industry: 'hvac' },
+      authToken: adminToken,
+    });
+
+    expect(res.status).toBe(200);
+    // No ungrounded full-document answer should be streamed.
+    expect(res.streamedContent.length).toBe(0);
+
+    // The structured abstain JSON should report the retrieval_unavailable reason.
+    const json = JSON.parse(res.body) as {
+      abstained?: boolean;
+      abstainReason?: string;
+      metadata?: { retrieval_ran?: boolean };
+    };
+    expect(json.abstained).toBe(true);
+    expect(json.abstainReason).toBe('retrieval_unavailable');
+    expect(json.metadata?.retrieval_ran).toBe(false);
+  });
+
+  test('a normal grounded question on the same tenant still answers', async () => {
+    test.slow();
+    // Control: healthy retrieval with sufficient chunks must remain answerable
+    // (the hardening must not over-abstain).
+    const res = await client.sendChatMessage({
+      messages: [{ role: 'user', content: 'What is the recommended HVAC filter replacement schedule?' }],
+      context: { industry: 'hvac' },
+      authToken: adminToken,
+    });
+    expect(res.status).toBe(200);
+    expect(res.streamedContent.length).toBeGreaterThan(0);
+  });
+});
