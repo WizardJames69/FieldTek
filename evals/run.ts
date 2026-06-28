@@ -31,7 +31,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { createAIClient, type AIAPIClient } from "../e2e/helpers/ai-api-client";
-import { waitForAuditLog } from "../e2e/helpers/audit-log-helpers";
+import { waitForAuditLog, waitForJudgeAuditLog } from "../e2e/helpers/audit-log-helpers";
 import { getAdminClient } from "../e2e/helpers/supabase-admin";
 import { EVAL_ADMIN_EMAIL, EVAL_ADMIN_PASSWORD } from "./evalIdentity";
 
@@ -45,6 +45,8 @@ import {
   extractCitedDocNames,
   extractCitedDocNamesFromText,
   mergeCitedDocNames,
+  shouldWaitForJudge,
+  describeJudgeWait,
 } from "./observe";
 import { ensureCorpusSeeded, resolveTenantId } from "./seed";
 import {
@@ -163,6 +165,7 @@ async function observeCase(
   adminToken: string,
   tenantId: string,
   c: EvalCase,
+  opts: { judgeAware?: boolean } = {},
 ): Promise<{ obs: EvalObservation; tokensUsed: number }> {
   const res = await client.sendChatMessage({
     messages: [{ role: "user", content: c.question }],
@@ -207,7 +210,23 @@ async function observeCase(
   // the response signals alone (must_abstain only needs `abstained`).
   if (res.correlationId) {
     try {
-      const log = await waitForAuditLog(tenantId, res.correlationId, 20000);
+      // Judge probes (--judge-check / cases with expectedJudge) must re-poll the
+      // SAME row until the fire-and-forget async judge update lands; the default
+      // 11-case path keeps its single existence wait and no extra latency.
+      let log: Record<string, unknown>;
+      if (opts.judgeAware) {
+        const judgeWait = await waitForJudgeAuditLog(tenantId, res.correlationId, {
+          rowTimeoutMs: 20000,
+          judgeTimeoutMs: 10000,
+          pollIntervalMs: 500,
+        });
+        log = judgeWait.log ?? {};
+        if (!judgeWait.judgeComplete) {
+          console.warn(describeJudgeWait(res.correlationId, judgeWait));
+        }
+      } else {
+        log = await waitForAuditLog(tenantId, res.correlationId, 20000);
+      }
       retrievedChunkCount = num(log.semantic_search_count);
       // had_citations from the audit is the server's view; OR in the client
       // text-parse so a client-visible citation isn't lost if the server view
@@ -575,7 +594,12 @@ async function main(): Promise<void> {
     let obs: EvalObservation;
     let tokensUsed = 0;
     try {
-      const observed = await observeCase(client, adminToken, tenantId, c);
+      const observed = await observeCase(client, adminToken, tenantId, c, {
+        judgeAware: shouldWaitForJudge({
+          judgeCheckActive: args.judgeCheck,
+          caseHasExpectedJudge: c.expectedJudge !== undefined,
+        }),
+      });
       obs = observed.obs;
       tokensUsed = observed.tokensUsed;
     } catch (e) {
