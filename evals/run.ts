@@ -37,6 +37,7 @@ import { EVAL_ADMIN_EMAIL, EVAL_ADMIN_PASSWORD } from "./evalIdentity";
 
 import { BENCHMARK_CASES } from "./cases";
 import { JUDGE_PROBE_CASES } from "./judgeProbe";
+import { JUDGE_BLOCKING_PROBE_CASES } from "./judgeBlockingProbe";
 import { LESSON_DOCUMENT_NAME, LESSON_CHUNKS } from "./lessonCorpus";
 import { scoreCase, aggregate } from "./scoring";
 import { buildCaseReport } from "./report";
@@ -75,6 +76,13 @@ interface Args {
    * NOT run as part of the default suite or this PR.
    */
   judgeCheck: boolean;
+  /**
+   * Opt-in blocking-judge probe: run JUDGE_BLOCKING_PROBE_CASES and exit
+   * non-zero unless the grounded answer gets judge_verdict="pass" (judge ran,
+   * grounded, no warn, no block). Requires judge_blocking_mode enabled for the
+   * eval tenant; NOT run as part of the default suite or this PR.
+   */
+  judgeBlockingCheck: boolean;
   limit?: number;
   out?: string;
   /** Offline: load + gate this saved report JSON instead of running live. */
@@ -88,12 +96,13 @@ interface Args {
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { selfTest: false, check: false, judgeCheck: false };
+  const args: Args = { selfTest: false, check: false, judgeCheck: false, judgeBlockingCheck: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--self-test") args.selfTest = true;
     else if (a === "--check") args.check = true;
     else if (a === "--judge-check") args.judgeCheck = true;
+    else if (a === "--judge-blocking-check") args.judgeBlockingCheck = true;
     else if (a === "--limit") args.limit = Number(argv[++i]);
     else if (a === "--out") args.out = argv[++i];
     else if (a === "--report") args.report = argv[++i];
@@ -514,6 +523,21 @@ function runSelfTest(nowIso: string): EvalReport {
     r2.judgeChecked === false && r2.judgePassed === null &&
     r1.passed === r2.passed;
 
+  // ── Blocking-judge probe scoring proofs (offline, synthetic) ─────────────
+  // The blocking probe asserts verdict="pass" on a grounded answer. Prove the
+  // verdict assertion gates correctly: a "pass" verdict passes, while a null,
+  // "warn_appended", or "blocked" verdict on the SAME grounded probe fails.
+  const blockingCase = JUDGE_BLOCKING_PROBE_CASES[0];
+  const blockingBaseObs: EvalObservation = { ...judgeBaseObs, caseId: blockingCase.id };
+  const blockingPassSucceeds =
+    scoreCase(blockingCase, { ...blockingBaseObs, judgeVerdict: "pass" }).passed === true;
+  const blockingNullFails =
+    scoreCase(blockingCase, { ...blockingBaseObs, judgeVerdict: null }).passed === false;
+  const blockingWarnFails =
+    scoreCase(blockingCase, { ...blockingBaseObs, judgeVerdict: "warn_appended" }).passed === false;
+  const blockingBlockedFails =
+    scoreCase(blockingCase, { ...blockingBaseObs, judgeVerdict: "blocked" }).passed === false;
+
   // Sanity: the canned good/lesson/abstain cases pass, the miss fails, the
   // sole-source gate rejects a foreign source, and the judge proofs all hold.
   const ok =
@@ -526,7 +550,11 @@ function runSelfTest(nowIso: string): EvalReport {
     judgeMissingFails &&
     judgeUngroundedFails &&
     judgeContradictionFails &&
-    existingUnaffected;
+    existingUnaffected &&
+    blockingPassSucceeds &&
+    blockingNullFails &&
+    blockingWarnFails &&
+    blockingBlockedFails;
   if (!ok) {
     console.error("\n[eval] SELF-TEST FAILED: scoring did not match expectations");
     process.exit(1);
@@ -534,7 +562,9 @@ function runSelfTest(nowIso: string): EvalReport {
   console.log(
     "\n[eval] self-test OK (offline, no cost) — incl. judge proofs " +
       `[good=${judgeGoodPass} missing→fail=${judgeMissingFails} ungrounded→fail=${judgeUngroundedFails} ` +
-      `contradiction→fail=${judgeContradictionFails} existing-unaffected=${existingUnaffected}]`,
+      `contradiction→fail=${judgeContradictionFails} existing-unaffected=${existingUnaffected}] ` +
+      `blocking-verdict proofs [pass=${blockingPassSucceeds} null→fail=${blockingNullFails} ` +
+      `warn→fail=${blockingWarnFails} blocked→fail=${blockingBlockedFails}]`,
   );
   return report;
 }
@@ -563,9 +593,13 @@ async function main(): Promise<void> {
   }
 
   // ── Live: ask the deployed assistant — this calls OpenAI (costs money) ──
-  // --judge-check swaps in the judge probe suite; the default 11-case benchmark
-  // is otherwise untouched.
-  const benchmark = args.judgeCheck ? JUDGE_PROBE_CASES : BENCHMARK_CASES;
+  // --judge-check / --judge-blocking-check swap in a probe suite; the default
+  // 11-case benchmark is otherwise untouched.
+  const benchmark = args.judgeBlockingCheck
+    ? JUDGE_BLOCKING_PROBE_CASES
+    : args.judgeCheck
+      ? JUDGE_PROBE_CASES
+      : BENCHMARK_CASES;
   const cases = args.limit ? benchmark.slice(0, args.limit) : benchmark;
   const client = createAIClient(); // throws if env missing
   const tenantId = await resolveTenantId();
@@ -596,7 +630,7 @@ async function main(): Promise<void> {
     try {
       const observed = await observeCase(client, adminToken, tenantId, c, {
         judgeAware: shouldWaitForJudge({
-          judgeCheckActive: args.judgeCheck,
+          judgeCheckActive: args.judgeCheck || args.judgeBlockingCheck,
           caseHasExpectedJudge: c.expectedJudge !== undefined,
         }),
       });
@@ -623,22 +657,30 @@ async function main(): Promise<void> {
   }
 
   const report = buildReport(
-    args.judgeCheck ? "judge-probe" : "hvac-first-benchmark",
+    args.judgeBlockingCheck
+      ? "judge-blocking-probe"
+      : args.judgeCheck
+        ? "judge-probe"
+        : "hvac-first-benchmark",
     results,
     nowIso,
   );
   const file = writeReport(report, args.out);
   printSummary(report, file);
 
-  if (args.judgeCheck) {
-    // The judge probe gates on per-case pass (the metric thresholds target the
-    // benchmark, not a 1-case judge probe). Fails clearly when the judge did not
-    // run, was ungrounded, or detected a contradiction.
+  if (args.judgeCheck || args.judgeBlockingCheck) {
+    // The judge probes gate on per-case pass (the metric thresholds target the
+    // benchmark, not a 1-case probe). --judge-check fails when the judge did not
+    // run, was ungrounded, or detected a contradiction. --judge-blocking-check
+    // additionally fails unless the grounded answer's verdict is "pass" (a null,
+    // warn_appended, or blocked verdict on the grounded probe is a failure).
+    const label = args.judgeBlockingCheck ? "judge-blocking-check" : "judge-check";
     const failed = report.cases.filter((c) => !c.passed);
-    console.log(`\n--- judge-check: ${failed.length === 0 ? "PASS" : "FAIL"} ---`);
+    console.log(`\n--- ${label}: ${failed.length === 0 ? "PASS" : "FAIL"} ---`);
     for (const c of failed) {
       console.log(`  ✗ ${c.caseId} judgePassed=${c.judgePassed} judgeRan=${c.judgeRan} ` +
-        `judgeGrounded=${c.judgeGrounded} judgeContradiction=${c.judgeContradiction}`);
+        `judgeGrounded=${c.judgeGrounded} judgeContradiction=${c.judgeContradiction} ` +
+        `judgeVerdict=${c.judgeVerdict}`);
     }
     if (failed.length > 0) process.exitCode = 1;
     return;
