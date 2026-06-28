@@ -96,7 +96,7 @@ async function fetchJobComplianceStatus(): Promise<string | null> {
 }
 
 async function askAtStage(stage: string): Promise<ChatResponse> {
-  return withFeatureFlag('compliance_engine', true, async () =>
+  return withFeatureFlag('compliance_engine', true, tenantId, async () =>
     client.sendChatMessage({
       messages: [{ role: 'user', content: 'Proceeding with on-site work now.' }],
       context: {

@@ -99,7 +99,7 @@ test.describe('Audit Log Isolation', () => {
 test.describe('Feature Flag Targeting', () => {
   test('allowed_tenant_ids targeting only applies to specified tenant', async () => {
     test.slow();
-    await withFeatureFlag('rag_reranking', true, async () => {
+    await withFeatureFlag('rag_reranking', true, tenantIdA, async () => {
       await setFeatureFlag('rag_reranking', true, 100, {
         allowed_tenant_ids: [tenantIdA],
       });
@@ -122,7 +122,7 @@ test.describe('Feature Flag Targeting', () => {
 
   test('blocked_tenant_ids disables feature for specified tenant', async () => {
     test.slow();
-    await withFeatureFlag('rag_reranking', true, async () => {
+    await withFeatureFlag('rag_reranking', true, tenantIdA, async () => {
       await setFeatureFlag('rag_reranking', true, 100, {
         blocked_tenant_ids: [tenantIdB],
       });

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { AssistantPage } from '../page-objects/AssistantPage';
 import { createAIClient, AIAPIClient } from '../helpers/ai-api-client';
 import { TEST_USERS } from '../helpers/test-data';
-import { resetAllFlags } from '../helpers/feature-flag-helpers';
+import { withAllEnhancementFlagsDisabled } from '../helpers/feature-flag-helpers';
 import { getAdminClient } from '../helpers/supabase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -82,8 +82,7 @@ test.describe('AI Disabled', () => {
 test.describe('Feature Flag Fallback', () => {
   test('all 7 flags disabled → basic response still works', async () => {
     test.slow();
-    await resetAllFlags();
-    try {
+    await withAllEnhancementFlagsDisabled(tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What is a filter replacement schedule?' }],
         context: { industry: 'hvac' },
@@ -91,15 +90,12 @@ test.describe('Feature Flag Fallback', () => {
       });
       expect(res.status).toBe(200);
       expect(res.streamedContent.length).toBeGreaterThan(0);
-    } finally {
-      await resetAllFlags();
-    }
+    });
   });
 
   test('pipeline returns 200 with valid response even with all enhancements off', async () => {
     test.slow();
-    await resetAllFlags();
-    try {
+    await withAllEnhancementFlagsDisabled(tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'How do I check refrigerant levels?' }],
         context: { industry: 'hvac' },
@@ -107,9 +103,7 @@ test.describe('Feature Flag Fallback', () => {
       });
       expect(res.status).toBe(200);
       expect(res.streamedContent.length).toBeGreaterThan(0);
-    } finally {
-      await resetAllFlags();
-    }
+    });
   });
 });
 

@@ -3,7 +3,7 @@ import { createAIClient, AIAPIClient } from '../helpers/ai-api-client';
 import { TEST_USERS } from '../helpers/test-data';
 import { TENANT_B } from '../helpers/ai-test-data';
 import { waitForAuditLog } from '../helpers/audit-log-helpers';
-import { withFeatureFlag, setFeatureFlag, getFeatureFlag } from '../helpers/feature-flag-helpers';
+import { withFeatureFlag, getFeatureFlag } from '../helpers/feature-flag-helpers';
 import { getAdminClient } from '../helpers/supabase-admin';
 import { seedDiagnosticStatistics } from '../helpers/ai-seed-helpers';
 import * as fs from 'fs';
@@ -84,7 +84,7 @@ test.describe('Diagnostic Learning Loop', () => {
 
   test('Pipeline: diagnostic signals influence response when flag enabled', async () => {
     test.slow();
-    await withFeatureFlag('diagnostic_learning', true, async () => {
+    await withFeatureFlag('diagnostic_learning', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Unit is not cooling at all, what should I check?' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -101,7 +101,7 @@ test.describe('Diagnostic Learning Loop', () => {
 
   test('Pipeline: diagnostic signals absent when flag disabled', async () => {
     test.slow();
-    await withFeatureFlag('diagnostic_learning', false, async () => {
+    await withFeatureFlag('diagnostic_learning', false, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Unit is not cooling' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -117,7 +117,7 @@ test.describe('Diagnostic Learning Loop', () => {
 
   test('Audit: diagnostic_patterns_used populated in audit log', async () => {
     test.slow();
-    await withFeatureFlag('diagnostic_learning', true, async () => {
+    await withFeatureFlag('diagnostic_learning', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Air handler not cooling, capacitor issue?' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -143,7 +143,7 @@ test.describe('Diagnostic Learning Loop', () => {
 
   test('Audit: diagnostic_signal_strength > 0 when patterns found', async () => {
     test.slow();
-    await withFeatureFlag('diagnostic_learning', true, async () => {
+    await withFeatureFlag('diagnostic_learning', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Not cooling problem with air handler' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -175,7 +175,7 @@ test.describe('Diagnostic Learning Loop', () => {
     test.slow();
     // Use Tenant B credentials — it has no diagnostic data
     const tenantBToken = await client.getAuthToken(TENANT_B.user.email, TENANT_B.user.password);
-    await withFeatureFlag('diagnostic_learning', true, async () => {
+    await withFeatureFlag('diagnostic_learning', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Not cooling' }],
         context: { industry: 'plumbing' },
@@ -186,18 +186,16 @@ test.describe('Diagnostic Learning Loop', () => {
   });
 
   test('Feature flags: both diagnostic flags independently controllable', async () => {
-    // Test diagnostic_learning flag
-    const origLearning = await getFeatureFlag('diagnostic_learning');
-    await setFeatureFlag('diagnostic_learning', true, 100);
-    const enabled = await getFeatureFlag('diagnostic_learning');
-    expect(enabled.is_enabled).toBe(true);
-    await setFeatureFlag('diagnostic_learning', origLearning.is_enabled, origLearning.rollout_percentage);
+    // Tenant-scoped enable with exact restoration (try/finally inside the helper)
+    // so an originally-enabled flag's durable state is never reset by this test.
+    await withFeatureFlag('diagnostic_learning', true, tenantId, async () => {
+      const enabled = await getFeatureFlag('diagnostic_learning');
+      expect(enabled.is_enabled).toBe(true);
+    });
 
-    // Test diagnostic_probability_ranking flag
-    const origRanking = await getFeatureFlag('diagnostic_probability_ranking');
-    await setFeatureFlag('diagnostic_probability_ranking', true, 100);
-    const enabledRanking = await getFeatureFlag('diagnostic_probability_ranking');
-    expect(enabledRanking.is_enabled).toBe(true);
-    await setFeatureFlag('diagnostic_probability_ranking', origRanking.is_enabled, origRanking.rollout_percentage);
+    await withFeatureFlag('diagnostic_probability_ranking', true, tenantId, async () => {
+      const enabledRanking = await getFeatureFlag('diagnostic_probability_ranking');
+      expect(enabledRanking.is_enabled).toBe(true);
+    });
   });
 });

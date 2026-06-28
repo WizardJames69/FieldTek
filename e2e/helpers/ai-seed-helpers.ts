@@ -7,6 +7,7 @@ import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getAdminClient } from './supabase-admin';
+import { buildSeedFlagRow, SEED_UPSERT_OPTIONS } from './feature-flag-state';
 import {
   TEST_DOCUMENTS,
   SAMPLE_COMPLIANCE_RULES,
@@ -140,7 +141,13 @@ export async function seedDocumentChunks(
   }
 }
 
-/** Ensure all AI feature flags exist with default disabled state. */
+/**
+ * Ensure all AI feature flags EXIST (insert-only). Missing rows are created with
+ * disabled defaults; existing rows are left byte-for-byte unchanged. This must
+ * never reset durable enablement (e.g. rag_judge / lesson_citations allowlisted
+ * for the eval + pilot tenants) — `ignoreDuplicates` makes it ON CONFLICT DO
+ * NOTHING, and the seed row carries only disabled defaults (no tenant lists).
+ */
 export async function seedFeatureFlags(): Promise<void> {
   const client = getAdminClient();
   const flags = [
@@ -155,17 +162,10 @@ export async function seedFeatureFlags(): Promise<void> {
     'diagnostic_probability_ranking',
   ];
 
-  for (const key of flags) {
-    await client.from('feature_flags').upsert(
-      {
-        key,
-        name: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-        is_enabled: false,
-        rollout_percentage: 0,
-      },
-      { onConflict: 'key' },
-    );
-  }
+  await client.from('feature_flags').upsert(
+    flags.map((key) => buildSeedFlagRow(key)),
+    SEED_UPSERT_OPTIONS,
+  );
 }
 
 /** Create/update tenant AI policy (enables AI for the test tenant). */

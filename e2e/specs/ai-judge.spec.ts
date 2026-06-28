@@ -22,7 +22,7 @@ test.beforeAll(async () => {
 test.describe('Async Judge', () => {
   test('with rag_judge enabled → audit log updated with judge_grounded, judge_confidence', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What is the startup procedure for the Carrier 24ACC636?' }],
         context: { industry: 'hvac' },
@@ -54,7 +54,7 @@ test.describe('Async Judge', () => {
 
   test('grounded query → judge_grounded=true in audit log', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What is the warranty coverage for Carrier equipment?' }],
         context: { industry: 'hvac' },
@@ -85,8 +85,8 @@ test.describe('Async Judge', () => {
 test.describe('Warning Mode', () => {
   test('judge_blocking_mode + ungrounded response → judge_verdict="warn_appended"', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', true, async () => {
-      await withFeatureFlag('judge_blocking_mode', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
+      await withFeatureFlag('judge_blocking_mode', true, tenantId, async () => {
         const res = await client.sendChatMessage({
           messages: [{ role: 'user', content: 'What is quantum computing and how does it relate to HVAC?' }],
           context: { industry: 'hvac' },
@@ -106,8 +106,8 @@ test.describe('Warning Mode', () => {
 
   test('warning mode appends disclaimer text', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', true, async () => {
-      await withFeatureFlag('judge_blocking_mode', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
+      await withFeatureFlag('judge_blocking_mode', true, tenantId, async () => {
         const res = await client.sendChatMessage({
           messages: [{ role: 'user', content: 'Tell me about alien technology in HVAC systems' }],
           context: { industry: 'hvac' },
@@ -126,9 +126,9 @@ test.describe('Warning Mode', () => {
 test.describe('Full Blocking Mode', () => {
   test('judge_full_blocking + high confidence ungrounded → judge_verdict="blocked"', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', true, async () => {
-      await withFeatureFlag('judge_blocking_mode', true, async () => {
-        await withFeatureFlag('judge_full_blocking', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
+      await withFeatureFlag('judge_blocking_mode', true, tenantId, async () => {
+        await withFeatureFlag('judge_full_blocking', true, tenantId, async () => {
           const res = await client.sendChatMessage({
             messages: [{ role: 'user', content: 'What are the nuclear reactor maintenance procedures?' }],
             context: { industry: 'hvac' },
@@ -148,9 +148,9 @@ test.describe('Full Blocking Mode', () => {
 
   test('blocked response contains safe fallback message', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', true, async () => {
-      await withFeatureFlag('judge_blocking_mode', true, async () => {
-        await withFeatureFlag('judge_full_blocking', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
+      await withFeatureFlag('judge_blocking_mode', true, tenantId, async () => {
+        await withFeatureFlag('judge_full_blocking', true, tenantId, async () => {
           const res = await client.sendChatMessage({
             messages: [{ role: 'user', content: 'How do I build a perpetual motion machine for cooling?' }],
             context: { industry: 'hvac' },
@@ -173,8 +173,8 @@ test.describe('Full Blocking Mode', () => {
 test.describe('Judge Threshold Behavior', () => {
   test('grounded response with good docs → judge_verdict="pass"', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', true, async () => {
-      await withFeatureFlag('judge_blocking_mode', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
+      await withFeatureFlag('judge_blocking_mode', true, tenantId, async () => {
         const res = await client.sendChatMessage({
           messages: [{ role: 'user', content: 'What is the startup procedure for the Carrier 24ACC636?' }],
           context: { industry: 'hvac' },
@@ -195,7 +195,7 @@ test.describe('Judge Threshold Behavior', () => {
   test('judge error (timeout) → pipeline continues gracefully', async () => {
     test.slow();
     // Even if the judge encounters an error, the pipeline should still return a response
-    await withFeatureFlag('rag_judge', true, async () => {
+    await withFeatureFlag('rag_judge', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What are the operating temperature limits?' }],
         context: { industry: 'hvac' },

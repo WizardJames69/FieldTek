@@ -77,7 +77,7 @@ test.describe('Golden Query Retrieval', () => {
 test.describe('Graph Expansion Regression', () => {
   test('"compressor not starting" with equipment_graph → graph_expansion_count > 0', async () => {
     test.slow();
-    await withFeatureFlag('equipment_graph', true, async () => {
+    await withFeatureFlag('equipment_graph', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Compressor is not starting on the air handler' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -94,7 +94,7 @@ test.describe('Graph Expansion Regression', () => {
 
   test('graph expansion terms include related components', async () => {
     test.slow();
-    await withFeatureFlag('equipment_graph', true, async () => {
+    await withFeatureFlag('equipment_graph', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Compressor overheating on air handler' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -117,7 +117,7 @@ test.describe('Graph Expansion Regression', () => {
 
   test('graph_scoring_applied=true in audit log when graph data available', async () => {
     test.slow();
-    await withFeatureFlag('equipment_graph', true, async () => {
+    await withFeatureFlag('equipment_graph', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What causes compressor short cycling?' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -142,7 +142,7 @@ test.describe('Graph Expansion Regression', () => {
 test.describe('Reranking Stability', () => {
   test('with rag_reranking enabled → rerank_model in audit log', async () => {
     test.slow();
-    await withFeatureFlag('rag_reranking', true, async () => {
+    await withFeatureFlag('rag_reranking', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Filter replacement schedule' }],
         context: { industry: 'hvac' },
@@ -161,7 +161,7 @@ test.describe('Reranking Stability', () => {
 
   test('reranked results maintain relevance', async () => {
     test.slow();
-    await withFeatureFlag('rag_reranking', true, async () => {
+    await withFeatureFlag('rag_reranking', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Operating temperature range for Carrier 24ACC636' }],
         context: { industry: 'hvac' },

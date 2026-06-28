@@ -25,7 +25,7 @@ test.describe('Equipment Knowledge Graph', () => {
   test('query "compressor" matches equipment_components via failure_modes', async () => {
     test.slow();
 
-    await withFeatureFlag('equipment_graph', true, async () => {
+    await withFeatureFlag('equipment_graph', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'The compressor is not starting' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -41,7 +41,7 @@ test.describe('Equipment Knowledge Graph', () => {
 
   test('graph expansion adds related components from 1-hop relationships', async () => {
     test.slow();
-    await withFeatureFlag('equipment_graph', true, async () => {
+    await withFeatureFlag('equipment_graph', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Compressor short cycling issue' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -63,7 +63,7 @@ test.describe('Equipment Knowledge Graph', () => {
 
   test('graph scoring re-blends results: max_graph_score > 0', async () => {
     test.slow();
-    await withFeatureFlag('equipment_graph', true, async () => {
+    await withFeatureFlag('equipment_graph', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Capacitor failure in air handler' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
@@ -81,7 +81,7 @@ test.describe('Equipment Knowledge Graph', () => {
 
   test('disabling equipment_graph → graph_expansion_count=0', async () => {
     test.slow();
-    await withFeatureFlag('equipment_graph', false, async () => {
+    await withFeatureFlag('equipment_graph', false, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Compressor issue in air handler' }],
         context: { industry: 'hvac', equipment: { equipment_type: 'Air Handler' } },
