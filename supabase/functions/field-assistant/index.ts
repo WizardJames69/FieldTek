@@ -61,6 +61,11 @@ import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
 import { evaluateWithJudge, evaluateWithJudgeBlocking } from "./judge.ts";
 import type { JudgeResult } from "./judge.ts";
+import {
+  decideJudgeVerdict,
+  JUDGE_FULL_BLOCK_FALLBACK,
+  JUDGE_WARNING_NOTICE,
+} from "./judgeVerdict.ts";
 import { fetchWorkflowState, fetchWorkflowExecutionContext } from "./workflow.ts";
 import type { WorkflowExecutionContext } from "./types.ts";
 import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
@@ -1373,30 +1378,32 @@ serve(async (req) => {
               judgeBlockingLatencyMs = judgeBlockingResult.latencyMs;
               judgeBlockingGateway = judgeBlockingResult.gatewayUsed;
 
-              if (judgeFullBlockingEnabled &&
-                  !judgeBlockingResult.result.grounded &&
-                  judgeBlockingResult.result.confidence >= 5) {
+              // Pure verdict mapping (thresholds preserved: >=4 warn, >=5 full-block;
+              // full blocking takes precedence). See judgeVerdict.ts + its Deno test.
+              const judgeDecision = decideJudgeVerdict(judgeBlockingResult.result, {
+                blockingEnabled: judgeBlockingEnabled,
+                fullBlockingEnabled: judgeFullBlockingEnabled,
+              });
+              judgeVerdict = judgeDecision.verdict;
+
+              if (judgeDecision.shouldBlock) {
                 // FULL BLOCK — replace response with safe fallback
-                judgeVerdict = "blocked";
                 validationFailed = true;
                 failureReason = "Judge full blocking: ungrounded response (confidence 5)";
-                accumulatedContent = "I don't have enough verified information in the available documentation to answer this question confidently. Please consult the equipment documentation directly or contact your supervisor for guidance.";
+                accumulatedContent = JUDGE_FULL_BLOCK_FALLBACK;
                 matchedPatterns.push("JUDGE_FULL_BLOCK");
                 console.warn(
                   `[judge-blocking] [correlation_id=${correlationId}] BLOCKED: ` +
                   `grounded=${judgeBlockingResult.result.grounded} confidence=${judgeBlockingResult.result.confidence}`,
                 );
-              } else if (!judgeBlockingResult.result.grounded && judgeBlockingResult.result.confidence >= 4) {
+              } else if (judgeDecision.shouldWarn) {
                 // WARNING — append disclaimer (existing behavior)
-                judgeVerdict = "warn_appended";
                 responseModified = true;
                 matchedPatterns.push("JUDGE_UNGROUNDED_WARNING");
                 console.warn(
                   `[judge-blocking] [correlation_id=${correlationId}] Appending disclaimer: ` +
                   `grounded=${judgeBlockingResult.result.grounded} confidence=${judgeBlockingResult.result.confidence}`,
                 );
-              } else {
-                judgeVerdict = "pass";
               }
             }
           } catch (judgeBlockErr) {
@@ -1478,7 +1485,7 @@ serve(async (req) => {
             for (const chunk of allChunks) await writer.write(chunk);
             const judgeDisclaimer = {
               id: "judge-warning", object: "chat.completion.chunk",
-              choices: [{ index: 0, delta: { content: "\n\n---\n**Notice:** This response may contain information not fully supported by the available documentation. Please verify critical details with authoritative sources or contact your supervisor." }, finish_reason: null }],
+              choices: [{ index: 0, delta: { content: JUDGE_WARNING_NOTICE }, finish_reason: null }],
             };
             await writer.write(encoder.encode(`data: ${JSON.stringify(judgeDisclaimer)}\n\n`));
             await writer.write(encoder.encode("data: [DONE]\n\n"));
