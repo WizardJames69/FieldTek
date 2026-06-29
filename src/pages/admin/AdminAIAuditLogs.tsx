@@ -24,8 +24,26 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { AlertTriangle, CheckCircle, Search, Eye, FileText, Clock, Shield, GraduationCap } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Search,
+  Eye,
+  FileText,
+  Shield,
+  GraduationCap,
+  Ban,
+  Slash,
+  HelpCircle,
+  type LucideIcon,
+} from "lucide-react";
 import { buildCandidateInsert } from "@/lib/lessonReview";
+import {
+  classifyAuditOutcome,
+  auditOutcomeBadge,
+  type AuditOutcome,
+  type AuditOutcomeIcon,
+} from "@/lib/auditOutcome";
 
 interface AuditLog {
   id: string;
@@ -47,13 +65,54 @@ interface AuditLog {
   model_used: string | null;
   correlation_id: string | null;
   created_at: string;
+  // Judge evaluation (populated asynchronously; NULL on older / unjudged rows).
+  judge_verdict: string | null;
+  judge_grounded: boolean | null;
+  judge_confidence: number | null;
+  judge_contradiction: boolean | null;
+  judge_explanation: string | null;
+  judge_latency_ms: number | null;
+  judge_model: string | null;
+  // Abstain / deterministic-escalation signals (already fetched via select("*")).
+  abstain_flag: boolean | null;
+  human_review_required: boolean | null;
+  human_review_reasons: string[] | null;
+  enforcement_rules_triggered: string[] | null;
+}
+
+// Maps the classifier's stable icon key to a lucide icon component.
+const OUTCOME_ICONS: Record<AuditOutcomeIcon, LucideIcon> = {
+  check: CheckCircle,
+  warn: AlertTriangle,
+  block: Ban,
+  shield: Shield,
+  slash: Slash,
+  help: HelpCircle,
+};
+
+function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
+  const badge = auditOutcomeBadge(outcome);
+  const Icon = OUTCOME_ICONS[badge.icon];
+  return (
+    <Badge variant="outline" className={`gap-1 border-transparent ${badge.className}`}>
+      <Icon className="h-3 w-3" />
+      {badge.label}
+    </Badge>
+  );
+}
+
+// Renders a nullable judge cell value with an em-dash placeholder.
+function nullableText(value: string | number | null | undefined): string {
+  return value === null || value === undefined || value === "" ? "—" : String(value);
 }
 
 export default function AdminAIAuditLogs() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterBlocked, setFilterBlocked] = useState<string>("all");
+  // Outcome filter value: "all" or one of the AuditOutcome states.
+  const [filterOutcome, setFilterOutcome] = useState<string>("all");
+  const [contradictionsOnly, setContradictionsOnly] = useState(false);
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
   // ── Lesson candidate intake (PR-2) ──────────────────────────────────────
@@ -130,18 +189,26 @@ export default function AdminAIAuditLogs() {
   const intakeValid = intakeQuestion.trim().length > 0 && intakeAnswer.trim().length > 0;
 
   const { data: auditLogs, isLoading } = useQuery({
-    queryKey: ["ai-audit-logs", filterBlocked],
+    queryKey: ["ai-audit-logs", filterOutcome, contradictionsOnly],
     queryFn: async () => {
+      // The 500-row cap remains for general browsing. For gate-critical, rare
+      // outcomes (warn_appended / judge_blocked / contradictions) we ALSO push a
+      // server-side narrowing predicate so matching rows are not missed if they
+      // fall beyond the 500 most-recent rows. Final outcome classification still
+      // happens client-side via classifyAuditOutcome.
       let query = supabase
         .from("ai_audit_logs")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500);
 
-      if (filterBlocked === "blocked") {
-        query = query.eq("response_blocked", true);
-      } else if (filterBlocked === "passed") {
-        query = query.eq("response_blocked", false);
+      if (filterOutcome === "warn_appended") {
+        query = query.eq("judge_verdict", "warn_appended");
+      } else if (filterOutcome === "judge_blocked") {
+        query = query.eq("judge_verdict", "blocked");
+      }
+      if (contradictionsOnly) {
+        query = query.eq("judge_contradiction", true);
       }
 
       const { data, error } = await query;
@@ -151,6 +218,8 @@ export default function AdminAIAuditLogs() {
   });
 
   const filteredLogs = auditLogs?.filter((log) => {
+    if (contradictionsOnly && log.judge_contradiction !== true) return false;
+    if (filterOutcome !== "all" && classifyAuditOutcome(log) !== filterOutcome) return false;
     if (!searchQuery) return true;
     const search = searchQuery.toLowerCase();
     return (
@@ -161,17 +230,20 @@ export default function AdminAIAuditLogs() {
     );
   });
 
+  // Outcome-aware counts over the fetched window. Note: when an outcome filter is
+  // active the server-side narrowing changes the fetched set, so these reflect the
+  // current view rather than an all-time total.
+  const outcomeCount = (outcome: AuditOutcome) =>
+    auditLogs?.filter((l) => classifyAuditOutcome(l) === outcome).length || 0;
+
   const stats = {
     total: auditLogs?.length || 0,
-    blocked: auditLogs?.filter((l) => l.response_blocked).length || 0,
-    passed: auditLogs?.filter((l) => !l.response_blocked).length || 0,
-    withCitations: auditLogs?.filter((l) => l.had_citations).length || 0,
-    avgResponseTime: auditLogs?.length
-      ? Math.round(
-          auditLogs.reduce((sum, l) => sum + (l.response_time_ms || 0), 0) /
-            auditLogs.length
-        )
-      : 0,
+    groundedPass: outcomeCount("grounded_pass"),
+    warnAppended: outcomeCount("warn_appended"),
+    judgeBlocked: outcomeCount("judge_blocked"),
+    deterministic: outcomeCount("deterministic_block_or_escalation"),
+    abstain: outcomeCount("abstain") + outcomeCount("grounded_refusal"),
+    contradictions: auditLogs?.filter((l) => l.judge_contradiction === true).length || 0,
   };
 
   return (
@@ -183,11 +255,11 @@ export default function AdminAIAuditLogs() {
         </p>
       </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-5">
+        {/* Stats Cards — outcome-focused counts for the Grounding-Trust telemetry gate */}
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Interactions</CardTitle>
+              <CardTitle className="text-sm font-medium">Total</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -196,41 +268,56 @@ export default function AdminAIAuditLogs() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Blocked</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{stats.blocked}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.total > 0 ? ((stats.blocked / stats.total) * 100).toFixed(1) : 0}% of total
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Passed</CardTitle>
+              <CardTitle className="text-sm font-medium">Grounded pass</CardTitle>
               <CheckCircle className="h-4 w-4 text-green-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.passed}</div>
+              <div className="text-2xl font-bold text-green-600">{stats.groundedPass}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">With Citations</CardTitle>
-              <Shield className="h-4 w-4 text-blue-600" />
+              <CardTitle className="text-sm font-medium">Warn appended</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{stats.withCitations}</div>
+              <div className="text-2xl font-bold text-amber-600">{stats.warnAppended}</div>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Response</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Judge blocked</CardTitle>
+              <Ban className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.avgResponseTime}ms</div>
+              <div className="text-2xl font-bold text-destructive">{stats.judgeBlocked}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Determ. / review</CardTitle>
+              <Shield className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{stats.deterministic}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Abstain</CardTitle>
+              <Slash className="h-4 w-4 text-slate-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-slate-600">{stats.abstain}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Contradictions</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.contradictions}</div>
             </CardContent>
           </Card>
         </div>
@@ -254,16 +341,35 @@ export default function AdminAIAuditLogs() {
                   className="pl-10"
                 />
               </div>
-              <Select value={filterBlocked} onValueChange={setFilterBlocked}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
+              <Select value={filterOutcome} onValueChange={setFilterOutcome}>
+                <SelectTrigger className="w-[260px]">
+                  <SelectValue placeholder="Filter by outcome" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Interactions</SelectItem>
-                  <SelectItem value="blocked">Blocked Only</SelectItem>
-                  <SelectItem value="passed">Passed Only</SelectItem>
+                  <SelectItem value="all">All outcomes</SelectItem>
+                  <SelectItem value="grounded_pass">Grounded pass</SelectItem>
+                  <SelectItem value="warn_appended">Warn appended</SelectItem>
+                  <SelectItem value="judge_blocked">Judge blocked</SelectItem>
+                  <SelectItem value="deterministic_block_or_escalation">
+                    Deterministic / human review
+                  </SelectItem>
+                  <SelectItem value="grounded_refusal">Grounded refusal</SelectItem>
+                  <SelectItem value="abstain">Abstain</SelectItem>
+                  <SelectItem value="degraded_or_retrieval_unavailable">
+                    Degraded / retrieval unavailable
+                  </SelectItem>
+                  <SelectItem value="unknown">Unknown</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant={contradictionsOnly ? "default" : "outline"}
+                className="gap-2 whitespace-nowrap"
+                onClick={() => setContradictionsOnly((v) => !v)}
+                aria-pressed={contradictionsOnly}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Contradictions only
+              </Button>
             </div>
 
             {isLoading ? (
@@ -279,16 +385,21 @@ export default function AdminAIAuditLogs() {
                     <TableRow>
                       <TableHead className="w-[140px]">Time</TableHead>
                       <TableHead>User Message</TableHead>
-                      <TableHead className="w-[100px]">Status</TableHead>
-                      <TableHead className="w-[100px]">Docs</TableHead>
-                      <TableHead className="w-[100px]">Response</TableHead>
-                      <TableHead className="w-[80px]">Actions</TableHead>
+                      <TableHead className="w-[220px]">Outcome</TableHead>
+                      <TableHead className="w-[120px]">Judge</TableHead>
+                      <TableHead className="w-[60px]">Conf</TableHead>
+                      <TableHead className="w-[60px]">Grnd</TableHead>
+                      <TableHead className="w-[60px]">Contra</TableHead>
+                      <TableHead className="w-[80px]">J-lat</TableHead>
+                      <TableHead className="w-[90px]">Docs</TableHead>
+                      <TableHead className="w-[90px]">Response</TableHead>
+                      <TableHead className="w-[70px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredLogs?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                           No audit logs found
                         </TableCell>
                       </TableRow>
@@ -309,17 +420,34 @@ export default function AdminAIAuditLogs() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {log.response_blocked ? (
-                              <Badge variant="destructive" className="gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                Blocked
-                              </Badge>
+                            <OutcomeBadge outcome={classifyAuditOutcome(log)} />
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {nullableText(log.judge_verdict)}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {log.judge_confidence === null || log.judge_confidence === undefined
+                              ? "—"
+                              : `${log.judge_confidence}/5`}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {log.judge_grounded === null || log.judge_grounded === undefined
+                              ? "—"
+                              : log.judge_grounded
+                                ? "✓"
+                                : "✗"}
+                          </TableCell>
+                          <TableCell>
+                            {log.judge_contradiction === true ? (
+                              <AlertTriangle className="h-4 w-4 text-red-600" />
                             ) : (
-                              <Badge variant="default" className="gap-1 bg-green-600">
-                                <CheckCircle className="h-3 w-3" />
-                                Passed
-                              </Badge>
+                              <span className="text-sm text-muted-foreground">—</span>
                             )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {log.judge_latency_ms === null || log.judge_latency_ms === undefined
+                              ? "—"
+                              : `${log.judge_latency_ms}ms`}
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
@@ -359,11 +487,7 @@ export default function AdminAIAuditLogs() {
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2">
                 AI Interaction Details
-                {selectedLog?.response_blocked ? (
-                  <Badge variant="destructive">Blocked</Badge>
-                ) : (
-                  <Badge variant="default" className="bg-green-600">Passed</Badge>
-                )}
+                {selectedLog && <OutcomeBadge outcome={classifyAuditOutcome(selectedLog)} />}
               </SheetTitle>
               <SheetDescription>
                 {selectedLog && format(new Date(selectedLog.created_at), "MMMM d, yyyy 'at' HH:mm:ss")}
@@ -443,6 +567,120 @@ export default function AdminAIAuditLogs() {
                                 {pattern}
                               </Badge>
                             ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Human-review escalation (deterministic, distinct from a judge block) */}
+                  {selectedLog.human_review_required && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <h4 className="font-semibold text-orange-800 mb-2 flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Human review required
+                      </h4>
+                      {selectedLog.human_review_reasons && selectedLog.human_review_reasons.length > 0 && (
+                        <div className="flex gap-2 flex-wrap">
+                          {selectedLog.human_review_reasons.map((reason, i) => (
+                            <Badge key={i} variant="outline" className="text-xs font-mono">
+                              {reason}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Enforcement rules (deterministic provenance: escalations, degraded fallback, abstain reason) */}
+                  {((selectedLog.enforcement_rules_triggered &&
+                    selectedLog.enforcement_rules_triggered.length > 0) ||
+                    selectedLog.abstain_flag) && (
+                    <div>
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        Enforcement
+                        {selectedLog.abstain_flag && (
+                          <Badge variant="secondary" className="text-xs">Abstained</Badge>
+                        )}
+                      </h4>
+                      {selectedLog.enforcement_rules_triggered &&
+                      selectedLog.enforcement_rules_triggered.length > 0 ? (
+                        <div className="flex gap-2 flex-wrap">
+                          {selectedLog.enforcement_rules_triggered.map((rule, i) => (
+                            <Badge key={i} variant="outline" className="text-xs font-mono">
+                              {rule}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No enforcement rules recorded.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Judge Evaluation (LLM-as-judge; async, may be NULL on unjudged rows) */}
+                  {(selectedLog.judge_verdict !== null ||
+                    selectedLog.judge_grounded !== null ||
+                    selectedLog.judge_confidence !== null ||
+                    selectedLog.judge_contradiction !== null ||
+                    selectedLog.judge_explanation !== null) && (
+                    <div className="rounded-lg border p-4">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Shield className="h-4 w-4" />
+                        Judge Evaluation
+                        {selectedLog.judge_verdict && (
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {selectedLog.judge_verdict}
+                          </Badge>
+                        )}
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Grounded:</span>
+                          <p className="font-semibold">
+                            {selectedLog.judge_grounded === null
+                              ? "—"
+                              : selectedLog.judge_grounded
+                                ? "Yes"
+                                : "No"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Confidence:</span>
+                          <p className="font-semibold">
+                            {selectedLog.judge_confidence === null
+                              ? "—"
+                              : `${selectedLog.judge_confidence}/5`}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Contradiction:</span>
+                          <p className="font-semibold">
+                            {selectedLog.judge_contradiction === null
+                              ? "—"
+                              : selectedLog.judge_contradiction
+                                ? "Yes"
+                                : "No"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Latency:</span>
+                          <p className="font-semibold">
+                            {selectedLog.judge_latency_ms === null
+                              ? "—"
+                              : `${selectedLog.judge_latency_ms}ms`}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Model:</span>
+                          <p className="font-mono text-xs mt-1">{selectedLog.judge_model || "—"}</p>
+                        </div>
+                      </div>
+                      {selectedLog.judge_explanation && (
+                        <div className="mt-3">
+                          <span className="text-xs text-muted-foreground">Explanation:</span>
+                          <div className="bg-muted rounded-lg p-3 text-sm whitespace-pre-wrap mt-1">
+                            {selectedLog.judge_explanation}
                           </div>
                         </div>
                       )}
