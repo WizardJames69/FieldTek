@@ -6,6 +6,8 @@ import {
   restorePayload,
   applyAndRestore,
   buildSeedFlagRow,
+  findMissingFlagKeys,
+  assertAllFlagsPresent,
   SEED_UPSERT_OPTIONS,
   type FeatureFlagSnapshot,
 } from "../../../e2e/helpers/feature-flag-state";
@@ -190,6 +192,69 @@ describe("applyAndRestore — apply tenant-scoped writes, ALWAYS restore exact s
     const original = snap({ is_enabled: true, rollout_percentage: 10, allowed_tenant_ids: [EVAL], blocked_tenant_ids: [PILOT], starts_at: "2026-01-01T00:00:00Z" });
     await applyAndRestore([original], (s) => tenantEnabledState(s, E2E), async () => {}, async (s) => { received = s; }, async () => {});
     expect(received).toEqual(original);
+  });
+});
+
+describe("findMissingFlagKeys — which requested keys are absent from a snapshot", () => {
+  it("returns [] when every requested key is present (order/extra rows irrelevant)", () => {
+    const snaps = [snap({ key: "rag_reranking" }), snap({ key: "rag_judge" }), snap({ key: "compliance_engine" })];
+    expect(findMissingFlagKeys(["rag_judge", "rag_reranking"], snaps)).toEqual([]);
+  });
+
+  it("returns the single missing key when one row is absent", () => {
+    const snaps = [snap({ key: "rag_judge" })];
+    expect(findMissingFlagKeys(["rag_judge", "rag_reranking"], snaps)).toEqual(["rag_reranking"]);
+  });
+
+  it("returns ALL missing keys (in requested order) when several rows are absent", () => {
+    const snaps = [snap({ key: "rag_judge" })];
+    expect(
+      findMissingFlagKeys(["rag_judge", "rag_reranking", "equipment_graph"], snaps),
+    ).toEqual(["rag_reranking", "equipment_graph"]);
+  });
+
+  it("treats an empty snapshot set as everything missing", () => {
+    expect(findMissingFlagKeys(["rag_judge", "rag_reranking"], [])).toEqual(["rag_judge", "rag_reranking"]);
+  });
+});
+
+describe("assertAllFlagsPresent — fail loudly on an incomplete snapshot", () => {
+  it("does not throw when all requested rows are present", () => {
+    const snaps = [snap({ key: "rag_judge" }), snap({ key: "rag_reranking" })];
+    expect(() => assertAllFlagsPresent(["rag_judge", "rag_reranking"], snaps)).not.toThrow();
+  });
+
+  it("throws naming the single missing key", () => {
+    expect(() => assertAllFlagsPresent(["rag_judge", "rag_reranking"], [snap({ key: "rag_judge" })])).toThrow(
+      "Missing feature flag row(s): rag_reranking",
+    );
+  });
+
+  it("throws naming ALL missing keys", () => {
+    expect(() =>
+      assertAllFlagsPresent(["rag_judge", "rag_reranking", "equipment_graph"], [snap({ key: "rag_judge" })]),
+    ).toThrow("Missing feature flag row(s): rag_reranking, equipment_graph");
+  });
+
+  it("guards applyAndRestore: an incomplete snapshot short-circuits before any apply/restore runs", async () => {
+    // Mirrors withFeatureFlag's order: snapshot (assert) BEFORE applyAndRestore.
+    // A missing row must throw so no partial mutation is applied or restored.
+    let applies = 0;
+    let restores = 0;
+    const incomplete: FeatureFlagSnapshot[] = []; // requested rag_judge, got nothing
+    const run = async () => {
+      assertAllFlagsPresent(["rag_judge"], incomplete);
+      return applyAndRestore(
+        incomplete,
+        (s) => tenantDisabledState(s, E2E),
+        async () => { applies++; },
+        async () => { restores++; },
+        async () => "unreachable",
+      );
+    };
+    await expect(run()).rejects.toThrow("Missing feature flag row(s): rag_judge");
+    expect(applies).toBe(0);
+    expect(restores).toBe(0);
   });
 });
 

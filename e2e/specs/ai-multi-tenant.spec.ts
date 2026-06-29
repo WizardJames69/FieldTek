@@ -100,7 +100,11 @@ test.describe('Feature Flag Targeting', () => {
   test('allowed_tenant_ids targeting only applies to specified tenant', async () => {
     test.slow();
     await withFeatureFlag('rag_reranking', true, tenantIdA, async () => {
-      await setFeatureFlag('rag_reranking', true, 100, {
+      // Explicit allowlist targeting at rollout 0 (never global): only Tenant A
+      // is allowlisted, so it resolves true; Tenant B is not in the allowlist
+      // and the 0% rollout means it falls through to disabled. The outer
+      // withFeatureFlag wrapper snapshots and exactly restores the durable row.
+      await setFeatureFlag('rag_reranking', true, 0, {
         allowed_tenant_ids: [tenantIdA],
       });
 
@@ -117,13 +121,22 @@ test.describe('Feature Flag Targeting', () => {
         authToken: adminTokenB,
       });
       expect(resB.status).toBe(200);
+      // Tenant B is NOT allowlisted and rollout is 0 → reranking must not run,
+      // proving the allowlist targeting applies only to the specified tenant.
+      if (resB.correlationId) {
+        const log = await waitForAuditLog(tenantIdB, resB.correlationId);
+        expect(log.rerank_model).toBeNull();
+      }
     });
   });
 
   test('blocked_tenant_ids disables feature for specified tenant', async () => {
     test.slow();
     await withFeatureFlag('rag_reranking', true, tenantIdA, async () => {
-      await setFeatureFlag('rag_reranking', true, 100, {
+      // Explicit blocklist targeting at rollout 0: the blocklist always wins in
+      // the resolution engine, so Tenant B resolves false regardless. The outer
+      // withFeatureFlag wrapper snapshots and exactly restores the durable row.
+      await setFeatureFlag('rag_reranking', true, 0, {
         blocked_tenant_ids: [tenantIdB],
       });
 

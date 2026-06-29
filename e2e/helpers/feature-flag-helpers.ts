@@ -16,6 +16,7 @@
 import { getAdminClient } from './supabase-admin';
 import {
   applyAndRestore,
+  assertAllFlagsPresent,
   restorePayload,
   tenantDisabledState,
   tenantEnabledState,
@@ -73,7 +74,12 @@ export async function getFeatureFlag(flagKey: string) {
   return data;
 }
 
-/** Read the snapshot columns for the given flag keys (only existing rows). */
+/**
+ * Read the snapshot columns for the given flag keys. Fails loudly if any
+ * requested flag row is missing rather than returning an incomplete snapshot —
+ * an absent row would otherwise silently no-op the override and let a test run
+ * without its intended flag state (and never restore it).
+ */
 export async function snapshotFeatureFlags(keys: readonly string[]): Promise<FeatureFlagSnapshot[]> {
   const client = getAdminClient();
   const { data, error } = await client
@@ -81,7 +87,9 @@ export async function snapshotFeatureFlags(keys: readonly string[]): Promise<Fea
     .select(SNAPSHOT_COLUMNS)
     .in('key', keys as string[]);
   if (error) throw new Error(`Failed to snapshot feature flags: ${error.message}`);
-  return (data ?? []) as unknown as FeatureFlagSnapshot[];
+  const snapshots = (data ?? []) as unknown as FeatureFlagSnapshot[];
+  assertAllFlagsPresent(keys, snapshots);
+  return snapshots;
 }
 
 /** Write the mutable columns of one flag by key. */

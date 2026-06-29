@@ -98,6 +98,35 @@ export function tenantEnabledState(
   };
 }
 
+/**
+ * Which requested flag keys are absent from a snapshot set, in requested order.
+ * Used to fail loudly when a flag row is missing rather than silently returning
+ * an incomplete snapshot (which would no-op the override and let a test run
+ * without its intended flag state).
+ */
+export function findMissingFlagKeys(
+  requestedKeys: readonly string[],
+  snapshots: readonly { key: string }[],
+): string[] {
+  const present = new Set(snapshots.map((s) => s.key));
+  return requestedKeys.filter((k) => !present.has(k));
+}
+
+/**
+ * Throw a clear error if any requested flag row is missing from `snapshots`.
+ * Callers run this BEFORE applying any override, so an incomplete snapshot can
+ * never trigger a partial apply/restore.
+ */
+export function assertAllFlagsPresent(
+  requestedKeys: readonly string[],
+  snapshots: readonly FeatureFlagSnapshot[],
+): void {
+  const missing = findMissingFlagKeys(requestedKeys, snapshots);
+  if (missing.length > 0) {
+    throw new Error(`Missing feature flag row(s): ${missing.join(", ")}`);
+  }
+}
+
 /** The exact columns to write back to restore a row to its snapshot. */
 export function restorePayload(snapshot: FeatureFlagSnapshot): FeatureFlagWrite {
   return {
