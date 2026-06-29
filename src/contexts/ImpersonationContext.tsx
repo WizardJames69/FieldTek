@@ -23,7 +23,11 @@ const STORAGE_KEY = 'impersonated_tenant_id';
 
 export function ImpersonationProvider({ children }: { children: React.ReactNode }) {
   const [impersonatedTenant, setImpersonatedTenant] = useState<ImpersonatedTenantData | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Lazy-init from storage so `loading` is true synchronously on the very first
+  // render when an impersonation restore is pending. Without this, a full reload
+  // would briefly report isImpersonating=false / loading=false before the mount
+  // effect runs, letting a platform-admin redirect fire and bounce back to /admin.
+  const [loading, setLoading] = useState(() => !!localStorage.getItem(STORAGE_KEY));
 
   const fetchTenantData = useCallback(async (tenantId: string): Promise<ImpersonatedTenantData | null> => {
     try {

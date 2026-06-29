@@ -20,8 +20,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant, useBranding } from '@/contexts/TenantContext';
+import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { shouldRedirectToAdminConsole } from '@/lib/adminRedirect';
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { PostCheckoutNudge } from '@/components/dashboard/PostCheckoutNudge';
@@ -43,6 +45,7 @@ export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { tenant, loading: tenantLoading, refreshTenant, refreshSession, role } = useTenant();
+  const { isImpersonating, loading: isImpersonationLoading } = useImpersonation();
   const branding = useBranding();
   const [loadingTooLong, setLoadingTooLong] = useState(false);
   const [tenantVerifyAttempts, setTenantVerifyAttempts] = useState(0);
@@ -189,16 +192,19 @@ export default function Dashboard() {
     }
 
     // Platform admins should always use the platform dashboard (no tenant required)
-    if (!authLoading && user) {
+    // — UNLESS they are impersonating a tenant via "View as" (routes them here
+    // deliberately), or impersonation state is still rehydrating from storage on
+    // a reload. Redirecting in either case would bounce them back to /admin.
+    if (!authLoading && user && !isImpersonating && !isImpersonationLoading) {
       const check = async () => {
         const { data, error } = await supabase.rpc('is_platform_admin');
-        if (!error && data) {
+        if (!error && shouldRedirectToAdminConsole({ isPlatformAdmin: !!data, isImpersonating, isImpersonationLoading })) {
           navigate('/admin', { replace: true });
         }
       };
       void check();
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isImpersonating, isImpersonationLoading]);
 
   // If tenant loading hangs, surface it and offer a retry
   // Use longer timeout for post-checkout users
