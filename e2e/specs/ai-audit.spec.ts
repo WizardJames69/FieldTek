@@ -30,10 +30,15 @@ test.describe('AI Audit Log Viewer', () => {
     await auditPage.goto();
   });
 
-  test('audit logs page renders with 5 stat cards', async ({ page }) => {
+  test('audit logs page renders Total plus outcome stat cards', async ({ page }) => {
     await auditPage.waitForPage();
-    const totalCard = await auditPage.getStatCardValue('Total Interactions');
+    // The console now reports outcome-focused counts (Grounding-Trust gate),
+    // not a Passed/Blocked binary. "Total Interactions" was renamed to "Total".
+    const totalCard = await auditPage.getStatCardValue('Total');
     expect(parseInt(totalCard) || 0).toBeGreaterThanOrEqual(0);
+    // The gate-critical outcome counters must be present.
+    await expect(page.getByText('Warn appended', { exact: true })).toBeVisible();
+    await expect(page.getByText('Judge blocked', { exact: true })).toBeVisible();
   });
 
   test('table shows recent interactions with columns', async ({ page }) => {
@@ -50,37 +55,50 @@ test.describe('AI Audit Log Viewer', () => {
     expect(rowCount).toBeGreaterThanOrEqual(0);
   });
 
-  test('status filter "Blocked Only" shows only Blocked badge rows', async ({ page }) => {
+  test('outcome filter "Judge blocked" is directly selectable and narrows correctly', async ({ page }) => {
     await auditPage.waitForPage();
-    await auditPage.filterByStatus('blocked');
+    // Gate requirement: judge blocks must be directly filterable. The seeded
+    // fixture contains only grounded-pass rows (no judge_verdict='blocked'), so
+    // this narrows to the empty state — proving the filter + server-side
+    // narrowing work without error. Classifier coverage lives in unit tests.
+    await auditPage.filterByOutcome('Judge blocked');
     await page.waitForTimeout(500);
-    // All visible data rows should have Blocked badge (or empty state if no blocked logs)
-    const emptyState = page.getByText('No audit logs found');
-    if (await emptyState.isVisible().catch(() => false)) {
-      return; // no blocked rows — that's OK
-    }
     const rows = page.locator('tbody tr');
     const count = await rows.count();
     for (let i = 0; i < count; i++) {
-      const row = rows.nth(i);
-      const text = await row.textContent();
+      const text = await rows.nth(i).textContent();
       if (text && !text.includes('No audit logs found')) {
-        expect(text).toContain('Blocked');
+        // If a judge-blocked row ever exists it must carry the Judge blocked badge.
+        expect(text).toContain('Judge blocked');
       }
     }
   });
 
-  test('status filter "Passed Only" shows only Passed badge rows', async ({ page }) => {
+  test('outcome filter "Warn appended" is directly selectable and narrows correctly', async ({ page }) => {
     await auditPage.waitForPage();
-    await auditPage.filterByStatus('passed');
+    // Gate requirement: warn_appended rows must be directly filterable.
+    await auditPage.filterByOutcome('Warn appended');
+    await page.waitForTimeout(500);
+    const rows = page.locator('tbody tr');
+    const count = await rows.count();
+    for (let i = 0; i < count; i++) {
+      const text = await rows.nth(i).textContent();
+      if (text && !text.includes('No audit logs found')) {
+        expect(text).toContain('Warn appended');
+      }
+    }
+  });
+
+  test('outcome filter "Grounded pass" shows only Grounded pass badge rows', async ({ page }) => {
+    await auditPage.waitForPage();
+    await auditPage.filterByOutcome('Grounded pass');
     await page.waitForTimeout(500);
     const rows = page.locator('tbody tr');
     const count = await rows.count();
     for (let i = 0; i < Math.min(count, 5); i++) {
-      const row = rows.nth(i);
-      const text = await row.textContent();
-      if (text) {
-        expect(text).toContain('Passed');
+      const text = await rows.nth(i).textContent();
+      if (text && !text.includes('No audit logs found')) {
+        expect(text).toContain('Grounded pass');
       }
     }
   });
@@ -104,17 +122,24 @@ test.describe('AI Audit Log Viewer', () => {
     }
   });
 
-  test('detail sheet shows "Block Reason" section for blocked interactions', async ({ page }) => {
+  test('detail sheet shows "Block Reason" for a deterministic / human-review row', async ({ page }) => {
     await auditPage.waitForPage();
-    // Filter to blocked only, then open detail
-    await auditPage.filterByStatus('blocked');
+    // Reach deterministic blocks (response_blocked / human_review_required, judge
+    // verdict null) via the Deterministic / human review outcome filter — NOT a
+    // judge block. The seeded fixture has only grounded-pass rows, so this skips
+    // gracefully; if a deterministic row exists it must render Block Reason.
+    await auditPage.filterByOutcome('Deterministic / human review');
     await page.waitForTimeout(500);
     const emptyState = page.getByText('No audit logs found');
     if (await emptyState.isVisible().catch(() => false)) {
-      return; // no blocked rows to inspect
+      return; // no deterministic rows in the current fixture — that's OK
     }
     const rowCount = await auditPage.getLogRowCount();
     if (rowCount > 0) {
+      // The row must read as deterministic, not as a judge block.
+      const firstRowText = await page.locator('tbody tr').first().textContent();
+      expect(firstRowText).toContain('Deterministic / human review');
+      expect(firstRowText).not.toContain('Judge blocked');
       await auditPage.openLogDetail(0);
       await expect(page.getByText('Block Reason')).toBeVisible();
     }

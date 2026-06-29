@@ -18,12 +18,25 @@ export class AdminAIAuditLogsPage {
     await this.page.waitForTimeout(300);
   }
 
-  async filterByStatus(status: 'all' | 'blocked' | 'passed') {
-    const valueMap = { all: 'All Interactions', blocked: 'Blocked Only', passed: 'Passed Only' };
-    // shadcn Select renders as a custom button trigger, not native <select>
+  /**
+   * Select an outcome filter by its visible label, e.g. "Grounded pass",
+   * "Warn appended", "Judge blocked", "Deterministic / human review",
+   * "All outcomes". Replaces the old binary status filter — the console now
+   * triages by classified outcome, not a Passed/Blocked boolean.
+   */
+  async filterByOutcome(label: string) {
+    // shadcn Select renders as a custom button trigger, not native <select>.
+    // The outcome Select is the only role=combobox on the page (the
+    // "Contradictions only" control is a toggle button, not a combobox).
     const trigger = this.page.locator('button[role="combobox"]').first();
     await trigger.click();
-    await this.page.getByRole('option', { name: valueMap[status] }).click();
+    await this.page.getByRole('option', { name: label, exact: true }).click();
+    await waitForDataLoad(this.page);
+  }
+
+  /** Toggle the "Contradictions only" filter button. */
+  async toggleContradictionsOnly() {
+    await this.page.getByRole('button', { name: 'Contradictions only' }).click();
     await waitForDataLoad(this.page);
   }
 
