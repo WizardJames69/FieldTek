@@ -22,7 +22,7 @@ test.beforeAll(async () => {
 test.describe('Prerequisite Rules', () => {
   test('passes when all required checklist items completed', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Can I proceed with the repair?' }],
         context: {
@@ -42,7 +42,7 @@ test.describe('Prerequisite Rules', () => {
 
   test('blocks when required items missing + severity critical', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Can I proceed with the repair?' }],
         context: {
@@ -64,7 +64,7 @@ test.describe('Prerequisite Rules', () => {
 test.describe('Measurement Range Rules', () => {
   test('measurement 72°F within range 55-85 passes', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Supply air temp is 72°F, is that within range?' }],
         context: {
@@ -79,7 +79,7 @@ test.describe('Measurement Range Rules', () => {
 
   test('measurement 100°F outside range triggers warning', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Supply air temp is 100°F, is that within range?' }],
         context: {
@@ -96,7 +96,7 @@ test.describe('Measurement Range Rules', () => {
 test.describe('Safety Gate Rules', () => {
   test('safety gate blocks when prerequisites incomplete', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Starting on-site work now' }],
         context: {
@@ -112,7 +112,7 @@ test.describe('Safety Gate Rules', () => {
 
   test('safety gate passes when prerequisites complete', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Starting on-site work now' }],
         context: {
@@ -130,7 +130,7 @@ test.describe('Safety Gate Rules', () => {
 test.describe('Blocking Behavior', () => {
   test('critical/blocking verdict returns compliance_blocked with 200 status', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendRawRequest(
         {
           messages: [{ role: 'user', content: 'Proceeding with work' }],
@@ -154,7 +154,7 @@ test.describe('Blocking Behavior', () => {
   // assert the pipeline continues. Tracked as a follow-up (not in scope here).
   test('warning verdict allows pipeline to continue', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What should I check before starting?' }],
         context: { industry: 'hvac' },

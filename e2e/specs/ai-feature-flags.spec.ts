@@ -66,7 +66,7 @@ test.describe('Pipeline Effects', () => {
 
   test('disabling rag_judge → audit log has judge_grounded IS NULL', async () => {
     test.slow();
-    await withFeatureFlag('rag_judge', false, async () => {
+    await withFeatureFlag('rag_judge', false, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What is the startup procedure?' }],
         context: { industry: 'hvac' },
@@ -82,7 +82,7 @@ test.describe('Pipeline Effects', () => {
 
   test('enabling rag_reranking → audit log has rerank_model IS NOT NULL', async () => {
     test.slow();
-    await withFeatureFlag('rag_reranking', true, async () => {
+    await withFeatureFlag('rag_reranking', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What are maintenance intervals?' }],
         context: { industry: 'hvac' },
@@ -101,7 +101,7 @@ test.describe('Pipeline Effects', () => {
 
   test('disabling equipment_graph → audit log has graph_expansion_count = 0', async () => {
     test.slow();
-    await withFeatureFlag('equipment_graph', false, async () => {
+    await withFeatureFlag('equipment_graph', false, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'Compressor not starting' }],
         context: { industry: 'hvac' },
@@ -117,7 +117,7 @@ test.describe('Pipeline Effects', () => {
 
   test('enabling compliance_engine → audit log has compliance_rules_evaluated', async () => {
     test.slow();
-    await withFeatureFlag('compliance_engine', true, async () => {
+    await withFeatureFlag('compliance_engine', true, tenantId, async () => {
       const res = await client.sendChatMessage({
         messages: [{ role: 'user', content: 'What safety checks are needed before starting work?' }],
         context: { industry: 'hvac', workflowStage: 'On Site' },
