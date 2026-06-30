@@ -798,7 +798,10 @@ export const DIAGNOSTIC_PATHS: DiagnosticPath[] = [
   },
   {
     id: "hvac-pressure",
-    trigger: ["pressure", "refrigerant", "charge", "leak"],
+    // "charge" alone is too broad (matches "in charge", "discharge") — use
+    // explicit refrigerant-charge phrases instead. Boundary matching keeps
+    // "leak" from hitting "leakage".
+    trigger: ["pressure", "refrigerant", "refrigerant charge", "low charge", "leak"],
     name: "Refrigerant System Diagnostic",
     iconName: "Gauge",
     industry: "hvac",
@@ -1608,14 +1611,119 @@ export function buildIndustrySafetyPrompt(industry: IndustryType): string {
   return prompt;
 }
 
+/** Escape a string for safe literal use inside a RegExp. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
- * Find matching diagnostic path for given text
+ * Whether `trigger` occurs in `lowerText` as a bounded token/phrase rather than
+ * an incidental substring. Word boundaries stop false hits like "door" inside
+ * "outdoor", "charge" inside "discharge", or "leak" inside "leakage", while
+ * multi-word triggers ("won't close", "no hot water") match as bounded phrases.
+ * Plurals/suffixes are handled by listing explicit trigger variants (e.g.
+ * "door"/"doors"), NOT by broad substring matching. `lowerText` must already be
+ * lower-cased.
+ */
+function triggerMatchesText(trigger: string, lowerText: string): boolean {
+  const t = trigger.toLowerCase().trim();
+  if (!t) return false;
+  // All current triggers start and end with a word character, so wrapping in
+  // \b gives token-bounded matching for both single words and phrases.
+  return new RegExp(`\\b${escapeRegExp(t)}\\b`).test(lowerText);
+}
+
+/**
+ * Find matching diagnostic path for given text. Uses bounded token/phrase
+ * matching (see triggerMatchesText) instead of naive substring matching.
+ *
+ * Industry scoping: when an industry is supplied AND it has diagnostic paths of
+ * its own, only that industry's (and 'common') paths are considered, so e.g. an
+ * HVAC question can't match an elevator-only path. When no industry is supplied,
+ * or the industry has no paths of its own, all paths are searched (preserves
+ * prior behavior for general/uncategorised tenants).
  */
 export function findDiagnosticPath(text: string, industry?: IndustryType): DiagnosticPath | null {
   const lowerText = text.toLowerCase();
-  const paths = industry ? getDiagnosticPathsForIndustry(industry) : DIAGNOSTIC_PATHS;
-  
+  const scoped = industry ? getDiagnosticPathsForIndustry(industry) : [];
+  const paths = scoped.length > 0 ? scoped : DIAGNOSTIC_PATHS;
+
   return paths.find(path =>
-    path.trigger.some(trigger => lowerText.includes(trigger))
+    path.trigger.some(trigger => triggerMatchesText(trigger, lowerText))
   ) || null;
+}
+
+/**
+ * Clear troubleshooting-symptom signals. If any of these appear, the user is
+ * describing a fault and the guided wizard is appropriate.
+ */
+const SYMPTOM_INTENT_PATTERNS: RegExp[] = [
+  /won'?t\s+(close|open|start|run|turn\s+on|work|cool|heat|move)/,
+  /\bnot\s+(working|running|starting|cooling|heating|closing|opening)\b/,
+  /\bisn'?t\s+(working|running|starting|cooling|heating)\b/,
+  /\bno\s+hot\s+water\b/,
+  /\bno\s+power\b/,
+  /\bmaking\s+(a\s+)?noise\b/,
+  /\b(noise|noisy|grinding|squealing|squeal|rattling|banging|buzzing|knocking)\b/,
+  /\b(leaking|leaks|dripping|stuck|jammed|seized|broken|overheating|burning|smoking)\b/,
+  /\b(failed|failure|fault|faulty|error\s+code|trips|tripping|short\s+cycling)\b/,
+  /\bhot\s+bearing\b/,
+  /\bnot\s+heating\b/,
+];
+
+/**
+ * Informational / documentation-style phrasing. These questions want a cited
+ * answer from RAG, NOT a guided diagnostic, even when they mention a trigger
+ * word (e.g. "what quarterly tasks pair with lubricating the blower motor
+ * bearings").
+ */
+const INFORMATIONAL_INTENT_PATTERNS: RegExp[] = [
+  /\bwhat\b/,
+  /\bwhich\b/,
+  /\blist\b/,
+  /\brecommend(ed|s|ation)?\b/,
+  /\bmaintenance\b/,
+  /\bschedule\b/,
+  /\bchecklist\b/,
+  /\binterval(s)?\b/,
+  /\bhow\s+often\b/,
+  /\bhow\s+do\s+i\b/,
+  /\bhow\s+to\b/,
+  /\bwhere\s+in\s+the\s+(manual|document|doc|guide)\b/,
+  /\baccording\s+to\s+the\s+(manual|document|doc|guide)\b/,
+  /\bbest\s+practice(s)?\b/,
+  /\b(quarterly|semi-annual|semiannual|annual|monthly|weekly)\b/,
+];
+
+export interface AutoOpenDiagnosticOptions {
+  /** Force the wizard open regardless of intent heuristics (e.g. explicit UI action). */
+  forceOpen?: boolean;
+}
+
+/**
+ * Decide whether a typed chat message should AUTO-OPEN the guided diagnostic
+ * wizard, versus flow straight to normal RAG chat.
+ *
+ * A matched diagnostic path is necessary but NOT sufficient: informational /
+ * RAG-style questions must reach chat even if they mention a trigger word,
+ * while clear troubleshooting symptoms still open the wizard. Symptom signals
+ * take precedence over informational ones (e.g. "annual inspection found
+ * grinding" still opens).
+ */
+export function shouldAutoOpenDiagnosticWizard(
+  messageText: string,
+  diagnosticPath: DiagnosticPath | null,
+  options: AutoOpenDiagnosticOptions = {},
+): boolean {
+  if (!diagnosticPath) return false;
+  if (options.forceOpen) return true;
+
+  const lower = messageText.toLowerCase();
+  // Clear symptom wins, even alongside informational-looking words.
+  if (SYMPTOM_INTENT_PATTERNS.some((re) => re.test(lower))) return true;
+  // Informational / documentation phrasing → never hijack; send to chat.
+  if (INFORMATIONAL_INTENT_PATTERNS.some((re) => re.test(lower))) return false;
+  // A matched trigger with no informational signal is treated as a terse
+  // symptom prompt and opens the wizard (preserves prior keyword behavior).
+  return true;
 }

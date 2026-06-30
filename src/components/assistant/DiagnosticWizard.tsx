@@ -215,6 +215,20 @@ export function DiagnosticWizard({
             )}
           </Button>
         </div>
+
+        {/* Escape hatch: send the original typed question straight to chat
+            instead of completing the guided diagnostic. Routes through the same
+            onCancel handler so the original message is submitted exactly once. */}
+        <div className="flex justify-center pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-muted-foreground"
+            onClick={onCancel}
+          >
+            Ask as a question instead
+          </Button>
+        </div>
       </div>
     </Card>
   );
