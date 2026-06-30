@@ -59,8 +59,9 @@ import { createRetrievalAdapter } from "./retrieval.ts";
 import { classifyDegradedAnswer, decideRetrievalAbstain } from "./degradation.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
-import { evaluateWithJudge, evaluateWithJudgeBlocking } from "./judge.ts";
+import { evaluateWithJudge, evaluateWithJudgeBlocking, JUDGE_MODEL } from "./judge.ts";
 import type { JudgeResult } from "./judge.ts";
+import { buildJudgeUnavailableMarker } from "./judgeDiagnostics.ts";
 import {
   decideJudgeVerdict,
   JUDGE_FULL_BLOCK_FALLBACK,
@@ -1373,7 +1374,7 @@ serve(async (req) => {
               OPENAI_API_KEY,
             );
 
-            if (judgeBlockingResult) {
+            if (judgeBlockingResult.ok) {
               judgeResultSync = judgeBlockingResult.result;
               judgeBlockingLatencyMs = judgeBlockingResult.latencyMs;
               judgeBlockingGateway = judgeBlockingResult.gatewayUsed;
@@ -1405,9 +1406,42 @@ serve(async (req) => {
                   `grounded=${judgeBlockingResult.result.grounded} confidence=${judgeBlockingResult.result.confidence}`,
                 );
               }
+            } else {
+              // FAIL-OPEN PRESERVED: the blocking judge produced no usable verdict
+              // (timeout / gateway error / empty body / unparseable JSON). The answer
+              // is served UNMODIFIED — no block, no warning, no content change, and
+              // judgeVerdict stays "none" → judge_verdict persists as NULL. We only
+              // record observability so the silent fail-open base rate becomes
+              // measurable: capture latency/gateway, tag the row with
+              // JUDGE_UNAVAILABLE:<reason> in validation_patterns_matched, and emit
+              // one structured log. (See P5, correlation_id
+              // 79dfbb96-c5c4-494e-99d8-740bd421bf11.)
+              judgeBlockingLatencyMs = judgeBlockingResult.latencyMs;
+              judgeBlockingGateway = judgeBlockingResult.gatewayUsed;
+              matchedPatterns.push(buildJudgeUnavailableMarker(judgeBlockingResult.reason));
+              console.warn("[judge-blocking] JUDGE_UNAVAILABLE", {
+                correlation_id: correlationId,
+                reason: judgeBlockingResult.reason,
+                latency_ms: judgeBlockingResult.latencyMs,
+                tenant_id: tenantUser.tenant_id,
+                judge_model: JUDGE_MODEL,
+                gateway: judgeBlockingResult.gatewayUsed ?? "unknown",
+              });
             }
           } catch (judgeBlockErr) {
-            console.warn("[judge-blocking] Error (non-fatal):", judgeBlockErr);
+            // Backstop: evaluateWithJudgeBlocking no longer throws, but keep
+            // fail-open safe + observable if anything unexpected does. The answer
+            // is still served unmodified.
+            matchedPatterns.push(buildJudgeUnavailableMarker("error"));
+            console.warn("[judge-blocking] JUDGE_UNAVAILABLE", {
+              correlation_id: correlationId,
+              reason: "error",
+              latency_ms: judgeBlockingLatencyMs,
+              tenant_id: tenantUser.tenant_id,
+              judge_model: JUDGE_MODEL,
+              gateway: "unknown",
+              error: judgeBlockErr instanceof Error ? judgeBlockErr.message : String(judgeBlockErr),
+            });
           }
         }
 

@@ -10,6 +10,10 @@
 // ============================================================
 
 import { fetchWithFallback } from "../_shared/aiClient.ts";
+import {
+  classifyJudgeUnavailableReason,
+  type JudgeUnavailableReason,
+} from "./judgeDiagnostics.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -21,9 +25,18 @@ export interface JudgeResult {
   explanation: string;
 }
 
-const JUDGE_MODEL = "gpt-4.1-mini";
+export const JUDGE_MODEL = "gpt-4.1-mini";
 const JUDGE_MAX_TOKENS = 200;
-const JUDGE_TIMEOUT_MS = 5000;
+// Judge-specific gateway timeout. Defaults to 8000ms — identical to the shared
+// AI_GATEWAY_TIMEOUT_MS the blocking judge already inherited — so wiring this
+// changes NO deployed behavior; it only gives ops an independent, env-overridable
+// lever to tune the blocking judge without touching the main answer path. This
+// replaces the long-dead JUDGE_TIMEOUT_MS=5000 constant, which was declared but
+// never passed to any fetch.
+const JUDGE_GATEWAY_TIMEOUT_MS = parseInt(
+  (typeof Deno !== "undefined" ? Deno.env.get("JUDGE_GATEWAY_TIMEOUT_MS") : undefined) || "8000",
+  10,
+);
 
 /**
  * Asynchronously evaluate the AI response for grounding against retrieved chunks.
@@ -164,8 +177,15 @@ Rules:
 
 /**
  * Synchronous judge evaluation for blocking/warning mode.
- * Returns the JudgeResult instead of updating the audit log.
- * On any error or timeout, returns null (graceful degradation).
+ *
+ * Returns a discriminated result:
+ *  - `{ ok: true,  result, latencyMs, gatewayUsed }`  on a usable verdict
+ *  - `{ ok: false, reason, latencyMs, gatewayUsed }`  on timeout / gateway error /
+ *    empty body / unparseable JSON
+ *
+ * It NEVER throws and NEVER blocks the answer — the caller fails open and serves
+ * the response unmodified. The `reason` exists purely so the audit row can record
+ * WHY the judge produced no verdict (observability); it does not change behavior.
  */
 export async function evaluateWithJudgeBlocking(
   userQuery: string,
@@ -173,7 +193,10 @@ export async function evaluateWithJudgeBlocking(
   aiResponse: string,
   correlationId: string,
   apiKey: string,
-): Promise<{ result: JudgeResult; latencyMs: number; gatewayUsed: string } | null> {
+): Promise<
+  | { ok: true; result: JudgeResult; latencyMs: number; gatewayUsed: string }
+  | { ok: false; reason: JudgeUnavailableReason; latencyMs: number; gatewayUsed: string | null }
+> {
   const startTime = Date.now();
 
   const chunksText = retrievedChunks
@@ -221,37 +244,53 @@ Rules:
       },
       apiKey,
       correlationId,
+      JUDGE_GATEWAY_TIMEOUT_MS,
     );
 
     if (!response.ok) {
       console.warn(
         `[judge-blocking] [correlation_id=${correlationId}] API returned ${response.status} (${gatewayUsed})`,
       );
-      return null;
+      return { ok: false, reason: "gateway_error", latencyMs: Date.now() - startTime, gatewayUsed };
     }
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) {
       console.warn(`[judge-blocking] [correlation_id=${correlationId}] Empty response`);
-      return null;
+      return { ok: false, reason: "empty_response", latencyMs: Date.now() - startTime, gatewayUsed };
     }
 
-    const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
-    const judgment: JudgeResult = JSON.parse(cleanContent);
+    let judgment: JudgeResult;
+    try {
+      const cleanContent = content.replace(/```json\n?|\n?```/g, "").trim();
+      judgment = JSON.parse(cleanContent);
+    } catch (parseErr) {
+      console.warn(
+        `[judge-blocking] [correlation_id=${correlationId}] Failed to parse judge response:`,
+        parseErr instanceof Error ? parseErr.message : String(parseErr),
+      );
+      return { ok: false, reason: "invalid_json", latencyMs: Date.now() - startTime, gatewayUsed };
+    }
+
     const latencyMs = Date.now() - startTime;
 
     console.log(
       `[judge-blocking] [correlation_id=${correlationId}] grounded=${judgment.grounded} confidence=${judgment.confidence} latency=${latencyMs}ms (${gatewayUsed})`,
     );
 
-    return { result: judgment, latencyMs, gatewayUsed };
+    return { ok: true, result: judgment, latencyMs, gatewayUsed };
   } catch (err) {
+    // Fail-open: gateway abort (timeout) or network error. Derive the reason so
+    // the audit row can attribute WHY the judge produced no verdict. gatewayUsed
+    // is unknown here — the throw happened inside fetchWithFallback before it
+    // returned a label.
     const latencyMs = Date.now() - startTime;
+    const reason = classifyJudgeUnavailableReason(err);
     console.warn(
-      `[judge-blocking] [correlation_id=${correlationId}] Error after ${latencyMs}ms:`,
+      `[judge-blocking] [correlation_id=${correlationId}] Unavailable (${reason}) after ${latencyMs}ms:`,
       err instanceof Error ? err.message : String(err),
     );
-    return null;
+    return { ok: false, reason, latencyMs, gatewayUsed: null };
   }
 }

@@ -159,13 +159,18 @@ export async function writeAuditLog(
       diagnostic_context_injected: data.diagnosticContextInjected || false,
       step_evidence_count: data.stepEvidenceCount ?? 0,
       judge_verdict: data.judgeVerdict || null,
+      // Persist judge latency whenever it was measured — INCLUDING a fail-open
+      // (timeout / gateway error) where judgeResultSync is null. This makes a
+      // judge-unavailable row read as "the judge ran and timed out" rather than an
+      // empty latency, and lets the fail-open base rate be measured. The other
+      // judge_* fields stay gated on a real verdict below.
+      ...(data.judgeBlockingLatencyMs != null ? { judge_latency_ms: data.judgeBlockingLatencyMs } : {}),
       ...(data.judgeResultSync ? {
         judge_grounded: data.judgeResultSync.grounded,
         judge_confidence: Math.min(5, Math.max(1, Math.round(data.judgeResultSync.confidence || 3))),
         judge_contradiction: data.judgeResultSync.contradiction_detected,
         judge_explanation: (data.judgeResultSync.explanation || "").slice(0, 500),
         judge_model: "gpt-4.1-mini",
-        judge_latency_ms: data.judgeBlockingLatencyMs,
       } : {}),
     }).select("id").single();
 
