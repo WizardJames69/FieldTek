@@ -29,9 +29,63 @@ describe("classifyAuditOutcome", () => {
     expect(classifyAuditOutcome(row({ judge_verdict: "pass" }))).toBe("grounded_pass");
   });
 
-  it("grounded_pass — judge never ran but an answer was delivered (unjudged)", () => {
-    expect(classifyAuditOutcome(row({ judge_verdict: null }))).toBe("grounded_pass");
-    expect(classifyAuditOutcome(row({ judge_verdict: "none" }))).toBe("grounded_pass");
+  it("unjudged_no_verdict — served answer with a null judge verdict (fail-open)", () => {
+    // The P5 shape: a served, non-empty, non-abstained, non-blocked answer whose
+    // blocking judge produced no result. It must NOT read as a grounded pass.
+    expect(classifyAuditOutcome(row({ judge_verdict: null }))).toBe("unjudged_no_verdict");
+  });
+
+  it("unjudged_no_verdict — served answer with the 'none' sentinel verdict", () => {
+    expect(classifyAuditOutcome(row({ judge_verdict: "none" }))).toBe("unjudged_no_verdict");
+  });
+
+  it("unjudged_no_verdict — served answer with an undefined or empty verdict", () => {
+    expect(classifyAuditOutcome(row({ judge_verdict: undefined }))).toBe("unjudged_no_verdict");
+    expect(classifyAuditOutcome(row({ judge_verdict: "" }))).toBe("unjudged_no_verdict");
+    expect(classifyAuditOutcome(row({ judge_verdict: "   " }))).toBe("unjudged_no_verdict");
+  });
+
+  it("P5 regression — exact fail-open shape classifies as unjudged_no_verdict", () => {
+    // correlation_id 79dfbb96-c5c4-494e-99d8-740bd421bf11: served answer carrying
+    // an unsupported claim, judge verdict/grounded/confidence/explanation all null,
+    // response_blocked=false, abstain_flag=false → must surface as unjudged.
+    expect(
+      classifyAuditOutcome(
+        row({
+          judge_verdict: null,
+          abstain_flag: false,
+          response_blocked: false,
+          ai_response:
+            "According to the HVAC Maintenance Best Practices manual, the recommended " +
+            "quarterly maintenance service includes inspecting and replacing air filters, " +
+            "checking belt tension, and cleaning the condenser coil, in addition to flushing " +
+            "the condensate drain trap [Source: HVAC Maintenance Best Practices].",
+        }),
+      ),
+    ).toBe("unjudged_no_verdict");
+  });
+
+  it("abstain with a null verdict stays in the abstain family, NOT unjudged", () => {
+    // The abstain gate is checked before the unjudged gate, so a null-verdict
+    // abstain is grounded_refusal/abstain/degraded — never unjudged_no_verdict.
+    expect(
+      classifyAuditOutcome(
+        row({
+          abstain_flag: true,
+          judge_verdict: null,
+          ai_response: "I couldn't find enough grounded context…",
+          enforcement_rules_triggered: [INSUFFICIENT_RETRIEVAL_COVERAGE],
+        }),
+      ),
+    ).toBe("grounded_refusal");
+  });
+
+  it("deterministic block with a null verdict stays deterministic, NOT unjudged", () => {
+    expect(
+      classifyAuditOutcome(
+        row({ response_blocked: true, judge_verdict: null, ai_response: "This question requires human review." }),
+      ),
+    ).toBe("deterministic_block_or_escalation");
   });
 
   it("warn_appended — judge appended a warning", () => {
@@ -152,5 +206,16 @@ describe("auditOutcomeBadge", () => {
   it("falls back to the unknown badge for an unexpected value", () => {
     const badge = auditOutcomeBadge("not_a_real_outcome" as AuditOutcome);
     expect(badge.label).toBe("Unknown");
+  });
+
+  it("unjudged_no_verdict badge is distinct from grounded_pass (not a success style)", () => {
+    const unjudged = auditOutcomeBadge("unjudged_no_verdict");
+    const pass = auditOutcomeBadge("grounded_pass");
+    expect(unjudged.label).toBe("Unjudged / no verdict");
+    expect(unjudged.icon).toBe("unverified");
+    // Must not reuse the green "success" styling or the check icon.
+    expect(unjudged.className).not.toContain("green");
+    expect(unjudged.icon).not.toBe(pass.icon);
+    expect(unjudged.className).not.toBe(pass.className);
   });
 });

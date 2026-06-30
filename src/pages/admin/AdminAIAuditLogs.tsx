@@ -31,6 +31,7 @@ import {
   Eye,
   FileText,
   Shield,
+  ShieldOff,
   GraduationCap,
   Ban,
   Slash,
@@ -88,6 +89,7 @@ const OUTCOME_ICONS: Record<AuditOutcomeIcon, LucideIcon> = {
   shield: Shield,
   slash: Slash,
   help: HelpCircle,
+  unverified: ShieldOff,
 };
 
 function OutcomeBadge({ outcome }: { outcome: AuditOutcome }) {
@@ -206,6 +208,14 @@ export default function AdminAIAuditLogs() {
         query = query.eq("judge_verdict", "warn_appended");
       } else if (filterOutcome === "judge_blocked") {
         query = query.eq("judge_verdict", "blocked");
+      } else if (filterOutcome === "unjudged_no_verdict") {
+        // Fail-open served answers carry a NULL judge verdict. Narrow server-side
+        // so these gate-critical rows surface even beyond the 500-row window. The
+        // client-side classifier then drops null-verdict abstains / deterministic
+        // blocks / empty responses. (Single predicate mirrors the warn/blocked
+        // narrowing above; the rarer "none"/empty-string verdicts are caught
+        // client-side rather than complicating the query with OR/nullability.)
+        query = query.is("judge_verdict", null);
       }
       if (contradictionsOnly) {
         query = query.eq("judge_contradiction", true);
@@ -240,6 +250,9 @@ export default function AdminAIAuditLogs() {
     total: auditLogs?.length || 0,
     groundedPass: outcomeCount("grounded_pass"),
     warnAppended: outcomeCount("warn_appended"),
+    // Served answers with no judge verdict (fail-open). Counted separately so the
+    // Grounded pass total no longer absorbs unverified answers.
+    unjudged: outcomeCount("unjudged_no_verdict"),
     judgeBlocked: outcomeCount("judge_blocked"),
     deterministic: outcomeCount("deterministic_block_or_escalation"),
     abstain: outcomeCount("abstain") + outcomeCount("grounded_refusal"),
@@ -256,7 +269,7 @@ export default function AdminAIAuditLogs() {
       </div>
 
         {/* Stats Cards — outcome-focused counts for the Grounding-Trust telemetry gate */}
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-7">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total</CardTitle>
@@ -282,6 +295,15 @@ export default function AdminAIAuditLogs() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-amber-600">{stats.warnAppended}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Unjudged</CardTitle>
+              <ShieldOff className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-700">{stats.unjudged}</div>
             </CardContent>
           </Card>
           <Card>
@@ -349,6 +371,7 @@ export default function AdminAIAuditLogs() {
                   <SelectItem value="all">All outcomes</SelectItem>
                   <SelectItem value="grounded_pass">Grounded pass</SelectItem>
                   <SelectItem value="warn_appended">Warn appended</SelectItem>
+                  <SelectItem value="unjudged_no_verdict">Unjudged / no verdict</SelectItem>
                   <SelectItem value="judge_blocked">Judge blocked</SelectItem>
                   <SelectItem value="deterministic_block_or_escalation">
                     Deterministic / human review
@@ -618,8 +641,59 @@ export default function AdminAIAuditLogs() {
                     </div>
                   )}
 
+                  {/* Unjudged / no verdict: a served answer the grounding judge
+                      never returned a result for (fail-open under judge_blocking_mode).
+                      Shown explicitly so it is NOT read as a grounded pass. */}
+                  {classifyAuditOutcome(selectedLog) === "unjudged_no_verdict" && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2 text-amber-800">
+                        <ShieldOff className="h-4 w-4" />
+                        Judge Evaluation
+                      </h4>
+                      <p className="text-sm text-amber-800">
+                        No judge verdict was recorded for this served answer. The grounding
+                        judge produced no result (fail-open), so the response was delivered
+                        without a grounding check — it is <span className="font-semibold">not</span> a
+                        confirmed grounded pass.
+                      </p>
+                      <div className="grid grid-cols-2 gap-4 text-sm mt-3">
+                        <div>
+                          <span className="text-muted-foreground">Verdict:</span>
+                          <p className="font-mono text-xs mt-1">{nullableText(selectedLog.judge_verdict)}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Grounded:</span>
+                          <p className="font-semibold">
+                            {selectedLog.judge_grounded === null
+                              ? "—"
+                              : selectedLog.judge_grounded
+                                ? "Yes"
+                                : "No"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Confidence:</span>
+                          <p className="font-semibold">
+                            {selectedLog.judge_confidence === null
+                              ? "—"
+                              : `${selectedLog.judge_confidence}/5`}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Latency:</span>
+                          <p className="font-semibold">
+                            {selectedLog.judge_latency_ms === null
+                              ? "—"
+                              : `${selectedLog.judge_latency_ms}ms`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Judge Evaluation (LLM-as-judge; async, may be NULL on unjudged rows) */}
-                  {(selectedLog.judge_verdict !== null ||
+                  {classifyAuditOutcome(selectedLog) !== "unjudged_no_verdict" &&
+                    (selectedLog.judge_verdict !== null ||
                     selectedLog.judge_grounded !== null ||
                     selectedLog.judge_confidence !== null ||
                     selectedLog.judge_contradiction !== null ||
