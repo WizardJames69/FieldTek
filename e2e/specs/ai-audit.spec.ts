@@ -36,9 +36,14 @@ test.describe('AI Audit Log Viewer', () => {
     // not a Passed/Blocked binary. "Total Interactions" was renamed to "Total".
     const totalCard = await auditPage.getStatCardValue('Total');
     expect(parseInt(totalCard) || 0).toBeGreaterThanOrEqual(0);
-    // The gate-critical outcome counters must be present.
-    await expect(page.getByText('Warn appended', { exact: true })).toBeVisible();
-    await expect(page.getByText('Judge blocked', { exact: true })).toBeVisible();
+    // The gate-critical outcome counters must be present as stat cards. Scope to
+    // the stat-card summary container: once real warn_appended/blocked rows exist,
+    // the same labels also render as row badges, so an unscoped page-level
+    // getByText('Warn appended', { exact: true }) matches multiple elements and
+    // trips Playwright strict mode. The stat-card label is what this test asserts.
+    const statCards = page.getByTestId('audit-stat-cards');
+    await expect(statCards.getByText('Warn appended', { exact: true })).toBeVisible();
+    await expect(statCards.getByText('Judge blocked', { exact: true })).toBeVisible();
   });
 
   test('table shows recent interactions with columns', async ({ page }) => {
