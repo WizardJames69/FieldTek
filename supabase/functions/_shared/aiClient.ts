@@ -64,11 +64,13 @@ export interface AIFetchResult {
  * @param body    JSON body to send
  * @param primaryApiKey  Bearer token for the primary gateway
  * @param correlationId  Optional correlation ID for tracing
- * @param timeoutMs  Per-request timeout for the PRIMARY gateway call. Defaults to
- *                   GATEWAY_TIMEOUT_MS so existing callers (embeddings, chat) are
- *                   byte-for-byte unchanged; a caller that needs a tighter, tunable
- *                   bound (e.g. the blocking judge) passes its own. The fallback
- *                   path is intentionally left as-is (no behavior change).
+ * @param timeoutMs  Per-request timeout applied to BOTH the primary and the fallback
+ *                   gateway calls. Defaults to GATEWAY_TIMEOUT_MS; a caller that needs
+ *                   a tighter, tunable bound (e.g. the blocking judge) passes its own
+ *                   and it applies consistently across primary→fallback failover.
+ *                   (fgem configures no fallback, so the fallback branch is currently
+ *                   dormant; forwarding the timeout keeps the lever correct if one is
+ *                   ever added.)
  */
 export async function fetchWithFallback(
   path: string,
@@ -88,7 +90,7 @@ export async function fetchWithFallback(
       console.warn(
         `[aiClient] Circuit open (${consecutiveFailures} failures), routing to fallback`
       );
-      return callGateway(AI_FALLBACK_URL, path, body, AI_FALLBACK_KEY, correlationId, "fallback");
+      return callGatewayWithTimeout(AI_FALLBACK_URL, path, body, AI_FALLBACK_KEY, correlationId, "fallback", timeoutMs);
     }
     // If no fallback configured, fall through and try primary anyway
   }
@@ -118,7 +120,7 @@ export async function fetchWithFallback(
         console.warn(
           `[aiClient] Primary returned ${result.response.status}, falling back`
         );
-        return callGateway(AI_FALLBACK_URL, path, body, AI_FALLBACK_KEY, correlationId, "fallback");
+        return callGatewayWithTimeout(AI_FALLBACK_URL, path, body, AI_FALLBACK_KEY, correlationId, "fallback", timeoutMs);
       }
     }
 
@@ -133,7 +135,7 @@ export async function fetchWithFallback(
 
     if (AI_FALLBACK_URL && AI_FALLBACK_KEY) {
       console.warn(`[aiClient] Attempting fallback`);
-      return callGateway(AI_FALLBACK_URL, path, body, AI_FALLBACK_KEY, correlationId, "fallback");
+      return callGatewayWithTimeout(AI_FALLBACK_URL, path, body, AI_FALLBACK_KEY, correlationId, "fallback", timeoutMs);
     }
 
     throw err;
@@ -141,31 +143,6 @@ export async function fetchWithFallback(
 }
 
 // ── Internal Helpers ─────────────────────────────────────────
-
-async function callGateway(
-  baseUrl: string,
-  path: string,
-  body: Record<string, unknown>,
-  apiKey: string,
-  correlationId: string | undefined,
-  label: "primary" | "fallback"
-): Promise<AIFetchResult> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
-  };
-  if (correlationId) {
-    headers["X-Correlation-ID"] = correlationId;
-  }
-
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-
-  return { response, gatewayUsed: label };
-}
 
 async function callGatewayWithTimeout(
   baseUrl: string,
