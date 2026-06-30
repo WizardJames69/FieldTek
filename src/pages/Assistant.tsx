@@ -31,6 +31,7 @@ import { SuggestedQuestions, generateSuggestions } from "@/components/assistant/
 import { DocumentCitation, ContextIndicator, type CitationSource } from "@/components/assistant/DocumentCitation";
 import { DegradedAnswerBanner } from "@/components/assistant/DegradedAnswerBanner";
 import { DiagnosticWizard, getDiagnosticPath, formatDiagnosticData } from "@/components/assistant/DiagnosticWizard";
+import { shouldAutoOpenDiagnosticWizard, type IndustryType } from "@/config/industryAssistantConfig";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
 
 // Message content can be text or multimodal (text + images)
@@ -485,11 +486,18 @@ export default function Assistant() {
     
     if ((!messageText && attachedImages.length === 0) || isLoading) return;
 
-    // Check for diagnostic wizard trigger
-    if (!overrideContent && getDiagnosticPath(messageText)) {
-      setPendingDiagnosticText(messageText);
-      setShowDiagnosticWizard(true);
-      return;
+    // Check for diagnostic wizard trigger. Scope to the tenant's industry so an
+    // HVAC question can't match an elevator-only path, and only AUTO-OPEN for
+    // clear troubleshooting symptoms — informational/RAG questions that merely
+    // mention a trigger word must flow straight to chat.
+    if (!overrideContent) {
+      const industry = tenant?.industry as IndustryType | undefined;
+      const diagnosticPath = getDiagnosticPath(messageText, industry);
+      if (shouldAutoOpenDiagnosticWizard(messageText, diagnosticPath)) {
+        setPendingDiagnosticText(messageText);
+        setShowDiagnosticWizard(true);
+        return;
+      }
     }
 
     // Build message content - multimodal if images are attached
@@ -1050,6 +1058,7 @@ export default function Assistant() {
                   symptomText={pendingDiagnosticText}
                   onComplete={handleDiagnosticComplete}
                   onCancel={handleDiagnosticCancel}
+                  industry={tenant?.industry as IndustryType | undefined}
                 />
               )}
 
