@@ -64,12 +64,18 @@ export interface AIFetchResult {
  * @param body    JSON body to send
  * @param primaryApiKey  Bearer token for the primary gateway
  * @param correlationId  Optional correlation ID for tracing
+ * @param timeoutMs  Per-request timeout for the PRIMARY gateway call. Defaults to
+ *                   GATEWAY_TIMEOUT_MS so existing callers (embeddings, chat) are
+ *                   byte-for-byte unchanged; a caller that needs a tighter, tunable
+ *                   bound (e.g. the blocking judge) passes its own. The fallback
+ *                   path is intentionally left as-is (no behavior change).
  */
 export async function fetchWithFallback(
   path: string,
   body: Record<string, unknown>,
   primaryApiKey: string,
-  correlationId?: string
+  correlationId?: string,
+  timeoutMs: number = GATEWAY_TIMEOUT_MS
 ): Promise<AIFetchResult> {
   // Circuit breaker: check if we should skip primary entirely
   if (circuitState === "open") {
@@ -96,7 +102,7 @@ export async function fetchWithFallback(
       primaryApiKey,
       correlationId,
       "primary",
-      GATEWAY_TIMEOUT_MS
+      timeoutMs
     );
 
     // 429/402 are "expected" errors — primary is alive, just rate-limited/billing
