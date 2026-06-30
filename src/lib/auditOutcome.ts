@@ -34,6 +34,7 @@ export type AuditOutcome =
   | "deterministic_block_or_escalation"
   | "judge_blocked"
   | "warn_appended"
+  | "unjudged_no_verdict"
   | "grounded_pass"
   | "unknown";
 
@@ -44,6 +45,7 @@ export const AUDIT_OUTCOMES: readonly AuditOutcome[] = [
   "deterministic_block_or_escalation",
   "judge_blocked",
   "warn_appended",
+  "unjudged_no_verdict",
   "grounded_pass",
   "unknown",
 ];
@@ -57,6 +59,15 @@ export interface AuditOutcomeRow {
   response_blocked?: boolean | null;
   human_review_required?: boolean | null;
   ai_response?: string | null;
+}
+
+/**
+ * A judge verdict that carries a usable grounding signal. Absent (null /
+ * undefined), the sentinel "none", or an empty string all mean "no verdict was
+ * recorded" — the served answer was never grounding-checked.
+ */
+function hasUsableJudgeVerdict(verdict: string | null | undefined): boolean {
+  return verdict != null && verdict !== "none" && verdict.trim() !== "";
 }
 
 /**
@@ -100,14 +111,22 @@ export function classifyAuditOutcome(row: AuditOutcomeRow): AuditOutcome {
   // 5. Judge appended a warning (warn-append mode).
   if (row.judge_verdict === "warn_appended") return "warn_appended";
 
-  // 6-7. Passed: judge said pass, OR judge never ran but an answer was delivered.
+  // 6. Judge confirmed the answer is grounded.
   if (row.judge_verdict === "pass") return "grounded_pass";
+
+  // 7. Served answer with NO usable judge verdict (null / undefined / "none" /
+  //    empty). Under judge_blocking_mode a missing verdict means the synchronous
+  //    blocking judge produced no result (timeout / gateway error → fail-open),
+  //    so the answer was served WITHOUT a grounding check. It must NOT be shown
+  //    as a grounded pass — surface it as its own outcome so fail-open rows stay
+  //    visible in the telemetry gate. (See the P5 warn-path probe, fail-open
+  //    correlation_id 79dfbb96-c5c4-494e-99d8-740bd421bf11.)
   if (
-    (row.judge_verdict == null || row.judge_verdict === "none") &&
+    !hasUsableJudgeVerdict(row.judge_verdict) &&
     typeof row.ai_response === "string" &&
     row.ai_response.trim().length > 0
   ) {
-    return "grounded_pass";
+    return "unjudged_no_verdict";
   }
 
   // 8. No response and no recognizable signal (data gap / in-flight).
@@ -122,7 +141,7 @@ export interface AuditOutcomeBadge {
   icon: AuditOutcomeIcon;
 }
 
-export type AuditOutcomeIcon = "check" | "warn" | "block" | "shield" | "slash" | "help";
+export type AuditOutcomeIcon = "check" | "warn" | "block" | "shield" | "slash" | "help" | "unverified";
 
 const OUTCOME_BADGE: Record<AuditOutcome, AuditOutcomeBadge> = {
   grounded_pass: {
@@ -134,6 +153,15 @@ const OUTCOME_BADGE: Record<AuditOutcome, AuditOutcomeBadge> = {
     label: "Warn appended",
     className: "bg-amber-100 text-amber-800",
     icon: "warn",
+  },
+  unjudged_no_verdict: {
+    // Muted amber + a "shield off" icon: a served answer that was NOT
+    // grounding-verified. Deliberately distinct from grounded_pass (green) and
+    // from the saturated warn_appended amber so a fail-open row never reads as a
+    // success in the telemetry gate.
+    label: "Unjudged / no verdict",
+    className: "bg-amber-50 text-amber-700",
+    icon: "unverified",
   },
   judge_blocked: {
     label: "Judge blocked",
