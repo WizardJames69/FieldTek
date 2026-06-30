@@ -16,6 +16,7 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
+    "verify:pilot": "npx tsx scripts/verify-pilot-readiness.ts",
     "generate:og": "npx tsx scripts/generate-og.ts",
     "generate:e2e-embeddings": "npx tsx scripts/generate-e2e-embeddings.ts",
     "security:zap:baseline": "bash scripts/security-zap-baseline.sh"
