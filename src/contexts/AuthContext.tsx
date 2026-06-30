@@ -104,32 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       emailConfirmed: data.user?.email_confirmed_at,
     });
 
-    // Send verification email via our custom edge function (bypasses Supabase's built-in email)
-    if (data.user && !data.user.email_confirmed_at) {
-      try {
-        console.log('[AuthContext] Sending verification email via edge function...');
-        const { error: emailError } = await supabase.functions.invoke('send-auth-email', {
-          body: {
-            email,
-            type: 'signup',
-            redirect_to: redirectUrl,
-            user: {
-              email,
-              user_metadata: { full_name: fullName },
-            },
-          },
-        });
-        
-        if (emailError) {
-          console.error('[AuthContext] Failed to send verification email:', emailError);
-        } else {
-          console.log('[AuthContext] Verification email sent successfully');
-        }
-      } catch (err) {
-        console.error('[AuthContext] Error calling send-auth-email:', err);
-      }
-    }
-    
+    // The signup confirmation email is delivered by the FieldTek-branded
+    // `send-auth-email` edge function, wired as Supabase's "Send Email" auth hook
+    // (Auth → Hooks in the dashboard). With the hook configured, Supabase routes
+    // the confirmation through that function and does NOT send its own
+    // Supabase-branded "Confirm signup" email, so the user receives exactly one
+    // FieldTek email. We intentionally do NOT invoke send-auth-email here — doing
+    // so alongside the hook would send a duplicate. `emailRedirectTo` above feeds
+    // the hook's redirect (and any interim built-in email) the correct origin.
     return { error: null };
   };
 

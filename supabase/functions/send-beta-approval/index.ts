@@ -40,8 +40,20 @@ serve(async (req) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    @media (prefers-color-scheme: dark) {
+      .ft-body { background-color: #09090b !important; }
+      .ft-card { background-color: #18181b !important; box-shadow: none !important; }
+      .ft-heading { color: #fafafa !important; }
+      .ft-text { color: #e4e4e7 !important; }
+      .ft-footer { color: #a1a1aa !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+<body class="ft-body" style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
       <td align="center" style="padding: 40px 20px;">
@@ -50,24 +62,23 @@ serve(async (req) => {
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #1F1B18 0%, #292524 100%); padding: 40px 40px 36px; text-align: center; border-radius: 16px 16px 0 0;">
-              <p style="margin: 0 0 8px; font-size: 28px;">🎉</p>
               <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
                 <span style="color: #ffffff;">Field</span><span style="color: #F97316;">Tek</span>
               </h1>
-              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.7); font-size: 14px; letter-spacing: 0.5px;">Beta Program — You're In!</p>
+              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.85); font-size: 14px; letter-spacing: 0.5px;">Beta Program — You're In</p>
             </td>
           </tr>
 
           <!-- Content Card -->
           <tr>
-            <td style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-              
-              <p style="font-size: 18px; color: #1a1a2e; margin: 0 0 16px;">
+            <td class="ft-card" style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+
+              <p class="ft-heading" style="font-size: 18px; color: #18181b; margin: 0 0 16px;">
                 Hi <strong>${companyName}</strong> team,
               </p>
-              
-              <p style="font-size: 15px; color: #52525b; line-height: 1.7; margin: 0 0 24px;">
-                Congratulations! Your application to the FieldTek Beta Program has been <strong>approved</strong>. You're now one of our exclusive Founding Members!
+
+              <p class="ft-text" style="font-size: 15px; color: #3f3f46; line-height: 1.7; margin: 0 0 24px;">
+                Congratulations — your application to the FieldTek Beta Program has been <strong>approved</strong>. You're now one of our Founding Members.
               </p>
 
               <!-- Promo Code Box -->
@@ -88,7 +99,7 @@ serve(async (req) => {
               </table>
 
               <!-- Steps -->
-              <h3 style="font-size: 16px; color: #1a1a2e; margin: 0 0 16px; font-weight: 700;">What's Next?</h3>
+              <h3 class="ft-heading" style="font-size: 16px; color: #18181b; margin: 0 0 16px; font-weight: 700;">What's Next?</h3>
               
               <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 24px;">
                 <tr>
@@ -120,7 +131,7 @@ serve(async (req) => {
               <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 28px;">
                 <tr>
                   <td style="background: linear-gradient(135deg, #FFF7ED, #FFEDD5); border-left: 4px solid #F97316; padding: 20px 24px; border-radius: 0 12px 12px 0;">
-                    <p style="margin: 0 0 10px; font-size: 14px; font-weight: 700; color: #9A3412;">💡 Founding Member Benefits</p>
+                    <p style="margin: 0 0 10px; font-size: 14px; font-weight: 700; color: #9A3412;">Founding Member Benefits</p>
                     <table role="presentation" style="border-collapse: collapse;">
                       <tr><td style="padding: 3px 0; font-size: 13px; color: #78350F;">✦ 50% discount on your first year subscription</td></tr>
                       <tr><td style="padding: 3px 0; font-size: 13px; color: #78350F;">✦ Direct line to our product team</td></tr>
@@ -143,11 +154,11 @@ serve(async (req) => {
                 </tr>
               </table>
 
-              <p style="font-size: 14px; color: #52525b; line-height: 1.6; margin: 0;">
-                We're thrilled to have you on board. If you have any questions, just reply to this email!
+              <p class="ft-text" style="font-size: 14px; color: #3f3f46; line-height: 1.6; margin: 0;">
+                We're glad to have you on board. If you have any questions, just reply to this email.
               </p>
-              
-              <p style="font-size: 14px; color: #52525b; margin: 16px 0 0;">
+
+              <p class="ft-text" style="font-size: 14px; color: #3f3f46; margin: 16px 0 0;">
                 Best regards,<br><strong>The FieldTek Team</strong>
               </p>
             </td>
@@ -156,10 +167,10 @@ serve(async (req) => {
           <!-- Footer -->
           <tr>
             <td style="padding: 28px 40px; text-align: center;">
-              <p style="margin: 0 0 4px; font-size: 11px; color: #a1a1aa;">
-                <span style="color: #1F1B18; font-weight: 600;">Field</span><span style="color: #F97316; font-weight: 600;">Tek</span> · Field Service Management
+              <p class="ft-footer" style="margin: 0 0 4px; font-size: 11px; color: #71717a;">
+                <span style="color: #F97316; font-weight: 600;">FieldTek</span> · Field Service Management
               </p>
-              <p style="margin: 0; font-size: 11px; color: #d4d4d8;">
+              <p class="ft-footer" style="margin: 0; font-size: 11px; color: #a1a1aa;">
                 © ${new Date().getFullYear()} FieldTek. All rights reserved.
               </p>
             </td>
@@ -182,7 +193,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: 'FieldTek <info@fieldtek.ai>',
         to: [email],
-        subject: '🎉 Welcome to FieldTek Beta — You\'re In!',
+        subject: 'Welcome to FieldTek Beta — You\'re In',
         html: emailHtml,
       }),
     });

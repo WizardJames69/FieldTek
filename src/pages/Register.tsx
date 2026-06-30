@@ -163,19 +163,15 @@ export default function Register() {
       return;
     }
 
-    console.log('[Register] SignUp successful, sending welcome email...');
+    console.log('[Register] SignUp successful');
     setIsNewSignup(true);
 
-    supabase.functions.invoke('send-welcome-email', {
-      body: { email, fullName }
-    }).then(({ data, error: emailError }) => {
-      if (emailError) {
-        console.error('[Register] Welcome email failed:', emailError);
-      } else {
-        console.log('[Register] Welcome email sent:', data);
-      }
-    });
-
+    // Intentionally do NOT send a welcome / "Go to Dashboard" email here. At this
+    // point the user has not verified their email and has no tenant yet (the tenant
+    // is only created at the end of /onboarding), so a tokenless dashboard link
+    // would drop them into a sign-in → onboarding bounce. The single signup email
+    // is the FieldTek verification email (via the send-auth-email auth hook). A
+    // welcome email is deferred to a post-onboarding trigger as a follow-up.
     console.log('[Register] Navigating to /verify-email');
     navigate('/verify-email', { state: { email } });
   };

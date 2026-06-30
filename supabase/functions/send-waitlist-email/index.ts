@@ -65,15 +65,27 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "FieldTek <info@fieldtek.ai>",
       to: [email],
-      subject: "You're on the FieldTek Waitlist! 🎉",
+      subject: "You're on the FieldTek waitlist",
       html: `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    @media (prefers-color-scheme: dark) {
+      .ft-body { background-color: #09090b !important; }
+      .ft-card { background-color: #18181b !important; box-shadow: none !important; }
+      .ft-heading { color: #fafafa !important; }
+      .ft-text { color: #e4e4e7 !important; }
+      .ft-footer { color: #a1a1aa !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+<body class="ft-body" style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
       <td align="center" style="padding: 40px 20px;">
@@ -82,23 +94,22 @@ const handler = async (req: Request): Promise<Response> => {
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #1F1B18 0%, #292524 100%); padding: 40px 40px 36px; text-align: center; border-radius: 16px 16px 0 0;">
-              <p style="margin: 0 0 8px; font-size: 28px;">🚀</p>
               <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
                 <span style="color: #ffffff;">Field</span><span style="color: #F97316;">Tek</span>
               </h1>
-              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.7); font-size: 14px; letter-spacing: 0.5px;">You're on the list!</p>
+              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.85); font-size: 14px; letter-spacing: 0.5px;">You're on the list</p>
             </td>
           </tr>
 
           <!-- Content Card -->
           <tr>
-            <td style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-              
-              <h2 style="margin: 0 0 8px; font-size: 22px; color: #1a1a2e; font-weight: 700; text-align: center;">
-                You're on the list!
+            <td class="ft-card" style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+
+              <h2 class="ft-heading" style="margin: 0 0 8px; font-size: 22px; color: #18181b; font-weight: 700; text-align: center;">
+                You're on the list
               </h2>
-              
-              <p style="font-size: 15px; color: #52525b; line-height: 1.7; margin: 16px 0 24px; text-align: center;">
+
+              <p class="ft-text" style="font-size: 15px; color: #3f3f46; line-height: 1.7; margin: 16px 0 24px; text-align: center;">
                 Thanks for joining the FieldTek waitlist${companyName ? ` on behalf of <strong>${companyName}</strong>` : ''}. We're building something special for field service teams like yours.
               </p>
 
@@ -121,18 +132,18 @@ const handler = async (req: Request): Promise<Response> => {
               <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 24px;">
                 <tr>
                   <td style="background: #FAFAFA; padding: 20px 24px; border-radius: 12px;">
-                    <p style="margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #1a1a2e;">What's FieldTek all about?</p>
-                    <p style="margin: 0; font-size: 13px; color: #52525b; line-height: 1.6;">
+                    <p style="margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #18181b;">What's FieldTek all about?</p>
+                    <p style="margin: 0; font-size: 13px; color: #3f3f46; line-height: 1.6;">
                       FieldTek is the AI-powered field service platform that helps field service contractors across every trade manage their operations — from smart scheduling to invoicing to an AI assistant that helps your techs in the field.
                     </p>
                   </td>
                 </tr>
               </table>
 
-              <p style="font-size: 14px; color: #52525b; line-height: 1.6; margin: 0 0 4px;">
-                We'll be in touch soon with updates. In the meantime, reply to this email with any questions — we read every message!
+              <p class="ft-text" style="font-size: 14px; color: #3f3f46; line-height: 1.6; margin: 0 0 4px;">
+                We'll be in touch soon with updates. In the meantime, reply to this email with any questions — we read every message.
               </p>
-              <p style="font-size: 14px; color: #52525b; margin: 12px 0 0;">
+              <p class="ft-text" style="font-size: 14px; color: #3f3f46; margin: 12px 0 0;">
                 Talk soon,<br><strong>The FieldTek Team</strong>
               </p>
             </td>
@@ -141,10 +152,10 @@ const handler = async (req: Request): Promise<Response> => {
           <!-- Footer -->
           <tr>
             <td style="padding: 28px 40px; text-align: center;">
-              <p style="margin: 0 0 4px; font-size: 11px; color: #a1a1aa;">
-                <span style="color: #1F1B18; font-weight: 600;">Field</span><span style="color: #F97316; font-weight: 600;">Tek</span> · Field Service Management
+              <p class="ft-footer" style="margin: 0 0 4px; font-size: 11px; color: #71717a;">
+                <span style="color: #F97316; font-weight: 600;">FieldTek</span> · Field Service Management
               </p>
-              <p style="margin: 0; font-size: 11px; color: #d4d4d8;">
+              <p class="ft-footer" style="margin: 0; font-size: 11px; color: #a1a1aa;">
                 You're receiving this because you signed up for the FieldTek waitlist.<br>
                 © ${new Date().getFullYear()} FieldTek. All rights reserved.
               </p>
