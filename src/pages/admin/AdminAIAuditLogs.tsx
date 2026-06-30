@@ -268,8 +268,10 @@ export default function AdminAIAuditLogs() {
         </p>
       </div>
 
-        {/* Stats Cards — outcome-focused counts for the Grounding-Trust telemetry gate */}
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
+        {/* Stats Cards — outcome-focused counts for the Grounding-Trust telemetry gate.
+            data-testid scopes E2E assertions to the stat-card summary so they don't
+            collide with identical outcome labels rendered as row badges in the table. */}
+        <div data-testid="audit-stat-cards" className="grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total</CardTitle>
