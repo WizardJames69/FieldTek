@@ -72,6 +72,9 @@ const premiumWrapper = (content: string, subtitle: string) => `
     :root { color-scheme: light dark; supported-color-schemes: light dark; }
     @media (prefers-color-scheme: dark) {
       .ft-body { background-color: #09090b !important; }
+      .ft-header { background-color: #18181b !important; border-bottom-color: #27272a !important; }
+      .ft-mark-field { color: #fafafa !important; }
+      .ft-header-sub { color: #a1a1aa !important; }
       .ft-card { background-color: #18181b !important; box-shadow: none !important; }
       .ft-heading { color: #fafafa !important; }
       .ft-text { color: #e4e4e7 !important; }
@@ -89,11 +92,11 @@ const premiumWrapper = (content: string, subtitle: string) => `
 
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1F1B18 0%, #292524 100%); padding: 40px 40px 36px; text-align: center; border-radius: 16px 16px 0 0;">
+            <td class="ft-header" style="background-color: #ffffff; padding: 32px 40px 24px; text-align: center; border-radius: 16px 16px 0 0; border-bottom: 1px solid #ececee;">
               <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
-                <span style="color: #ffffff;">Field</span><span style="color: #F97316;">Tek</span>
+                <span class="ft-mark-field" style="color: #18181b;">Field</span><span style="color: #F97316;">Tek</span>
               </h1>
-              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.85); font-size: 14px; letter-spacing: 0.5px;">${subtitle}</p>
+              <p class="ft-header-sub" style="margin: 8px 0 0; color: #71717a; font-size: 13px; letter-spacing: 0.5px;">${subtitle}</p>
             </td>
           </tr>
 
