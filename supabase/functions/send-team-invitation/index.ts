@@ -213,8 +213,21 @@ const handler = async (req: Request): Promise<Response> => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    @media (prefers-color-scheme: dark) {
+      .ft-body { background-color: #09090b !important; }
+      .ft-card { background-color: #18181b !important; box-shadow: none !important; }
+      .ft-heading { color: #fafafa !important; }
+      .ft-text { color: #e4e4e7 !important; }
+      .ft-footer { color: #a1a1aa !important; }
+      .ft-mark-field { color: #fafafa !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+<body class="ft-body" style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
       <td align="center" style="padding: 40px 20px;">
@@ -230,11 +243,11 @@ const handler = async (req: Request): Promise<Response> => {
 
           <!-- Content Card -->
           <tr>
-            <td style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-              
-              <h2 style="margin: 0 0 8px; font-size: 22px; color: #1a1a2e; font-weight: 700;">You're Invited!</h2>
-              
-              <p style="font-size: 15px; color: #52525b; line-height: 1.7; margin: 16px 0 24px;">
+            <td class="ft-card" style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+
+              <h2 class="ft-heading" style="margin: 0 0 8px; font-size: 22px; color: #1a1a2e; font-weight: 700;">You're Invited!</h2>
+
+              <p class="ft-text" style="font-size: 15px; color: #52525b; line-height: 1.7; margin: 16px 0 24px;">
                 <strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> as a <strong>${roleLabels[effectiveRole] || effectiveRole}</strong>.
               </p>
 
@@ -262,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </tr>
               </table>
 
-              <p style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin: 0; text-align: center;">
+              <p class="ft-text" style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin: 0; text-align: center;">
                 This invitation expires in 7 days. If you didn't expect this, you can safely ignore it.
               </p>
             </td>
@@ -271,10 +284,10 @@ const handler = async (req: Request): Promise<Response> => {
           <!-- Footer -->
           <tr>
             <td style="padding: 28px 40px; text-align: center;">
-              <p style="margin: 0 0 4px; font-size: 11px; color: #a1a1aa;">
-                Powered by <span style="color: #1F1B18; font-weight: 600;">Field</span><span style="color: #F97316; font-weight: 600;">Tek</span>
+              <p class="ft-footer" style="margin: 0 0 4px; font-size: 11px; color: #a1a1aa;">
+                Powered by <span class="ft-mark-field" style="color: #18181b; font-weight: 600;">Field</span><span style="color: #F97316; font-weight: 600;">Tek</span>
               </p>
-              <p style="margin: 0; font-size: 11px; color: #d4d4d8;">
+              <p class="ft-footer" style="margin: 0; font-size: 11px; color: #a1a1aa;">
                 © ${new Date().getFullYear()} FieldTek. All rights reserved.
               </p>
             </td>
