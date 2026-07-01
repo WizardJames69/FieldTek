@@ -46,6 +46,9 @@ serve(async (req) => {
     :root { color-scheme: light dark; supported-color-schemes: light dark; }
     @media (prefers-color-scheme: dark) {
       .ft-body { background-color: #09090b !important; }
+      .ft-header { background-color: #18181b !important; border-bottom-color: #27272a !important; }
+      .ft-mark-field { color: #fafafa !important; }
+      .ft-header-sub { color: #a1a1aa !important; }
       .ft-card { background-color: #18181b !important; box-shadow: none !important; }
       .ft-heading { color: #fafafa !important; }
       .ft-text { color: #e4e4e7 !important; }
@@ -61,11 +64,11 @@ serve(async (req) => {
 
           <!-- Header -->
           <tr>
-            <td style="background: linear-gradient(135deg, #1F1B18 0%, #292524 100%); padding: 40px 40px 36px; text-align: center; border-radius: 16px 16px 0 0;">
+            <td class="ft-header" style="background-color: #ffffff; padding: 32px 40px 24px; text-align: center; border-radius: 16px 16px 0 0; border-bottom: 1px solid #ececee;">
               <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">
-                <span style="color: #ffffff;">Field</span><span style="color: #F97316;">Tek</span>
+                <span class="ft-mark-field" style="color: #18181b;">Field</span><span style="color: #F97316;">Tek</span>
               </h1>
-              <p style="margin: 10px 0 0; color: rgba(255,255,255,0.85); font-size: 14px; letter-spacing: 0.5px;">Beta Program — You're In</p>
+              <p class="ft-header-sub" style="margin: 8px 0 0; color: #71717a; font-size: 13px; letter-spacing: 0.5px;">Beta access approved</p>
             </td>
           </tr>
 
@@ -78,66 +81,42 @@ serve(async (req) => {
               </p>
 
               <p class="ft-text" style="font-size: 15px; color: #3f3f46; line-height: 1.7; margin: 0 0 24px;">
-                Congratulations — your application to the FieldTek Beta Program has been <strong>approved</strong>. You're now one of our Founding Members.
+                Your FieldTek beta access is approved. Copy your access code below and create your account to get started.
               </p>
 
-              <!-- Promo Code Box -->
-              <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 28px;">
+              <!-- Beta access code (light "island" — stays readable in light & dark clients) -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 12px;">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #F97316, #EA580C); padding: 28px; border-radius: 12px; text-align: center;">
-                    <p style="margin: 0 0 10px; color: #ffffff; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">Your Exclusive Discount Code</p>
-                    <table role="presentation" style="margin: 0 auto; border-collapse: collapse;">
-                      <tr>
-                        <td style="background-color: #ffffff; padding: 14px 32px; border-radius: 8px;">
-                          <span style="font-size: 24px; font-weight: 800; color: #1F1B18; letter-spacing: 3px; font-family: monospace;">${promoCode}</span>
-                        </td>
-                      </tr>
-                    </table>
-                    <p style="margin: 14px 0 0; color: #ffffff; font-size: 16px; font-weight: 700;">50% OFF your first year!</p>
+                  <td style="background-color: #f4f4f5; border: 1px solid #e4e4e7; padding: 22px 24px; border-radius: 12px; text-align: center;">
+                    <p style="margin: 0 0 12px; color: #71717a; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Your beta access code</p>
+                    <div style="font-family: 'SF Mono', 'Menlo', 'Consolas', monospace; font-size: 22px; font-weight: 700; color: #18181b; letter-spacing: 1px; white-space: nowrap;">${promoCode}</div>
                   </td>
                 </tr>
               </table>
+
+              <p class="ft-text" style="font-size: 13px; color: #71717a; text-align: center; margin: 0 0 28px;">
+                Copy this code and paste it on the registration page.
+              </p>
 
               <!-- Steps -->
-              <h3 class="ft-heading" style="font-size: 16px; color: #18181b; margin: 0 0 16px; font-weight: 700;">What's Next?</h3>
-              
-              <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 24px;">
-                <tr>
-                  <td style="padding: 12px 16px; background: #FAFAFA; border-radius: 8px; margin-bottom: 8px;">
-                    <p style="margin: 0; font-size: 14px; color: #52525b;"><strong style="color: #F97316;">1.</strong> <a href="https://fieldtek.ai/register" style="color: #1F1B18; text-decoration: underline; font-weight: 600;">Register your account</a> using the promo code above</p>
-                  </td>
-                </tr>
-                <tr><td style="height: 8px;"></td></tr>
-                <tr>
-                  <td style="padding: 12px 16px; background: #FAFAFA; border-radius: 8px;">
-                    <p style="margin: 0; font-size: 14px; color: #52525b;"><strong style="color: #F97316;">2.</strong> Set up your company and invite your team</p>
-                  </td>
-                </tr>
-                <tr><td style="height: 8px;"></td></tr>
-                <tr>
-                  <td style="padding: 12px 16px; background: #FAFAFA; border-radius: 8px;">
-                    <p style="margin: 0; font-size: 14px; color: #52525b;"><strong style="color: #F97316;">3.</strong> Explore the platform and AI-powered features</p>
-                  </td>
-                </tr>
-                <tr><td style="height: 8px;"></td></tr>
-                <tr>
-                  <td style="padding: 12px 16px; background: #FAFAFA; border-radius: 8px;">
-                    <p style="margin: 0; font-size: 14px; color: #52525b;"><strong style="color: #F97316;">4.</strong> Share your feedback — your input shapes the product!</p>
-                  </td>
-                </tr>
-              </table>
+              <h3 class="ft-heading" style="font-size: 16px; color: #18181b; margin: 0 0 16px; font-weight: 700;">Getting started</h3>
 
-              <!-- Founding Member Benefits -->
               <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 28px;">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #FFF7ED, #FFEDD5); border-left: 4px solid #F97316; padding: 20px 24px; border-radius: 0 12px 12px 0;">
-                    <p style="margin: 0 0 10px; font-size: 14px; font-weight: 700; color: #9A3412;">Founding Member Benefits</p>
-                    <table role="presentation" style="border-collapse: collapse;">
-                      <tr><td style="padding: 3px 0; font-size: 13px; color: #78350F;">✦ 50% discount on your first year subscription</td></tr>
-                      <tr><td style="padding: 3px 0; font-size: 13px; color: #78350F;">✦ Direct line to our product team</td></tr>
-                      <tr><td style="padding: 3px 0; font-size: 13px; color: #78350F;">✦ Early access to new features</td></tr>
-                      <tr><td style="padding: 3px 0; font-size: 13px; color: #78350F;">✦ Founding Member badge on your account</td></tr>
-                    </table>
+                  <td style="padding: 12px 16px; background-color: #f4f4f5; border-radius: 8px;">
+                    <p style="margin: 0; font-size: 14px; color: #3f3f46;"><strong style="color: #F97316;">1.</strong> <a href="https://fieldtek.ai/register" style="color: #18181b; text-decoration: underline; font-weight: 600;">Create your account</a> and enter your access code.</p>
+                  </td>
+                </tr>
+                <tr><td style="height: 8px;"></td></tr>
+                <tr>
+                  <td style="padding: 12px 16px; background-color: #f4f4f5; border-radius: 8px;">
+                    <p style="margin: 0; font-size: 14px; color: #3f3f46;"><strong style="color: #F97316;">2.</strong> Set up your company and invite your team.</p>
+                  </td>
+                </tr>
+                <tr><td style="height: 8px;"></td></tr>
+                <tr>
+                  <td style="padding: 12px 16px; background-color: #f4f4f5; border-radius: 8px;">
+                    <p style="margin: 0; font-size: 14px; color: #3f3f46;"><strong style="color: #F97316;">3.</strong> Add your first client and job to see FieldTek in action.</p>
                   </td>
                 </tr>
               </table>
@@ -146,16 +125,16 @@ serve(async (req) => {
               <table role="presentation" style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td align="center" style="padding: 0 0 24px;">
-                    <a href="https://fieldtek.ai/register" 
-                       style="display: inline-block; background: linear-gradient(135deg, #F97316, #EA580C); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 10px; font-size: 16px; font-weight: 700; letter-spacing: 0.3px; box-shadow: 0 4px 14px rgba(249, 115, 22, 0.4);">
-                      Get Started Now
+                    <a href="https://fieldtek.ai/register"
+                       style="display: inline-block; background: linear-gradient(135deg, #F97316, #EA580C); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 10px; font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">
+                      Create your account
                     </a>
                   </td>
                 </tr>
               </table>
 
               <p class="ft-text" style="font-size: 14px; color: #3f3f46; line-height: 1.6; margin: 0;">
-                We're glad to have you on board. If you have any questions, just reply to this email.
+                If you have any questions, just reply to this email.
               </p>
 
               <p class="ft-text" style="font-size: 14px; color: #3f3f46; margin: 16px 0 0;">
