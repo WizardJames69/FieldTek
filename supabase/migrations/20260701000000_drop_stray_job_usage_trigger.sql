@@ -1,0 +1,57 @@
+-- ============================================================
+-- P0 fix: unblock job creation for fresh trial tenants
+-- ============================================================
+--
+-- ROOT CAUSE (out-of-repo live drift)
+-- -----------------------------------
+-- The live database carried a stray BEFORE INSERT trigger on
+-- public.scheduled_jobs that is NOT defined by any committed migration:
+--
+--     TRIGGER  enforce_job_usage  ->  FUNCTION public.increment_job_usage()
+--
+-- increment_job_usage() (created out-of-band in the dashboard/Lovable era,
+-- never committed here — it is only *referenced* defensively by
+-- 20260610100000_reissue_security_advisor_fixes.sql, which guards on
+-- to_regprocedure(...) IS NOT NULL) raised:
+--
+--     'Subscription inactive. Please update billing.'
+--
+-- whenever subscription_status was NOT IN ('active', 'trialing').
+--
+-- FieldTek's subscription_status enum is ('trial','active','cancelled','past_due')
+-- — there is NO 'trialing' label, and every fresh trial tenant is 'trial'.
+-- Therefore 'trial' NOT IN ('active','trialing') was ALWAYS true and EVERY
+-- fresh trial tenant was blocked from creating jobs. Confirmed in the founder
+-- smoke (tenant "Jen's HVAC", subscription_status='trial', trial not expired).
+--
+-- CANONICAL GATE REMAINS INTACT
+-- -----------------------------
+-- The committed trigger check_job_limit -> public.enforce_job_limit()
+-- (20260228000000_database_security_hardening.sql, §1b) is the intended
+-- billing/job-limit gate. It already:
+--   * BLOCKS past_due            -> "Your subscription payment is past due ..."
+--   * BLOCKS canceled/cancelled  -> "Your subscription has been canceled ..."
+--   * treats an EXPIRED trial as starter-tier limits
+--   * ALLOWS unexpired trials up to the trial tier limit (50 jobs/month)
+-- Removing the stray enforce_job_usage trigger loses NO legitimate billing
+-- protection — past_due / canceled enforcement is fully preserved through
+-- enforce_job_limit. It simply removes the redundant, misnamed
+-- (increment_job_usage increments nothing) trial-blocking duplicate.
+--
+-- This migration is idempotent and safe to re-run.
+-- It does NOT touch: enforce_job_limit, tier_limits, tenants, feature flags,
+-- edge functions, or any deferred workflow migration.
+-- ============================================================
+
+-- 1. Drop the stray, out-of-repo trigger that blocks fresh trials.
+DROP TRIGGER IF EXISTS enforce_job_usage ON public.scheduled_jobs;
+
+-- 2. Drop the now-orphaned function. Safe: nothing in the repo defines or calls
+--    it (20260610100000 only guardedly ALTERs it and already tolerates absence
+--    via "IF to_regprocedure(...) IS NOT NULL ... ELSE RAISE NOTICE ... skipping").
+DROP FUNCTION IF EXISTS public.increment_job_usage();
+
+-- Post-condition (verify read-only after apply):
+--   * enforce_job_usage no longer on public.scheduled_jobs
+--   * public.increment_job_usage() no longer exists
+--   * check_job_limit / enforce_job_limit() still present and unchanged
