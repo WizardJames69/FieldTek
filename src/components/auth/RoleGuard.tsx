@@ -1,10 +1,11 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { WorkspaceLoadError } from '@/components/auth/WorkspaceLoadError';
+import { getPostLoginDestination } from '@/lib/authRouting';
 import type { AppRole } from '@/types/database';
 
 interface RoleGuardProps {
@@ -24,11 +25,14 @@ interface RoleGuardProps {
 
 export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard', silent = false }: RoleGuardProps) {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { role, loading, refreshTenant } = useTenant();
+  const { role, loading, workspaceStatus, refreshTenant } = useTenant();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [retrying, setRetrying] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  // Guards the async no-membership redirect so it fires once (not on every render
+  // while getPostLoginDestination resolves), avoiding a redirect loop.
+  const redirectingRef = useRef(false);
 
   // Recovery actions for the unresolved-role fallback. Retry re-runs the
   // existing TenantContext fetch (resets its retry counters; no backend
@@ -63,6 +67,20 @@ export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard',
       navigate('/auth', { replace: true });
       return;
     }
+    // Signed in but with a CONFIRMED no-membership state (no tenant_users row):
+    // the user simply hasn't onboarded, or is a portal client. Route them to
+    // their real destination (onboarding for tenant users, /portal for clients)
+    // instead of showing a workspace error. getPostLoginDestination re-derives
+    // the target with the portal/admin checks, so this never misroutes a client.
+    if (!authLoading && user && !loading && workspaceStatus === 'no-membership') {
+      if (!redirectingRef.current) {
+        redirectingRef.current = true;
+        getPostLoginDestination()
+          .then(({ destination }) => navigate(destination, { replace: true }))
+          .catch(() => navigate('/onboarding', { replace: true }));
+      }
+      return;
+    }
     if (!loading && role && !allowedRoles.includes(role)) {
       if (!silent) {
         toast({
@@ -73,7 +91,7 @@ export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard',
       }
       navigate(fallbackPath, { replace: true });
     }
-  }, [authLoading, user, loading, role, allowedRoles, fallbackPath, navigate, toast, silent]);
+  }, [authLoading, user, loading, role, workspaceStatus, allowedRoles, fallbackPath, navigate, toast, silent]);
 
   if (authLoading || loading) {
     return (
@@ -89,12 +107,24 @@ export function RoleGuard({ allowedRoles, children, fallbackPath = '/dashboard',
     return null;
   }
 
-  // Authenticated and done loading, but the role couldn't be resolved (RLS
-  // denial, no tenant membership, tenant-context load failure, invite/account
-  // mismatch). This used to fall through to `return null` — a permanent blank
-  // page with no recovery. Show an actionable fallback instead. This does NOT
-  // let the user through: children still render only for an allowed role.
-  if (!role) {
+  // Signed in with no membership — the effect is routing them to onboarding /
+  // portal. Show the loading skeleton (not the error card) while that navigation
+  // resolves, so a valid new user never flashes "couldn't load your workspace".
+  if (workspaceStatus === 'no-membership') {
+    return (
+      <div className="min-h-screen p-6 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  // Genuine tenant load failure (query/RLS/network error after retries), OR an
+  // unexpected unresolved role while otherwise "ready". Show the actionable
+  // recovery card (retry / sign out) — NOT for the no-membership case above.
+  // This does NOT let the user through: children still render only for an
+  // allowed role.
+  if (workspaceStatus === 'load-error' || !role) {
     return (
       <WorkspaceLoadError
         onRetry={handleRetry}

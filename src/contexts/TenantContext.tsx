@@ -5,6 +5,19 @@ import { useImpersonation } from './ImpersonationContext';
 import type { Tenant, TenantUser, TenantSettings, TenantBranding, AppRole, IndustryType } from '@/types/database';
 import { readTenantSnapshot, writeTenantSnapshot, removeTenantSnapshot } from '@/lib/tenantSnapshot';
 
+/**
+ * Discriminates WHY the workspace has no resolved role, so routing can react
+ * correctly instead of collapsing every null-role case into an error:
+ *  - 'loading'       — a fetch is in flight (or the user just changed).
+ *  - 'ready'         — a tenant membership loaded successfully (role is set).
+ *  - 'no-membership' — the tenant_users query returned EMPTY after retries; the
+ *                      user simply hasn't onboarded (or is a portal client).
+ *                      Route them onward, do NOT show a workspace error.
+ *  - 'load-error'    — the query/RLS/network failed after retries; this is the
+ *                      only case that should surface WorkspaceLoadError.
+ */
+export type WorkspaceStatus = 'loading' | 'ready' | 'no-membership' | 'load-error';
+
 interface TenantContextType {
   tenant: Tenant | null;
   tenantUser: TenantUser | null;
@@ -14,6 +27,7 @@ interface TenantContextType {
   role: AppRole | null;
   isAdmin: boolean;
   isOwner: boolean;
+  workspaceStatus: WorkspaceStatus;
   refreshTenant: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   isImpersonating: boolean;
@@ -32,6 +46,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [branding, setBranding] = useState<TenantBranding | null>(null);
   const [loading, setLoading] = useState(true);
+  const [workspaceStatus, setWorkspaceStatus] = useState<WorkspaceStatus>('loading');
 
   // Track which user ID we last completed a fetch for.
   // This prevents a race condition where AuthContext resolves (user becomes non-null)
@@ -133,6 +148,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setTenant(snapshot.tenant);
         setSettings(snapshot.settings);
         setBranding(snapshot.branding);
+        setWorkspaceStatus('ready');
         setLoading(false);
         fetchedForUserRef.current = user.id;
         return;
@@ -182,12 +198,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // After max retries, clear state and stop loading
+        // After max retries, clear state and stop loading. A query/RLS/network
+        // failure — NOT a confirmed absence of membership — so surface the error.
         console.error('Max retries reached, stopping tenant fetch');
         setTenant(null);
         setTenantUser(null);
         setSettings(null);
         setBranding(null);
+        setWorkspaceStatus('load-error');
         setLoading(false);
         return;
       }
@@ -214,7 +232,10 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // After empty retries exhausted, user truly has no tenant membership
+        // After empty retries exhausted, user truly has no tenant membership.
+        // This is a DEFINITIVE empty result (not an error) — the user needs
+        // onboarding (or is a portal client). Routing reacts to 'no-membership';
+        // it must NOT be shown a workspace error.
         console.log('No tenant membership found after retries - user needs onboarding');
         // Membership is confirmed gone — a stale snapshot must not grant offline access.
         removeTenantSnapshot(user.id);
@@ -222,6 +243,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         setTenantUser(null);
         setSettings(null);
         setBranding(null);
+        setWorkspaceStatus('no-membership');
         setLoading(false);
         retryCountRef.current = 0;
         emptyResultRetryRef.current = 0;
@@ -267,6 +289,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setTenant(tenantResult.data as Tenant);
       setSettings(settingsResult.data as unknown as TenantSettings | null);
       setBranding(brandingResult.data as TenantBranding | null);
+      setWorkspaceStatus('ready');
 
       // Persist the successful load so the app shell can cold-open offline
       // (RoleGuard role, SubscriptionGuard tier, branding). Real data only —
@@ -301,6 +324,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         // Went offline mid-retry: fill any still-missing state from the
         // snapshot instead of leaving the shell blank. Functional updates
         // only fill nulls — data already loaded is never replaced.
+        let filledFromSnapshot = false;
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
           const snapshot = readTenantSnapshot(user.id);
           if (snapshot) {
@@ -309,8 +333,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
             setTenant((current) => current ?? snapshot.tenant);
             setSettings((current) => current ?? snapshot.settings);
             setBranding((current) => current ?? snapshot.branding);
+            filledFromSnapshot = true;
           }
         }
+        // A genuine load failure (query/RLS/network/timeout) surfaces the error,
+        // unless we recovered usable data from the offline snapshot.
+        setWorkspaceStatus(filledFromSnapshot ? 'ready' : 'load-error');
         setLoading(false);
         fetchedForUserRef.current = user?.id ?? null;
       }
@@ -329,6 +357,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     retryCountRef.current = 0;
     emptyResultRetryRef.current = 0;
     sessionRefreshAttemptedRef.current = false;
+    setWorkspaceStatus('loading');
     setLoading(true);
     await fetchTenantData(true);
   };
@@ -350,6 +379,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
     // Don't clear branding immediately to prevent flash
     if (user) {
+      setWorkspaceStatus('loading');
       setLoading(true);
       fetchTenantData();
     } else {
@@ -357,6 +387,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       setTenantUser(null);
       setSettings(null);
       setBranding(null);
+      setWorkspaceStatus('loading');
       setLoading(false);
     }
 
@@ -380,6 +411,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // This prevents downstream components from seeing loading=false with stale tenant=null.
   const effectiveLoading = loading || (!!user && fetchedForUserRef.current !== user.id);
 
+  // Effective workspace status mirrors effectiveLoading (so a status from a prior
+  // user isn't read during the auth→tenant gap) and treats impersonation as ready.
+  const effectiveWorkspaceStatus: WorkspaceStatus = isImpersonating
+    ? 'ready'
+    : effectiveLoading
+      ? 'loading'
+      : workspaceStatus;
+
   return (
     <TenantContext.Provider
       value={{
@@ -391,6 +430,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         role,
         isAdmin,
         isOwner,
+        workspaceStatus: effectiveWorkspaceStatus,
         refreshTenant,
         refreshSession,
         isImpersonating,
