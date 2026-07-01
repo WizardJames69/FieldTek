@@ -122,8 +122,21 @@ serve(async (req) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="supported-color-schemes" content="light dark">
+  <style>
+    :root { color-scheme: light dark; supported-color-schemes: light dark; }
+    @media (prefers-color-scheme: dark) {
+      .ft-body { background-color: #09090b !important; }
+      .ft-card { background-color: #18181b !important; box-shadow: none !important; }
+      .ft-heading { color: #fafafa !important; }
+      .ft-text { color: #e4e4e7 !important; }
+      .ft-footer { color: #a1a1aa !important; }
+      .ft-mark-field { color: #fafafa !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+<body class="ft-body" style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
       <td align="center" style="padding: 40px 20px;">
@@ -139,13 +152,13 @@ serve(async (req) => {
 
           <!-- Content Card -->
           <tr>
-            <td style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
-              
-              <p style="font-size: 18px; color: #1a1a2e; margin: 0 0 8px;">
+            <td class="ft-card" style="background-color: #ffffff; padding: 40px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);">
+
+              <p class="ft-heading" style="font-size: 18px; color: #1a1a2e; margin: 0 0 8px;">
                 Hi <strong>${client.name}</strong>,
               </p>
-              
-              <p style="font-size: 15px; color: #52525b; line-height: 1.7; margin: 16px 0 24px;">
+
+              <p class="ft-text" style="font-size: 15px; color: #52525b; line-height: 1.7; margin: 16px 0 24px;">
                 You've been invited to join the <strong>${companyName}</strong> customer portal — your personal hub for managing service requests, tracking jobs, and more.
               </p>
 
@@ -155,10 +168,10 @@ serve(async (req) => {
                   <td style="background: linear-gradient(135deg, #FFF7ED, #FFEDD5); border-left: 4px solid #F97316; padding: 20px 24px; border-radius: 0 12px 12px 0;">
                     <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #9A3412;">What you can do:</p>
                     <table role="presentation" style="border-collapse: collapse;">
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">✦ Submit service requests anytime</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">✦ Track your jobs in real time</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">✦ View and pay invoices online</td></tr>
-                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">✦ See your full equipment history</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">&bull;&nbsp; Submit service requests anytime</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">&bull;&nbsp; Track your jobs in real time</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">&bull;&nbsp; View and pay invoices online</td></tr>
+                      <tr><td style="padding: 4px 0; font-size: 14px; color: #78350F;">&bull;&nbsp; See your full equipment history</td></tr>
                     </table>
                   </td>
                 </tr>
@@ -176,7 +189,7 @@ serve(async (req) => {
                 </tr>
               </table>
 
-              <p style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin: 0; text-align: center;">
+              <p class="ft-text" style="font-size: 13px; color: #a1a1aa; line-height: 1.6; margin: 0; text-align: center;">
                 This invitation expires in 7 days. If you have questions, contact ${companyName} directly.
               </p>
             </td>
@@ -185,10 +198,10 @@ serve(async (req) => {
           <!-- Footer -->
           <tr>
             <td style="padding: 28px 40px; text-align: center;">
-              <p style="margin: 0 0 4px; font-size: 11px; color: #a1a1aa;">
-                Powered by <span style="color: #1F1B18; font-weight: 600;">Field</span><span style="color: #F97316; font-weight: 600;">Tek</span>
+              <p class="ft-footer" style="margin: 0 0 4px; font-size: 11px; color: #a1a1aa;">
+                Powered by <span class="ft-mark-field" style="color: #18181b; font-weight: 600;">Field</span><span style="color: #F97316; font-weight: 600;">Tek</span>
               </p>
-              <p style="margin: 0; font-size: 11px; color: #d4d4d8;">
+              <p class="ft-footer" style="margin: 0; font-size: 11px; color: #a1a1aa;">
                 © ${new Date().getFullYear()} FieldTek. All rights reserved.
               </p>
             </td>
