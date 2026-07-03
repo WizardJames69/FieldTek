@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Loader2, ArrowRight, X, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useTerminology } from '@/hooks/useTerminology';
 import { useToast } from '@/hooks/use-toast';
 import {
   Sheet,
@@ -50,6 +51,7 @@ interface RequestDetailSheetProps {
 
 export function RequestDetailSheet({ request, open, onOpenChange }: RequestDetailSheetProps) {
   const { tenant } = useTenant();
+  const { t } = useTerminology();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [priority, setPriority] = useState(request?.priority || 'medium');
@@ -117,7 +119,7 @@ export function RequestDetailSheet({ request, open, onOpenChange }: RequestDetai
       return job;
     },
     onSuccess: () => {
-      toast({ title: 'Request converted to job' });
+      toast({ title: `Request converted to ${t('job').toLowerCase()}` });
       queryClient.invalidateQueries({ queryKey: ['service-requests'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       onOpenChange(false);
@@ -242,7 +244,7 @@ export function RequestDetailSheet({ request, open, onOpenChange }: RequestDetai
                     ) : (
                       <ArrowRight className="h-4 w-4 mr-2" />
                     )}
-                    Convert to Job
+                    Convert to {t('job')}
                   </Button>
                   <Button
                     variant="ghost"
@@ -258,7 +260,7 @@ export function RequestDetailSheet({ request, open, onOpenChange }: RequestDetai
 
               {request.status === 'converted' && (
                 <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-3 text-sm text-green-700 dark:text-green-400">
-                  This request has been converted to a job.
+                  This request has been converted to a {t('job').toLowerCase()}.
                 </div>
               )}
             </div>

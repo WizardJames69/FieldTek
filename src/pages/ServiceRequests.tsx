@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Inbox } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/contexts/TenantContext';
+import { useTerminology } from '@/hooks/useTerminology';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RequestCard } from '@/components/requests/RequestCard';
@@ -12,6 +13,7 @@ type RequestStatus = 'all' | 'new' | 'reviewed' | 'converted' | 'rejected';
 
 export default function ServiceRequests() {
   const { tenant } = useTenant();
+  const { t } = useTerminology();
   const [status, setStatus] = useState<RequestStatus>('all');
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
 
@@ -46,7 +48,10 @@ export default function ServiceRequests() {
   };
 
   return (
-    <MainLayout title="Service Requests" subtitle="Manage incoming service requests">
+    <MainLayout
+      title="Service Requests"
+      subtitle={`Submitted by customers — review and convert them into ${t('jobs').toLowerCase()}`}
+    >
       <div className="space-y-4 md:space-y-6 animate-fade-up">
         {/* Phase 6: Enhanced Status Tabs with pill styling */}
         <Tabs value={status} onValueChange={(v) => setStatus(v as RequestStatus)}>
