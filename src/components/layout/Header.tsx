@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useBranding, useUserRole } from '@/contexts/TenantContext';
+import { useTerminology } from '@/hooks/useTerminology';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { OfflineIndicator } from '@/components/offline/OfflineIndicator';
@@ -25,6 +26,7 @@ interface HeaderProps {
 export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) {
   const branding = useBranding();
   const { isAdmin } = useUserRole();
+  const { t } = useTerminology();
   const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -118,7 +120,7 @@ export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) 
                 <DropdownMenuContent align="end" className="w-48 glass-surface">
                   <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="touch-native" onClick={() => navigate('/jobs?action=new')}>New Job</DropdownMenuItem>
+                  <DropdownMenuItem className="touch-native" onClick={() => navigate('/jobs?action=new')}>New {t('job')}</DropdownMenuItem>
                   <DropdownMenuItem className="touch-native" onClick={() => navigate('/clients?action=new')}>New Client</DropdownMenuItem>
                   <DropdownMenuItem className="touch-native" onClick={() => navigate('/invoices?action=new')}>New Invoice</DropdownMenuItem>
                   <DropdownMenuItem className="touch-native" onClick={() => navigate('/documents?action=new')}>Upload Document</DropdownMenuItem>
