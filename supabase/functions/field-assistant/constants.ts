@@ -43,6 +43,13 @@ export const MAX_CONTENT_PER_DOC = 25000;
 export const MAX_RESPONSE_CHARS = 20000;
 export const MIN_RELEVANT_CHUNKS = 2;
 export const ESCALATION_SIMILARITY_THRESHOLD = 0.65;
+// A single retrieved chunk may support an answer (instead of forcing the
+// insufficient-coverage refusal) only when it clears BOTH floors below and the
+// query is not an escalation (warranty/safety) query. These are the same
+// literals the single-chunk weakness gate has always used — named here so the
+// strong-single-chunk answer path and the weakness gate cannot drift apart.
+export const SINGLE_CHUNK_STRONG_SIMILARITY = 0.8;
+export const SINGLE_CHUNK_MIN_LENGTH = 200;
 
 // Reserved documents.category for documents published from approved lessons.
 // Lesson-sourced chunks carry this in document_chunks.document_category (copied

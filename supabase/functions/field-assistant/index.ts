@@ -22,6 +22,8 @@ import {
   MAX_RESPONSE_CHARS,
   MIN_RELEVANT_CHUNKS,
   ESCALATION_SIMILARITY_THRESHOLD,
+  SINGLE_CHUNK_STRONG_SIMILARITY,
+  SINGLE_CHUNK_MIN_LENGTH,
   TIER_DAILY_LIMITS,
   BLOCKED_PATTERNS_WITHOUT_CITATION,
   CITATION_PATTERN,
@@ -56,7 +58,7 @@ import { writeAuditLog, trackConversation } from "./audit.ts";
 import type { AuditLogData } from "./audit.ts";
 
 import { createRetrievalAdapter } from "./retrieval.ts";
-import { classifyDegradedAnswer, decideRetrievalAbstain } from "./degradation.ts";
+import { classifyDegradedAnswer, decideRetrievalAbstain, isStrongSingleChunkAnswer } from "./degradation.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
 import { evaluateWithJudge, evaluateWithJudgeBlocking, JUDGE_MODEL } from "./judge.ts";
@@ -778,14 +780,35 @@ serve(async (req) => {
       }
     }
 
-    // Single-chunk edge case
+    // Single-chunk edge case. A lone STRONG chunk (non-escalation query,
+    // similarity >= SINGLE_CHUNK_STRONG_SIMILARITY, length >=
+    // SINGLE_CHUNK_MIN_LENGTH) may now support an answer instead of the
+    // insufficient-coverage refusal — isStrongSingleChunkAnswer
+    // (degradation.ts) is the pure source of truth. Weak single chunks keep
+    // the exact human-review behavior below, and escalation queries keep
+    // their stricter two-chunk gate (set above) regardless of strength.
+    let singleChunkStrongAnswer = false;
     if (semanticSearchResults.length === 1) {
       const sc = semanticSearchResults[0];
-      if (sc.similarity < 0.8 || sc.chunk_text.length < 200) {
+      singleChunkStrongAnswer = isStrongSingleChunkAnswer({
+        semanticSearchResultsCount: semanticSearchResults.length,
+        similarity: sc.similarity,
+        chunkTextLength: sc.chunk_text.length,
+        isEscalationQuery,
+        strongSimilarityFloor: SINGLE_CHUNK_STRONG_SIMILARITY,
+        minChunkLength: SINGLE_CHUNK_MIN_LENGTH,
+      });
+      if (singleChunkStrongAnswer) {
+        // Audit/debug signal only — no chunk content, just score + length.
+        enforcementRulesTriggered.push(`SINGLE_CHUNK_STRONG_ANSWER:sim=${sc.similarity.toFixed(2)},len=${sc.chunk_text.length}`);
+        console.log(`Single strong chunk qualifies for answer: similarity=${sc.similarity.toFixed(2)}, length=${sc.chunk_text.length}`);
+      } else if (sc.similarity < SINGLE_CHUNK_STRONG_SIMILARITY || sc.chunk_text.length < SINGLE_CHUNK_MIN_LENGTH) {
         requiresHumanReview = true;
         enforcementRulesTriggered.push(`SINGLE_CHUNK_WEAK:sim=${sc.similarity.toFixed(2)},len=${sc.chunk_text.length}`);
         console.warn(`Single chunk insufficient: similarity=${sc.similarity.toFixed(2)}, length=${sc.chunk_text.length}`);
       }
+      // else: strong chunk on an escalation query — the escalation gate above
+      // already forced human review; record nothing extra (unchanged behavior).
     }
 
     // Minimum relevant chunks
@@ -1141,6 +1164,10 @@ serve(async (req) => {
       retrievalRan,
       semanticSearchResultsCount: semanticSearchResults.length,
       minRelevantChunks: MIN_RELEVANT_CHUNKS,
+      // A lone strong chunk (non-escalation, sim >= 0.8, len >= 200) answers
+      // instead of abstaining; the limited-coverage prompt caveat and full
+      // post-LLM citation validation still apply to that answer.
+      strongSingleChunk: singleChunkStrongAnswer,
     });
     if (retrievalAbstainReason) {
       const abstainText =
