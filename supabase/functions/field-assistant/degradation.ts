@@ -87,6 +87,55 @@ export interface RetrievalAbstainState {
   semanticSearchResultsCount: number;
   /** Minimum qualifying chunks required to answer (MIN_RELEVANT_CHUNKS). */
   minRelevantChunks: number;
+  /**
+   * True when exactly one chunk was retrieved AND it qualified as a strong
+   * single-chunk answer (see {@link isStrongSingleChunkAnswer}). Optional so
+   * existing callers/tests keep their exact behavior — absent means false.
+   */
+  strongSingleChunk?: boolean;
+}
+
+/**
+ * Inputs for the strong-single-chunk answer decision. All floors are passed
+ * in (from constants.ts) so the rule itself stays pure and testable.
+ */
+export interface SingleChunkAnswerState {
+  /** Number of qualifying semantic chunks retrieval produced. */
+  semanticSearchResultsCount: number;
+  /** Reported similarity of the single retrieved chunk. */
+  similarity: number;
+  /** Character length of the single retrieved chunk's text. */
+  chunkTextLength: number;
+  /** True when the query matched the escalation (warranty/safety) keywords. */
+  isEscalationQuery: boolean;
+  /** Similarity floor a lone chunk must clear (SINGLE_CHUNK_STRONG_SIMILARITY). */
+  strongSimilarityFloor: number;
+  /** Minimum chunk text length a lone chunk must have (SINGLE_CHUNK_MIN_LENGTH). */
+  minChunkLength: number;
+}
+
+/**
+ * Decide whether a lone retrieved chunk is strong enough to support an answer
+ * instead of forcing the insufficient-coverage refusal.
+ *
+ * A single chunk qualifies ONLY when ALL hold:
+ *   - exactly one chunk was retrieved (this rule never applies otherwise),
+ *   - the query is NOT an escalation (warranty/safety) query — those keep
+ *     their stricter two-chunk human-review behavior unchanged,
+ *   - similarity >= the strong floor (0.8 — the same bar the weakness gate
+ *     has always used), and
+ *   - chunk text length >= the minimum (200 chars).
+ *
+ * This does NOT bypass any post-LLM validation: answers served through this
+ * path still go through the full citation/grounding validation, and the
+ * limited-coverage prompt caveat still applies. Pure — no side effects.
+ */
+export function isStrongSingleChunkAnswer(state: SingleChunkAnswerState): boolean {
+  if (state.semanticSearchResultsCount !== 1) return false;
+  if (state.isEscalationQuery) return false;
+  if (state.similarity < state.strongSimilarityFloor) return false;
+  if (state.chunkTextLength < state.minChunkLength) return false;
+  return true;
 }
 
 /**
@@ -115,8 +164,14 @@ export function decideRetrievalAbstain(state: RetrievalAbstainState): RetrievalA
   if (!state.retrievalRan) return "retrieval_unavailable";
 
   // Retrieval ran but produced fewer qualifying chunks than the minimum →
-  // ordinary insufficient-coverage abstain (unchanged behavior).
+  // ordinary insufficient-coverage abstain — UNLESS the lone chunk qualified
+  // as a strong single-chunk answer (non-escalation query, similarity >= 0.8,
+  // length >= 200; decided by isStrongSingleChunkAnswer at the call site).
+  // Zero chunks always abstain: the override only applies to exactly one.
   if (state.semanticSearchResultsCount < state.minRelevantChunks) {
+    if (state.semanticSearchResultsCount === 1 && state.strongSingleChunk === true) {
+      return null;
+    }
     return "insufficient_retrieval_coverage";
   }
 
