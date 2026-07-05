@@ -24,6 +24,11 @@ import {
   ESCALATION_SIMILARITY_THRESHOLD,
   SINGLE_CHUNK_STRONG_SIMILARITY,
   SINGLE_CHUNK_MIN_LENGTH,
+  LEXICAL_RESCUE_MIN_COSINE,
+  LEXICAL_RESCUE_MIN_RANK,
+  LEXICAL_RESCUE_MIN_LEXEMES,
+  MAX_LEXICAL_RESCUE_CHUNKS,
+  LEXICAL_RESCUE_MIN_QUERY_WORDS,
   TIER_DAILY_LIMITS,
   BLOCKED_PATTERNS_WITHOUT_CITATION,
   CITATION_PATTERN,
@@ -57,8 +62,15 @@ import { evaluateFeatureFlag } from "./auth.ts";
 import { writeAuditLog, trackConversation } from "./audit.ts";
 import type { AuditLogData } from "./audit.ts";
 
-import { createRetrievalAdapter } from "./retrieval.ts";
-import { classifyDegradedAnswer, decideRetrievalAbstain, isStrongSingleChunkAnswer } from "./degradation.ts";
+import { createRetrievalAdapter, lexicalRescueChunks } from "./retrieval.ts";
+import {
+  classifyDegradedAnswer,
+  countQueryContentWords,
+  decideRetrievalAbstain,
+  isLexicalSingleChunkAnswer,
+  isStrongSingleChunkAnswer,
+  shouldAttemptLexicalRescue,
+} from "./degradation.ts";
 import { fetchWithFallback } from "../_shared/aiClient.ts";
 import type { AIFetchResult } from "../_shared/aiClient.ts";
 import { evaluateWithJudge, evaluateWithJudgeBlocking, JUDGE_MODEL } from "./judge.ts";
@@ -516,6 +528,8 @@ serve(async (req) => {
       similarity: number; keyword_rank?: number | null; chunk_type?: string;
       brand?: string | null; model?: string | null; embedding_model?: string;
       page_number?: number | null; section_name?: string | null; document_id?: string | null;
+      // True only for chunks appended by the strict lexical rescue pass (P3b).
+      lexical_rescue?: boolean;
     }> = [];
 
     let retrievalBackend = "pgvector";
@@ -525,6 +539,11 @@ serve(async (req) => {
     // semantic search disabled) — the latter must keep the pre-existing
     // full-document-context fallback instead of abstaining.
     let retrievalRan = false;
+    // Captured from the semantic pass so the lexical rescue (P3b, §9e) can
+    // reuse them without re-embedding: the RAW search query (never the
+    // graph-enriched keyword query) and its embedding.
+    let rescueSearchQuery: string | null = null;
+    let rescueQueryEmbedding: number[] | null = null;
     let rerankModel: string | null = null;
     let rerankLatencyMs: number | null = null;
     let rerankScores: number[] | null = null;
@@ -600,6 +619,8 @@ serve(async (req) => {
 
             const retrievalResponse = await retrievalAdapter.retrieve(retrievalQuery);
             retrievalRan = true;
+            rescueSearchQuery = searchQuery;
+            rescueQueryEmbedding = queryEmbedding;
             retrievalBackend = retrievalResponse.backend;
             rerankModel = retrievalResponse.rerankModel;
             rerankLatencyMs = retrievalResponse.rerankLatencyMs;
@@ -780,14 +801,94 @@ serve(async (req) => {
       }
     }
 
+    // ── 9e. Lexical Rescue (P3b) ─────────────────────────────
+    // Strict lexical rescue for semantic under-retrieval: when the semantic
+    // pass ran but produced fewer than MIN_RELEVANT_CHUNKS for a
+    // non-escalation query, the lexical_rescue_chunks RPC may retrieve up to
+    // MAX_LEXICAL_RESCUE_CHUNKS chunks below the semantic floor — ONLY on a
+    // strict plainto_tsquery AND-match (every content lexeme of the query
+    // present in the chunk; OR/partial matching deliberately unsupported)
+    // plus server-enforced rank/cosine floors. shouldAttemptLexicalRescue
+    // (degradation.ts) is the pure source of truth for the trigger. Rescued
+    // chunks pass the same injection screen as semantic chunks (the semantic
+    // chunk-injection filter above already ran), the same lesson gate (inside
+    // lexicalRescueChunks), and the full post-LLM citation validation.
+    // The RAW search query is used — never the graph-enriched keyword query.
+    if (
+      rescueSearchQuery !== null &&
+      rescueQueryEmbedding !== null &&
+      shouldAttemptLexicalRescue({
+        docsWithEmbeddingsCount: docsWithEmbeddings.length,
+        retrievalRan,
+        semanticSearchResultsCount: semanticSearchResults.length,
+        minRelevantChunks: MIN_RELEVANT_CHUNKS,
+        isEscalationQuery,
+        queryContentWordCount: countQueryContentWords(rescueSearchQuery),
+        minQueryContentWords: LEXICAL_RESCUE_MIN_QUERY_WORDS,
+      })
+    ) {
+      try {
+        const rescued = await lexicalRescueChunks(serviceRoleClient, {
+          tenantId: tenantUser.tenant_id,
+          queryEmbedding: rescueQueryEmbedding,
+          keywordQuery: rescueSearchQuery,
+          excludeChunkIds: semanticSearchResults.map(r => r.id),
+          excludeLessonChunks: !lessonCitationsEnabled,
+          minCosine: LEXICAL_RESCUE_MIN_COSINE,
+          minRank: LEXICAL_RESCUE_MIN_RANK,
+          minLexemes: LEXICAL_RESCUE_MIN_LEXEMES,
+          maxResults: MAX_LEXICAL_RESCUE_CHUNKS,
+          correlationId,
+        });
+        // Same injection screen the semantic chunks passed above.
+        const safeRescued = rescued.filter(r => {
+          const chunkInjection = detectPromptInjection(r.chunkText);
+          if (chunkInjection.isInjection) {
+            console.warn("Injection pattern in rescued chunk content:", r.id, chunkInjection.pattern);
+            enforcementRulesTriggered.push(`CHUNK_INJECTION:${r.id}`);
+            return false;
+          }
+          return true;
+        });
+        if (safeRescued.length > 0) {
+          semanticSearchResults.push(...safeRescued.map(r => ({
+            id: r.id, chunk_text: r.chunkText, document_name: r.documentName,
+            document_category: r.documentCategory,
+            // Honest raw cosine — rescued chunks carry no hybrid blend, so
+            // the audit trail shows exactly how semantically weak they are.
+            similarity: r.rawCosine,
+            keyword_rank: r.lexicalRank, chunk_type: r.chunkType,
+            brand: r.brand, model: r.model, embedding_model: r.embeddingModel,
+            page_number: r.pageNumber, section_name: r.sectionName, document_id: r.documentId,
+            lexical_rescue: true,
+          })));
+          // Audit/debug signal only — count + top rank/cosine, no chunk content.
+          enforcementRulesTriggered.push(
+            `LEXICAL_RESCUE:n=${safeRescued.length},rank=${safeRescued[0].lexicalRank.toFixed(3)},cos=${safeRescued[0].rawCosine.toFixed(2)}`,
+          );
+          console.log(
+            `[lexical-rescue] correlation_id=${correlationId} rescued=${safeRescued.length} ` +
+            `top_rank=${safeRescued[0].lexicalRank.toFixed(3)} top_cos=${safeRescued[0].rawCosine.toFixed(2)}`,
+          );
+        }
+      } catch (rescueErr) {
+        // Non-fatal: a failed rescue leaves the existing abstain posture intact.
+        console.warn("[lexical-rescue] error (non-fatal):", rescueErr);
+      }
+    }
+
     // Single-chunk edge case. A lone STRONG chunk (non-escalation query,
     // similarity >= SINGLE_CHUNK_STRONG_SIMILARITY, length >=
     // SINGLE_CHUNK_MIN_LENGTH) may now support an answer instead of the
     // insufficient-coverage refusal — isStrongSingleChunkAnswer
-    // (degradation.ts) is the pure source of truth. Weak single chunks keep
-    // the exact human-review behavior below, and escalation queries keep
-    // their stricter two-chunk gate (set above) regardless of strength.
+    // (degradation.ts) is the pure source of truth. A lone lexically RESCUED
+    // chunk (strict AND-match proven server-side, non-escalation, length >=
+    // SINGLE_CHUNK_MIN_LENGTH) may likewise answer — isLexicalSingleChunkAnswer
+    // is its pure source of truth. Weak single chunks keep the exact
+    // human-review behavior below, and escalation queries keep their stricter
+    // two-chunk gate (set above) regardless of strength.
     let singleChunkStrongAnswer = false;
+    let singleChunkLexicalAnswer = false;
     if (semanticSearchResults.length === 1) {
       const sc = semanticSearchResults[0];
       singleChunkStrongAnswer = isStrongSingleChunkAnswer({
@@ -798,10 +899,25 @@ serve(async (req) => {
         strongSimilarityFloor: SINGLE_CHUNK_STRONG_SIMILARITY,
         minChunkLength: SINGLE_CHUNK_MIN_LENGTH,
       });
+      if (!singleChunkStrongAnswer) {
+        singleChunkLexicalAnswer = isLexicalSingleChunkAnswer({
+          totalChunkCount: semanticSearchResults.length,
+          isLexicalRescueChunk: sc.lexical_rescue === true,
+          chunkTextLength: sc.chunk_text.length,
+          isEscalationQuery,
+          minChunkLength: SINGLE_CHUNK_MIN_LENGTH,
+        });
+      }
       if (singleChunkStrongAnswer) {
         // Audit/debug signal only — no chunk content, just score + length.
         enforcementRulesTriggered.push(`SINGLE_CHUNK_STRONG_ANSWER:sim=${sc.similarity.toFixed(2)},len=${sc.chunk_text.length}`);
         console.log(`Single strong chunk qualifies for answer: similarity=${sc.similarity.toFixed(2)}, length=${sc.chunk_text.length}`);
+      } else if (singleChunkLexicalAnswer) {
+        // Audit/debug signal only — rank/cosine + length, no chunk content.
+        enforcementRulesTriggered.push(
+          `SINGLE_CHUNK_LEXICAL_ANSWER:rank=${(sc.keyword_rank ?? 0).toFixed(3)},cos=${sc.similarity.toFixed(2)},len=${sc.chunk_text.length}`,
+        );
+        console.log(`Single lexically rescued chunk qualifies for answer: rank=${(sc.keyword_rank ?? 0).toFixed(3)}, cos=${sc.similarity.toFixed(2)}, length=${sc.chunk_text.length}`);
       } else if (sc.similarity < SINGLE_CHUNK_STRONG_SIMILARITY || sc.chunk_text.length < SINGLE_CHUNK_MIN_LENGTH) {
         requiresHumanReview = true;
         enforcementRulesTriggered.push(`SINGLE_CHUNK_WEAK:sim=${sc.similarity.toFixed(2)},len=${sc.chunk_text.length}`);
@@ -1168,6 +1284,10 @@ serve(async (req) => {
       // instead of abstaining; the limited-coverage prompt caveat and full
       // post-LLM citation validation still apply to that answer.
       strongSingleChunk: singleChunkStrongAnswer,
+      // A lone lexically rescued chunk (strict AND-match proven server-side,
+      // non-escalation, len >= 200) likewise answers — same caveat + full
+      // post-LLM citation validation apply (P3b).
+      lexicalSingleChunk: singleChunkLexicalAnswer,
     });
     if (retrievalAbstainReason) {
       const abstainText =

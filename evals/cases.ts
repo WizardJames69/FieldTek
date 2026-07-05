@@ -94,8 +94,32 @@ export const BENCHMARK_CASES: EvalCase[] = [
     },
     expectedFacts: ["5 years", "10 years"],
   },
+  // P3b lexical-rescue class: a TERSE, technician-style phrasing (no question
+  // scaffolding). Terse queries can embed at/below the semantic floor against
+  // the very chunk that literally contains the answer (measured live on the
+  // pilot tenant 2026-07-04); the strict lexical rescue path exists for
+  // exactly this class. The case passes whether the chunks arrive via the
+  // semantic pass or the rescue pass — the assertion is grounded answer +
+  // citation, not which retrieval path fired. NOTE: a terse-airflow analog is
+  // impossible here (the eval corpus has no airflow spec content) — that
+  // proof point stays with the pilot founder-smoke rerun.
+  {
+    id: "EV-M-007",
+    type: "manual",
+    question: "filter replacement schedule",
+    context: HVAC,
+    expectedSources: {
+      documentNames: ["HVAC Maintenance Best Practices"],
+      chunkIncludes: ["filter"],
+    },
+    expectedFacts: ["90 days"],
+  },
 
   // ── Must-abstain (unsupported by the corpus) ─────────────────
+  // P3b lexical-bait guard: 'Lennox' / 'G61' appear in no corpus chunk, so the
+  // strict AND-match can never fire — this case now also proves the lexical
+  // rescue path does not weaken abstention (calibrated read-only on the pilot
+  // corpus 2026-07-04: zero ts_rank against every chunk).
   {
     id: "EV-A-001",
     type: "must_abstain",
@@ -140,6 +164,10 @@ export const BENCHMARK_CASES: EvalCase[] = [
   },
   // Abstain still holds: a question neither the HVAC corpus nor the published
   // lesson supports must abstain — proving lessons do not weaken the gate.
+  // P3b lexical-bait guard (Trane XR16): 'Trane' / 'XR16' appear in no corpus
+  // chunk, so the strict AND-match can never rescue for this query — this
+  // case doubles as the Trane-bait proof that lexical rescue does not weaken
+  // abstention (OR/partial matching is deliberately unimplemented).
   {
     id: "EV-LESSON-ABSTAIN-001",
     type: "must_abstain",
