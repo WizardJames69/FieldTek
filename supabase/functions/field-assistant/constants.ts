@@ -51,6 +51,24 @@ export const ESCALATION_SIMILARITY_THRESHOLD = 0.65;
 export const SINGLE_CHUNK_STRONG_SIMILARITY = 0.8;
 export const SINGLE_CHUNK_MIN_LENGTH = 200;
 
+// ── Lexical Rescue (P3b) ────────────────────────────────────
+// Strict lexical rescue for semantic under-retrieval: when the semantic pass
+// returns fewer than MIN_RELEVANT_CHUNKS for a non-escalation query, the
+// lexical_rescue_chunks RPC may retrieve up to MAX_LEXICAL_RESCUE_CHUNKS
+// chunks below the semantic floor — but ONLY on a strict plainto_tsquery
+// AND-match (every content lexeme present; OR/partial matching is
+// deliberately not supported). These values are passed to the RPC as
+// parameters so tuning is an edge-function redeploy, not a migration.
+// The global SEMANTIC_SEARCH_THRESHOLD (0.6) is NOT changed by any of this.
+export const LEXICAL_RESCUE_MIN_COSINE = 0.35;
+export const LEXICAL_RESCUE_MIN_RANK = 0.05;
+export const LEXICAL_RESCUE_MIN_LEXEMES = 2;
+export const MAX_LEXICAL_RESCUE_CHUNKS = 2;
+// Cheap client-side pre-gate only (the RPC's numnode lexeme count is the
+// authoritative gate): skip the rescue round trip for queries with fewer
+// than this many content words.
+export const LEXICAL_RESCUE_MIN_QUERY_WORDS = 2;
+
 // Reserved documents.category for documents published from approved lessons.
 // Lesson-sourced chunks carry this in document_chunks.document_category (copied
 // from documents.category at ingestion). Retrieval uses it to exclude lessons

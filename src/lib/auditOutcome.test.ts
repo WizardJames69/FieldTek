@@ -190,6 +190,42 @@ describe("classifyAuditOutcome", () => {
       classifyAuditOutcome(row({ judge_verdict: "none", ai_response: null })),
     ).toBe("unknown");
   });
+
+  // P3b: lexical-rescue rows carry LEXICAL_RESCUE:* / SINGLE_CHUNK_LEXICAL_ANSWER:*
+  // enforcement tags (written by field-assistant index.ts). They are
+  // informational — an answered rescue row must classify exactly like any
+  // other served-but-unjudged answer, never as blocked/degraded/refusal.
+  it("answered lexical-rescue row classifies as unjudged_no_verdict (tags are informational)", () => {
+    expect(
+      classifyAuditOutcome(
+        row({
+          abstain_flag: false,
+          ai_response: "The nominal airflow is 1200 CFM. [Source: FT-Pilot Air Handler Service Guide]",
+          enforcement_rules_triggered: [
+            "LEXICAL_RESCUE:n=1,rank=0.090,cos=0.58",
+            "SINGLE_CHUNK_LEXICAL_ANSWER:rank=0.090,cos=0.58,len=2143",
+          ],
+        }),
+      ),
+    ).toBe("unjudged_no_verdict");
+  });
+
+  it("abstained row with a lexical-rescue tag still resolves by its abstain reason", () => {
+    // A rescue that fired but still ended under the coverage minimum keeps the
+    // grounded_refusal classification driven by INSUFFICIENT_RETRIEVAL_COVERAGE.
+    expect(
+      classifyAuditOutcome(
+        row({
+          abstain_flag: true,
+          ai_response: "",
+          enforcement_rules_triggered: [
+            "LEXICAL_RESCUE:n=1,rank=0.090,cos=0.58",
+            INSUFFICIENT_RETRIEVAL_COVERAGE,
+          ],
+        }),
+      ),
+    ).toBe("grounded_refusal");
+  });
 });
 
 describe("auditOutcomeBadge", () => {

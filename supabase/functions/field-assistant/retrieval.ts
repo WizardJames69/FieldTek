@@ -115,6 +115,103 @@ export class PgVectorAdapter implements RetrievalAdapter {
   }
 }
 
+// ── Lexical Rescue (P3b) ─────────────────────────────────────
+// Strict lexical rescue for semantic under-retrieval. NOT part of the
+// RetrievalAdapter interface: it is pgvector-specific, only ever invoked by
+// the orchestrator when the semantic pass returned fewer than
+// MIN_RELEVANT_CHUNKS for a non-escalation query, and the RPC enforces the
+// strict AND-match + rank/cosine floors server-side (see the
+// lexical_rescue_chunks migration — this is not a threshold relaxation).
+
+export interface LexicalRescueParams {
+  tenantId: string;
+  /** The already-computed semantic query embedding — never re-embed. */
+  queryEmbedding: number[];
+  /** The RAW user search query — never the graph-enriched keyword query
+   *  (appended expansion terms would poison the strict AND-match). */
+  keywordQuery: string;
+  /** Chunk ids already retrieved semantically — never rescue duplicates. */
+  excludeChunkIds: string[];
+  /** Mirror of the semantic path's lesson gate (lesson_citations flag OFF). */
+  excludeLessonChunks: boolean;
+  minCosine: number;
+  minRank: number;
+  minLexemes: number;
+  maxResults: number;
+  correlationId: string;
+}
+
+export interface LexicalRescueChunk {
+  id: string;
+  documentId: string;
+  chunkText: string;
+  documentName: string;
+  documentCategory: string;
+  /** Honest raw cosine similarity (no hybrid blend). */
+  rawCosine: number;
+  /** Normalized (flag 32) ts_rank of the strict AND-match. */
+  lexicalRank: number;
+  chunkType: string;
+  brand: string | null;
+  model: string | null;
+  embeddingModel: string;
+  pageNumber: number | null;
+  sectionName: string | null;
+}
+
+export async function lexicalRescueChunks(
+  client: SupabaseClient,
+  params: LexicalRescueParams,
+): Promise<LexicalRescueChunk[]> {
+  const { data, error } = await client.rpc("lexical_rescue_chunks", {
+    p_tenant_id: params.tenantId,
+    p_query_embedding: `[${params.queryEmbedding.join(",")}]`,
+    p_keyword_query: params.keywordQuery,
+    p_min_cosine: params.minCosine,
+    p_min_rank: params.minRank,
+    p_min_lexemes: params.minLexemes,
+    p_max_results: params.maxResults,
+    p_exclude_chunk_ids: params.excludeChunkIds.length > 0 ? params.excludeChunkIds : null,
+  });
+
+  if (error) {
+    throw new Error(`Lexical rescue failed: ${error.message}`);
+  }
+
+  let results: LexicalRescueChunk[] = (data || []).map(
+    // deno-lint-ignore no-explicit-any
+    (r: any) => ({
+      id: r.id,
+      documentId: r.document_id,
+      chunkText: r.chunk_text,
+      documentName: r.document_name,
+      documentCategory: r.document_category,
+      rawCosine: r.raw_cosine,
+      lexicalRank: r.lexical_rank,
+      chunkType: r.chunk_type ?? "narrative",
+      brand: r.brand ?? null,
+      model: r.model ?? null,
+      embeddingModel: r.embedding_model ?? "text-embedding-3-small",
+      pageNumber: r.page_number ?? null,
+      sectionName: r.section_name ?? null,
+    }),
+  );
+
+  // Same lesson-citation gate as the semantic path: flag OFF → lesson-sourced
+  // chunks can never be rescued, cited, or help avoid abstain.
+  if (params.excludeLessonChunks) {
+    const before = results.length;
+    results = results.filter((r) => r.documentCategory !== LESSON_DOCUMENT_CATEGORY);
+    if (results.length < before) {
+      console.log(
+        `[lexical-rescue] lesson_citations off: dropped ${before - results.length} lesson chunk(s) (${before} → ${results.length})`,
+      );
+    }
+  }
+
+  return results;
+}
+
 // ── External Retrieval Adapter (future) ──────────────────────
 
 export class ExternalRetrievalAdapter implements RetrievalAdapter {
