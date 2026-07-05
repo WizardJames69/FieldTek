@@ -17,6 +17,14 @@
 -- WHAT IT PROVES
 -- --------------
 -- lexical_rescue_chunks is a STRICT, NARROW rescue — not a threshold drop:
+--   0. RETURN-TYPE REGRESSION (fixed in 20260705000000): the function actually
+--      returns a row without raising ERROR 42804 "Returned type real does not
+--      match expected type double precision in column 7 (lexical_rank)". Case 1
+--      is the guard — it SELECTs a returned row and reads r_row.lexical_rank,
+--      which only executes if RETURN QUERY's exact-type check passed. The
+--      original 20260704000000 body threw here (ts_rank returns real, column
+--      declared double precision); running this script against a shadow DB
+--      would have caught it before deploy.
 --   1. A chunk below the semantic floor IS rescued when it AND-matches every
 --      content lexeme of the query (and clears the rank/cosine floors).
 --   2. A PARTIAL keyword match (some but not all lexemes) is NEVER rescued —
@@ -58,11 +66,17 @@ BEGIN
   -- Chunk A: cosine 0.5 vs query — BELOW the 0.6 semantic floor, above the
   -- 0.35 rescue floor. Text AND-matches "airflow specification" and is >200
   -- chars. This is the canonical rescue target.
+  -- NOTE: the keyword phrase is repeated 16× (not 8×) so chunk A has the
+  -- STRICTLY HIGHEST ts_rank of the three qualifiers (A > D > E). The rescue
+  -- path orders by ts_rank DESC and hard-caps at 2, so A must out-rank D/E to
+  -- be guaranteed in the returned set for case 1; at 8× A actually ranked
+  -- LOWEST (0.4917 vs D 0.4970, E 0.4944) and the cap evicted it. Verified on
+  -- a shadow pgvector DB 2026-07-05.
   INSERT INTO public.document_chunks (tenant_id, document_id, chunk_text, embedding)
   VALUES (
     v_tenant, v_doc,
     'The nominal airflow specification for this air handler unit is 1200 CFM at 0.5 in. w.c. external static pressure. '
-      || repeat('Additional airflow specification detail. ', 8),
+      || repeat('Additional airflow specification detail. ', 16),
     (SELECT ('[' || string_agg(CASE WHEN i = 1 THEN '0.5' WHEN i = 2 THEN '0.866' ELSE '0' END, ',') || ']')
      FROM generate_series(1, 1536) i)::vector
   )
