@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
+import {
+  decideTenantResourceAccess,
+  getAuthenticatedUser,
+  readSupabaseEnv,
+  userHasTenantMembership,
+} from "../_shared/tenantAuth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -43,16 +50,53 @@ serve(async (req: Request): Promise<Response> => {
       { auth: { persistSession: false } }
     );
 
+    // ── Authorization ─────────────────────────────────────────
+    // This function runs with the service role and can email every overdue
+    // client. It is only safe for (a) the cron/service-role caller — which may
+    // sweep all tenants — or (b) an authenticated user acting on their OWN
+    // tenant. Anyone else (e.g. anyone holding the public anon key) is rejected.
+    const authHeader = req.headers.get("Authorization");
+    const bearer = authHeader?.replace(/^Bearer\s+/i, "") ?? "";
+    const isServiceRole = await isServiceRoleBearer(bearer);
+
     // Parse request body for optional filters
     let specificInvoiceId: string | null = null;
     let tenantId: string | null = null;
-    
+
     try {
       const body = await req.json();
       specificInvoiceId = body.invoice_id || null;
       tenantId = body.tenant_id || null;
     } catch {
-      // No body provided, will process all overdue invoices
+      // No body provided → all-overdue sweep. Service-role/cron only (below).
+    }
+
+    if (!isServiceRole) {
+      const env = readSupabaseEnv();
+      const user = await getAuthenticatedUser(authHeader, env);
+      // A user caller MUST scope to a single tenant they belong to; the
+      // all-tenants sweep (no tenant_id) is reserved for the service role.
+      if (!tenantId) {
+        logStep("Rejected: non-service caller without tenant_id");
+        return new Response(
+          JSON.stringify({ error: "tenant_id is required" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+      const isMember = user ? await userHasTenantMembership(user.id, tenantId, env) : false;
+      const access = decideTenantResourceAccess({
+        isServiceRole: false,
+        userId: user?.id ?? null,
+        isMember,
+        denyStatus: 403,
+      });
+      if (!access.allowed) {
+        logStep("Rejected: not authorized for tenant", { status: access.status });
+        return new Response(
+          JSON.stringify({ error: access.status === 401 ? "Unauthorized" : "Forbidden" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: access.status }
+        );
+      }
     }
 
     // Build query for overdue invoices

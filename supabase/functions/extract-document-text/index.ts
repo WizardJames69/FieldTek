@@ -7,6 +7,11 @@ import { fetchWithFallback } from "../_shared/aiClient.ts";
 import { chunkTextStructuredWithStats, MAX_CHUNKS, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
 import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
 import {
+  decideTenantResourceAccess,
+  readSupabaseEnv,
+  userHasTenantMembership,
+} from "../_shared/tenantAuth.ts";
+import {
   buildChunkCapWarning,
   buildExtractionTruncationWarning,
   normalizeIngestionWarnings,
@@ -493,6 +498,11 @@ serve(async (req) => {
     // through to the user path below.
     const isServiceRole = await isServiceRoleBearer(token);
 
+    // The authenticated end-user's id (null for the service-role path). Captured
+    // here so the documentId branch below can enforce tenant ownership before
+    // the service-role client reads/downloads another tenant's document.
+    let callerUserId: string | null = null;
+
     if (!isServiceRole) {
       const supabaseAuth = createClient(
         Deno.env.get("SUPABASE_URL")!,
@@ -503,6 +513,7 @@ serve(async (req) => {
       if (authError || !user) {
         return jsonResponse({ success: false, extractedText: "", structuredData: null, error: "Unauthorized" }, 401);
       }
+      callerUserId = user.id;
     }
 
     // ── Parse request ────────────────────────────────────────
@@ -562,17 +573,35 @@ serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // Fetch document record
+      // Fetch document record (tenant_id included for the ownership check below)
       const { data: doc, error: docError } = await supabaseAdmin
         .from("documents")
-        .select("file_url, file_type, extraction_status, embedding_status, name")
+        .select("file_url, file_type, extraction_status, embedding_status, name, tenant_id")
         .eq("id", documentId)
         .single();
 
       if (docError || !doc) {
         return jsonResponse(
-          { success: false, extractedText: "", structuredData: null, error: `Document not found: ${docError?.message || "unknown"}` },
+          { success: false, extractedText: "", structuredData: null, error: "Document not found" },
           404
+        );
+      }
+
+      // Tenant-ownership check (the service-role client above bypasses RLS).
+      // Non-service-role callers may only process documents in a tenant they
+      // are an active member of. Deny with 404 so we never disclose that a
+      // foreign-tenant document exists, and never download/return its text.
+      const accessEnv = readSupabaseEnv();
+      const isMember = isServiceRole
+        ? true
+        : await userHasTenantMembership(callerUserId ?? "", String(doc.tenant_id), accessEnv);
+      const access = decideTenantResourceAccess({ isServiceRole, userId: callerUserId, isMember });
+      if (!access.allowed) {
+        // callerUserId is always set on the non-service path (401'd above), so
+        // this is the not-a-member case → generic 404, no state mutation.
+        return jsonResponse(
+          { success: false, extractedText: "", structuredData: null, error: "Document not found" },
+          access.status,
         );
       }
 

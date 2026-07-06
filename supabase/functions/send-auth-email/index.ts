@@ -1,11 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
 import {
   resolveSafeRedirect,
   parseAllowedHosts,
   DEFAULT_SAFE_REDIRECT,
 } from "../_shared/redirectAllowlist.ts";
+import { checkRateLimit, getClientIp, maybeCleanupRateLimits } from "../_shared/rateLimit.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -226,14 +228,53 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const raw = await req.json();
+    // Read the raw body once — Mode A signature verification must run over the
+    // exact bytes Supabase signed, so we cannot use req.json() there.
+    const payload = await req.text();
+    let raw: unknown;
+    try {
+      raw = JSON.parse(payload);
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "Invalid JSON body" }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+    const rawObj = raw as Record<string, unknown>;
 
     // ── Mode A: Supabase "Send Email" auth hook ───────────────────────────────
     // Supabase posts { user, email_data }. We build the verify link from the
     // token_hash ourselves and send the FieldTek-branded email. Supabase does NOT
     // send its own email when this hook is configured, so no Supabase-branded
     // "Confirm Your Signup" reaches the user.
-    if (raw && raw.email_data && raw.user) {
+    if (rawObj && rawObj.email_data && rawObj.user) {
+      // Verify the Supabase auth-hook signature (standardwebhooks HMAC) BEFORE
+      // trusting any of the body. Without this, anyone could POST a forged
+      // { user, email_data } and drive FieldTek-branded auth mail to arbitrary
+      // recipients. Fail closed if the secret is unset or the signature is bad.
+      const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
+      if (!hookSecret) {
+        console.error("[send-auth-email] SEND_EMAIL_HOOK_SECRET not configured — rejecting hook call");
+        return new Response(
+          JSON.stringify({ error: "Auth hook not configured" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      try {
+        const wh = new Webhook(hookSecret.replace("v1,whsec_", ""));
+        wh.verify(payload, {
+          "webhook-id": req.headers.get("webhook-id") ?? "",
+          "webhook-timestamp": req.headers.get("webhook-timestamp") ?? "",
+          "webhook-signature": req.headers.get("webhook-signature") ?? "",
+        });
+      } catch (_verifyErr) {
+        console.error("[send-auth-email] Invalid auth-hook signature — rejecting");
+        return new Response(
+          JSON.stringify({ error: "Invalid signature" }),
+          { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
       const hook = raw as AuthHookRequest;
       const recipient = hook.user.email;
       const actionType = hook.email_data.email_action_type;
@@ -304,6 +345,31 @@ const handler = async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Mode B is a public, unauthenticated endpoint that mints and emails auth
+    // links (recovery/magic/signup). Rate-limit by IP and by target email so it
+    // cannot be abused for auth-email bombing or account enumeration.
+    const clientIp = getClientIp(req);
+    const ipLimit = await checkRateLimit(supabase, {
+      identifierType: "ip",
+      identifier: `send-auth-email:${clientIp}`,
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 10,
+    });
+    const emailLimit = await checkRateLimit(supabase, {
+      identifierType: "email",
+      identifier: `send-auth-email:${email.toLowerCase()}`,
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    });
+    if (!ipLimit.allowed || !emailLimit.allowed) {
+      console.warn("[send-auth-email] Rate limit exceeded (direct mode)");
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "900", ...corsHeaders } }
+      );
+    }
+    await maybeCleanupRateLimits(supabase);
 
     // Never trust the caller-supplied origin: normalize to an allowlisted host.
     const redirectUrl = toSafeRedirect(redirect_to);

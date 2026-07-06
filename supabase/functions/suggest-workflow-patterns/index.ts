@@ -19,6 +19,13 @@ import {
   MAX_SUGGESTIONS_PER_RUN,
 } from "./cluster.ts";
 import { generateSuggestion } from "./generate.ts";
+import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
+import {
+  decideTenantResourceAccess,
+  getAuthenticatedUser,
+  readSupabaseEnv,
+  userHasTenantMembership,
+} from "../_shared/tenantAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,6 +47,36 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "tenant_id is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // ── Authorization ─────────────────────────────────────────
+    // Service-role bypasses RLS here, and tenant_id is caller-supplied, so an
+    // unauthenticated caller could otherwise drive heavy compute + writes into
+    // any tenant. Require the service-role/cron caller, or an authenticated
+    // staff member (owner/admin/dispatcher) of the requested tenant.
+    const authHeader = req.headers.get("Authorization");
+    const bearer = authHeader?.replace(/^Bearer\s+/i, "") ?? "";
+    const isServiceRole = await isServiceRoleBearer(bearer);
+    if (!isServiceRole) {
+      const env = readSupabaseEnv();
+      const user = await getAuthenticatedUser(authHeader, env);
+      const isMember = user
+        ? await userHasTenantMembership(user.id, tenant_id, env, {
+            roles: ["owner", "admin", "dispatcher"],
+          })
+        : false;
+      const access = decideTenantResourceAccess({
+        isServiceRole: false,
+        userId: user?.id ?? null,
+        isMember,
+        denyStatus: 403,
+      });
+      if (!access.allowed) {
+        return new Response(
+          JSON.stringify({ error: access.status === 401 ? "Unauthorized" : "Forbidden" }),
+          { status: access.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

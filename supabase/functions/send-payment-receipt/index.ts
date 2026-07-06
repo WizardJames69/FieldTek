@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -24,6 +25,18 @@ serve(async (req) => {
   }
 
   try {
+    // Internal-only: this sends a customer-facing "Payment Received" email and
+    // is invoked solely by stripe-webhook with the service-role key. Require a
+    // service-role bearer so a public caller cannot send fraudulent receipts.
+    const bearer = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+    if (!(await isServiceRoleBearer(bearer))) {
+      logStep("Unauthorized — missing/invalid service-role bearer");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { invoiceId }: PaymentReceiptRequest = await req.json();
     logStep("Processing payment receipt", { invoiceId });
 
