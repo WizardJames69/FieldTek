@@ -3,6 +3,7 @@
 // ============================================================
 
 import { CITATION_PATTERN } from "./constants.ts";
+import { deriveAuditAbstainFlag } from "./degradation.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -48,6 +49,11 @@ export interface AuditLogData {
   rerankModel: string | null;
   rerankLatencyMs: number | null;
   insufficientRetrievalCoverage: boolean;
+  /** True when a grounded answer was served through an approved single-chunk
+   *  path (P3a strong-single or P3b lexical-rescue-single). Telemetry only:
+   *  suppresses the abstain_flag mislabel for a below-minimum-coverage answer
+   *  that was actually delivered with a citation. Defaults to false. */
+  singleChunkAnswerServed?: boolean;
   workflowStage?: string;
   complianceRulesEvaluated?: string[];
   complianceVerdictIds?: string[];
@@ -94,8 +100,19 @@ export async function writeAuditLog(
   const citationMatches = data.accumulatedContent.match(/\[Source:\s*\S[^\]]*\]/gi) || [];
   const citationDensity = data.accumulatedContent.length > 0 ? citationMatches.length / (data.accumulatedContent.length / 1000) : 0;
 
-  // Abstain flag
-  const abstainFlag = data.validationFailed || data.insufficientRetrievalCoverage || (data.semanticSearchResults.length === 0 && data.docsWithContent.length > 0);
+  // Abstain flag (telemetry). A grounded answer served through an approved
+  // single-chunk path (P3a strong / P3b lexical rescue) is below the coverage
+  // minimum but is NOT an abstain — deriveAuditAbstainFlag suppresses that one
+  // mislabel and reproduces the prior expression for every other input. The
+  // limited-coverage prompt caveat and citation validation already ran at
+  // request time; only the label changes here.
+  const abstainFlag = deriveAuditAbstainFlag({
+    validationFailed: data.validationFailed,
+    insufficientRetrievalCoverage: data.insufficientRetrievalCoverage,
+    retrievedChunkCount: data.semanticSearchResults.length,
+    hasDocsWithContent: data.docsWithContent.length > 0,
+    singleChunkAnswerServed: data.singleChunkAnswerServed === true,
+  });
 
   try {
     const { data: auditRow } = await serviceRoleClient.from("ai_audit_logs").insert({

@@ -210,6 +210,23 @@ describe("classifyAuditOutcome", () => {
     ).toBe("unjudged_no_verdict");
   });
 
+  // P3c: the abstain-flag mislabel fix means an answered single-chunk row now
+  // arrives with abstain_flag=false. With the judge off (Decision A), it must
+  // stay unjudged_no_verdict — NOT reclassified as grounded_pass. Covers both
+  // the P3a strong-single and P3b lexical-single answer paths.
+  it("answered strong-single row (judge off) classifies as unjudged_no_verdict, not grounded_pass", () => {
+    expect(
+      classifyAuditOutcome(
+        row({
+          judge_verdict: null, // Decision A: judge did not run for this tenant
+          abstain_flag: false, // P3c: served single-chunk answer no longer mislabelled
+          ai_response: "The nominal airflow is 1200 CFM. [Source: FT-Pilot Air Handler Service Guide]",
+          enforcement_rules_triggered: ["SINGLE_CHUNK_STRONG_ANSWER:sim=0.86,len=2143"],
+        }),
+      ),
+    ).toBe("unjudged_no_verdict");
+  });
+
   it("abstained row with a lexical-rescue tag still resolves by its abstain reason", () => {
     // A rescue that fired but still ended under the coverage minimum keeps the
     // grounded_refusal classification driven by INSUFFICIENT_RETRIEVAL_COVERAGE.
