@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
+import {
+  getAuthenticatedUser,
+  readSupabaseEnv,
+  userHasTenantMembership,
+} from "../_shared/tenantAuth.ts";
+import { decideInvoiceReminderAccess } from "./authz.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -43,16 +50,58 @@ serve(async (req: Request): Promise<Response> => {
       { auth: { persistSession: false } }
     );
 
+    // ── Authorization ─────────────────────────────────────────
+    // This function runs with the service role and can email every overdue
+    // client. It is only safe for (a) the cron/service-role caller — which may
+    // sweep all tenants — or (b) an authenticated user acting on their OWN
+    // tenant. Anyone else (e.g. anyone holding the public anon key) is rejected.
+    const authHeader = req.headers.get("Authorization");
+    const bearer = authHeader?.replace(/^Bearer\s+/i, "") ?? "";
+    const isServiceRole = await isServiceRoleBearer(bearer);
+
     // Parse request body for optional filters
     let specificInvoiceId: string | null = null;
     let tenantId: string | null = null;
-    
+
     try {
       const body = await req.json();
       specificInvoiceId = body.invoice_id || null;
       tenantId = body.tenant_id || null;
     } catch {
-      // No body provided, will process all overdue invoices
+      // No body provided → all-overdue sweep. Service-role/cron only (below).
+    }
+
+    // The tenant this request is authorized for and MUST be scoped to. For the
+    // service role it mirrors the (optional) body tenant_id — null means the
+    // all-tenants sweep. For a user caller it is resolved + membership-checked
+    // below and is always set.
+    let effectiveTenantId: string | null = tenantId;
+
+    if (!isServiceRole) {
+      const env = readSupabaseEnv();
+      const user = await getAuthenticatedUser(authHeader, env);
+      // A user caller may target a single tenant they belong to — named
+      // directly (tenant_id) or derived from the invoice (invoice_id). The
+      // all-tenants sweep (neither id) is reserved for the service role.
+      const access = await decideInvoiceReminderAccess({
+        userId: user?.id ?? null,
+        tenantId,
+        invoiceId: specificInvoiceId,
+        resolveInvoiceTenant: async (id) => {
+          const { data } = await supabaseClient
+            .from("invoices").select("tenant_id").eq("id", id).maybeSingle();
+          return (data?.tenant_id as string | undefined) ?? null;
+        },
+        isMember: (uid, tid) => userHasTenantMembership(uid, tid, env),
+      });
+      if (!access.allowed) {
+        logStep("Rejected non-service caller", { status: access.status });
+        return new Response(
+          JSON.stringify({ error: access.status === 401 ? "Unauthorized" : access.status === 400 ? "invoice_id or tenant_id is required" : access.status === 404 ? "Invoice not found" : "Forbidden" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: access.status }
+        );
+      }
+      effectiveTenantId = access.effectiveTenantId ?? null;
     }
 
     // Build query for overdue invoices
@@ -72,8 +121,11 @@ serve(async (req: Request): Promise<Response> => {
       query = query.eq('id', specificInvoiceId);
     }
 
-    if (tenantId) {
-      query = query.eq('tenant_id', tenantId);
+    // Always scope by the authorized tenant for user callers (effectiveTenantId
+    // is always set there); for the service role this is null only on the
+    // deliberate all-tenants sweep.
+    if (effectiveTenantId) {
+      query = query.eq('tenant_id', effectiveTenantId);
     }
 
     const { data: overdueInvoices, error: queryError } = await query;

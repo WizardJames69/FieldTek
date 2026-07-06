@@ -3,6 +3,11 @@ import { fetchWithFallback } from "../_shared/aiClient.ts";
 import { chunkTextStructuredWithStats, MAX_CHUNKS, estimateTokens, EMBEDDING_MODEL, EMBEDDING_DIMENSION } from "../_shared/chunking.ts";
 import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
 import {
+  decideTenantResourceAccess,
+  readSupabaseEnv,
+  userHasTenantMembership,
+} from "../_shared/tenantAuth.ts";
+import {
   buildChunkCapWarning,
   normalizeIngestionWarnings,
   type IngestionWarning,
@@ -129,6 +134,11 @@ serve(async (req) => {
     // JWTs fall through to the user path below.
     const isServiceRole = await isServiceRoleBearer(token);
 
+    // Authenticated end-user id (null on the service-role path). Used below to
+    // enforce tenant ownership of the requested document before this function's
+    // service-role REST calls read/process it.
+    let callerUserId: string | null = null;
+
     if (!isServiceRole) {
       // Verify user JWT via GoTrue API (no SDK needed)
       const authRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -143,7 +153,8 @@ serve(async (req) => {
         });
       }
       const user = await authRes.json();
-      console.log("[generate-embeddings] Authenticated user:", user.id);
+      callerUserId = typeof user?.id === "string" ? user.id : null;
+      console.log("[generate-embeddings] Authenticated user:", callerUserId);
     } else {
       console.log("[generate-embeddings] Service role access");
     }
@@ -174,6 +185,21 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Document not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Tenant-ownership check (raw REST above uses the service role → RLS is
+    // bypassed). A non-service-role caller may only embed documents in a tenant
+    // they actively belong to; deny with 404 so a foreign-tenant document's
+    // existence is never disclosed and no chunks/status are touched.
+    const isMember = isServiceRole
+      ? true
+      : await userHasTenantMembership(callerUserId ?? "", String(doc.tenant_id), readSupabaseEnv());
+    const access = decideTenantResourceAccess({ isServiceRole, userId: callerUserId, isMember });
+    if (!access.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Document not found" }),
+        { status: access.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

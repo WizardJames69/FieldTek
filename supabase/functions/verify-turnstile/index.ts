@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, maybeCleanupRateLimits } from "../_shared/rateLimit.ts";
+import { isUuid } from "../_shared/tenantAuth.ts";
+import { sanitizeServiceRequestForm } from "../_shared/intakeForm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,6 +40,26 @@ serve(async (req) => {
       );
     }
 
+    // Reject a malformed tenant id up front (this is an unauthenticated public
+    // endpoint; tenantId is caller-supplied and used as a service-role insert
+    // target). Existence is checked below before the insert.
+    if (!isUuid(tenantId)) {
+      return new Response(
+        JSON.stringify({ error: "Invalid request" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Bound the untrusted form payload (required fields, types, length caps).
+    const sanitized = sanitizeServiceRequestForm(formData);
+    if (!sanitized.ok) {
+      return new Response(
+        JSON.stringify({ error: sanitized.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const form = sanitized.value;
+
     // Initialize Supabase client with service role for rate limiting
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -71,16 +93,16 @@ serve(async (req) => {
       );
     }
 
-    // Also check rate limit by email if provided
-    if (formData.contact_email) {
+    // Also check rate limit by email
+    {
       const emailRateLimit = await checkRateLimit(supabase, {
         identifierType: "email",
-        identifier: formData.contact_email.toLowerCase(),
+        identifier: form.contact_email.toLowerCase(),
         windowMs: 15 * 60 * 1000,
         maxRequests: 5,
       });
       if (!emailRateLimit.allowed) {
-        console.warn(`Rate limit exceeded for email: ${formData.contact_email}`);
+        console.warn("Rate limit exceeded for intake email");
         return new Response(
           JSON.stringify({
             error: "Too many requests from this email. Please try again later.",
@@ -130,12 +152,28 @@ serve(async (req) => {
       );
     }
 
+    // Reject submissions to a non-existent tenant so this public endpoint can't
+    // be used to inject requests into (or probe) arbitrary tenant ids. Uses a
+    // generic error to avoid confirming which ids exist.
+    const { data: tenantRow, error: tenantErr } = await supabase
+      .from("tenants")
+      .select("id")
+      .eq("id", tenantId)
+      .maybeSingle();
+    if (tenantErr || !tenantRow) {
+      console.warn("Rejected intake for unknown tenant");
+      return new Response(
+        JSON.stringify({ error: "Invalid request" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // CAPTCHA verified - now insert the service request
     const { data, error } = await supabase.from("service_requests").insert({
       tenant_id: tenantId,
-      title: formData.title,
-      description: `${formData.description}\n\n---\nContact: ${formData.contact_name}\nEmail: ${formData.contact_email}\nPhone: ${formData.contact_phone || "Not provided"}`,
-      request_type: formData.request_type,
+      title: form.title,
+      description: `${form.description}\n\n---\nContact: ${form.contact_name}\nEmail: ${form.contact_email}\nPhone: ${form.contact_phone || "Not provided"}`,
+      request_type: form.request_type,
       status: "new",
     }).select().single();
 
