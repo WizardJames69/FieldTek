@@ -2,6 +2,7 @@ import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import {
   countQueryContentWords,
   decideRetrievalAbstain,
+  deriveAuditAbstainFlag,
   isLexicalSingleChunkAnswer,
   isStrongSingleChunkAnswer,
   shouldAttemptLexicalRescue,
@@ -389,4 +390,98 @@ Deno.test("retrieval never ran → retrieval_unavailable even with lexical overr
     }),
     "retrieval_unavailable",
   );
+});
+
+// ── deriveAuditAbstainFlag (P3c telemetry label) ────────────────────────────
+// TELEMETRY ONLY. A grounded answer served through an approved single-chunk
+// path (P3a strong / P3b lexical rescue) sits below MIN_RELEVANT_CHUNKS, so
+// insufficientRetrievalCoverage is true, but the user got a cited answer — it
+// must NOT be labelled abstain_flag=true. Every other input must reproduce the
+// prior expression exactly. These assert the label only; runtime abstain
+// behavior is decideRetrievalAbstain, tested above and unchanged.
+
+const BASE_ABSTAIN = {
+  validationFailed: false,
+  insufficientRetrievalCoverage: false,
+  retrievedChunkCount: 2,
+  hasDocsWithContent: true,
+  singleChunkAnswerServed: false,
+};
+
+Deno.test("audit label: served strong-single answer is NOT abstain (below-min coverage)", () => {
+  assertEquals(
+    deriveAuditAbstainFlag({
+      ...BASE_ABSTAIN,
+      insufficientRetrievalCoverage: true, // 1 < MIN_RELEVANT_CHUNKS
+      retrievedChunkCount: 1,
+      singleChunkAnswerServed: true, // P3a strong-single served an answer
+    }),
+    false,
+  );
+});
+
+Deno.test("audit label: served lexical-single (rescue) answer is NOT abstain", () => {
+  assertEquals(
+    deriveAuditAbstainFlag({
+      ...BASE_ABSTAIN,
+      insufficientRetrievalCoverage: true,
+      retrievedChunkCount: 1,
+      singleChunkAnswerServed: true, // P3b lexical rescue served an answer
+    }),
+    false,
+  );
+});
+
+Deno.test("audit label: genuine insufficient coverage (no answer served) IS abstain", () => {
+  assertEquals(
+    deriveAuditAbstainFlag({
+      ...BASE_ABSTAIN,
+      insufficientRetrievalCoverage: true,
+      retrievedChunkCount: 1,
+      singleChunkAnswerServed: false, // weak/escalation single chunk → not served
+    }),
+    true,
+  );
+});
+
+Deno.test("audit label: validation failure stays abstain even on a single-chunk path", () => {
+  // A response replaced by a refusal is a real block — the served-answer
+  // suppression must not apply.
+  assertEquals(
+    deriveAuditAbstainFlag({
+      ...BASE_ABSTAIN,
+      validationFailed: true,
+      insufficientRetrievalCoverage: true,
+      retrievedChunkCount: 1,
+      singleChunkAnswerServed: true, // hostile input: must still be abstain
+    }),
+    true,
+  );
+});
+
+Deno.test("audit label: zero chunks with indexed content IS abstain", () => {
+  assertEquals(
+    deriveAuditAbstainFlag({
+      ...BASE_ABSTAIN,
+      retrievedChunkCount: 0,
+      hasDocsWithContent: true,
+      singleChunkAnswerServed: true, // hostile input: cannot rescue empty retrieval
+    }),
+    true,
+  );
+});
+
+Deno.test("audit label: zero chunks with NO indexed content is NOT abstain (empty-tenant exemption)", () => {
+  assertEquals(
+    deriveAuditAbstainFlag({
+      ...BASE_ABSTAIN,
+      retrievedChunkCount: 0,
+      hasDocsWithContent: false,
+    }),
+    false,
+  );
+});
+
+Deno.test("audit label: normal multi-chunk answered row is NOT abstain (parity with prior expression)", () => {
+  assertEquals(deriveAuditAbstainFlag({ ...BASE_ABSTAIN }), false);
 });

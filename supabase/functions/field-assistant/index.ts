@@ -1721,6 +1721,13 @@ serve(async (req) => {
           rerankModel,
           rerankLatencyMs,
           insufficientRetrievalCoverage,
+          // Telemetry only: a grounded answer served through an approved
+          // single-chunk path (P3a strong / P3b lexical rescue) must not be
+          // mislabelled abstain_flag=true just because it sits below the
+          // coverage minimum. Runtime behavior (caveat, citation validation)
+          // is unchanged — insufficientRetrievalCoverage above still feeds the
+          // prompt caveat.
+          singleChunkAnswerServed: singleChunkStrongAnswer || singleChunkLexicalAnswer,
           workflowStage: context?.job?.current_stage || undefined,
           complianceRulesEvaluated: complianceVerdicts.length > 0
             ? complianceVerdicts.map((v) => v.ruleKey)

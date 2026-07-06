@@ -291,3 +291,52 @@ export function decideRetrievalAbstain(state: RetrievalAbstainState): RetrievalA
   // Indexed docs + retrieval ran + enough qualifying chunks → answerable.
   return null;
 }
+
+// ── Audit abstain-flag label (telemetry only) ───────────────────────────────
+// P3c. Inputs to the ai_audit_logs.abstain_flag label. This is a TELEMETRY
+// decision, NOT a runtime gate: it does not decide whether to abstain (that is
+// decideRetrievalAbstain, above) and it does not touch the prompt caveat or
+// citation validation — those still run for served single-chunk answers. It
+// only corrects a mislabel.
+export interface AuditAbstainState {
+  /** Post-LLM citation/injection validation replaced the answer with a refusal. */
+  validationFailed: boolean;
+  /** Retrieval ran but returned fewer than MIN_RELEVANT_CHUNKS qualifying chunks. */
+  insufficientRetrievalCoverage: boolean;
+  /** Number of chunks that fed the served answer (semantic + any rescued). */
+  retrievedChunkCount: number;
+  /** Tenant has at least one document with extracted content. */
+  hasDocsWithContent: boolean;
+  /** A grounded answer was served through an approved single-chunk path —
+   *  P3a strong-single OR P3b lexical-rescue-single (decided at the call site
+   *  by isStrongSingleChunkAnswer / isLexicalSingleChunkAnswer). */
+  singleChunkAnswerServed: boolean;
+}
+
+/**
+ * Whether an audit row should be labelled abstain_flag=true.
+ *
+ * A grounded answer served through an approved single-chunk path sits below
+ * MIN_RELEVANT_CHUNKS, so insufficientRetrievalCoverage is true — but the user
+ * received a cited answer, so it is NOT an abstain. This is the only case the
+ * P3c fix changes; every other input reproduces the prior expression exactly
+ * (validationFailed || insufficientRetrievalCoverage ||
+ * (retrievedChunkCount === 0 && hasDocsWithContent)).
+ *
+ * A failed-validation response was replaced with a refusal, so it stays an
+ * abstain even on a single-chunk path — the served-answer suppression only
+ * applies when validation passed and an answer was actually delivered.
+ */
+export function deriveAuditAbstainFlag(state: AuditAbstainState): boolean {
+  // A real block/refusal is always an abstain, regardless of the single-chunk path.
+  if (state.validationFailed) return true;
+
+  // Below-minimum coverage is an abstain UNLESS a grounded single-chunk answer
+  // was actually served (the telemetry mislabel P3c fixes).
+  if (state.insufficientRetrievalCoverage && !state.singleChunkAnswerServed) return true;
+
+  // Tenant has content but retrieval returned nothing → abstain.
+  if (state.retrievedChunkCount === 0 && state.hasDocsWithContent) return true;
+
+  return false;
+}
