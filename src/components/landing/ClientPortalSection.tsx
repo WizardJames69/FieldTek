@@ -5,7 +5,7 @@ import { ScrollReveal } from "./ScrollReveal";
 const bullets = [
   "Branded service request submission",
   "Real-time job status tracking for clients",
-  "Quote approval and digital signatures",
+  "Invoice viewing and online payment",
   "Automatic notifications at every stage",
 ];
 

@@ -86,7 +86,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
 
               {/* Subtitle */}
               <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-6 md:mb-14 leading-relaxed">
-                The AI-native operating system for service teams. Grounded in your manuals, your equipment data, and your repair history. Gets smarter with every job.
+                The AI-native operating system for service teams. Answers grounded in your manuals and equipment history — with citations your techs can check.
               </p>
 
               {/* CTA buttons */}
@@ -101,7 +101,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
 
               {/* Entity definition for SEO/AEO/GEO — screen-reader and crawler accessible */}
               <p className="sr-only">
-                FieldTek is an AI-powered field service management platform built for HVAC, electrical, plumbing, and mechanical contractors. The platform features Sentinel AI, a proprietary compliance and diagnostic engine that guides technicians through manufacturer-specific procedures, automatically generates compliance documentation, and protects warranties by verifying work against OEM specifications in real-time.
+                FieldTek is an AI-powered field service management platform built for HVAC, electrical, plumbing, and mechanical contractors. The platform features Sentinel AI, an assistant that answers technician questions from uploaded manufacturer manuals with page-level citations and abstains rather than guessing when the documentation does not cover a question. FieldTek includes step-by-step job records with photo evidence, scheduling and dispatch, invoicing, a customer portal, and an offline-capable mobile app. Real-time compliance alerts, auto-generated service reports, and reviewed learning loops are in development with design partners.
               </p>
             </AnimatedGroup>
           </div>

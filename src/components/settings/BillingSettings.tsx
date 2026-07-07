@@ -510,7 +510,7 @@ export function BillingSettings() {
                 htmlFor="skip-trial" 
                 className="text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                Skip 14-day free trial and start billing immediately
+                Skip 30-day free trial and start billing immediately
               </label>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

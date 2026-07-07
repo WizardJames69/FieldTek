@@ -103,19 +103,19 @@ function IntelligenceLoopIllustration() {
 const points = [
   {
     title: "Outcome Tracking",
-    description: "Every repair result is recorded and analyzed.",
+    description: "Every repair result is captured with the job record.",
   },
   {
     title: "Success Statistics",
-    description: "Per-step success rates reveal which approaches work best.",
+    description: "Per-step outcomes build success statistics over time.",
   },
   {
     title: "Pattern Discovery",
-    description: "AI detects repeating symptom-to-fix sequences across your jobs.",
+    description: "Repeating symptom-to-fix sequences surface for your team to review.",
   },
   {
-    title: "Ranked Hypotheses",
-    description: "Sentinel cross-references all signals to rank the most likely repair.",
+    title: "Reviewed Lessons",
+    description: "Approved lessons become citable knowledge that shapes future guidance.",
   },
 ];
 
@@ -128,17 +128,18 @@ export function IntelligenceLoopSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: Text */}
           <div>
-            <AnimatedEyebrow label="Self-Improving AI" colorClass="text-orange-500" className="mb-3" />
+            <AnimatedEyebrow label="The Learning Loop" colorClass="text-orange-500" className="mb-3" />
             <ScrollReveal delay={0.05}>
               <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white tracking-tight mb-4">
-                Intelligence that compounds with every repair
+                Intelligence built to compound with every repair
               </h2>
             </ScrollReveal>
             <ScrollReveal delay={0.1}>
               <p className="text-zinc-400 leading-relaxed mb-8">
-                Most field service AI is static. It only knows what was programmed. FieldTek continuously
-                improves because it learns from every completed job. Repair outcomes feed into diagnostic
-                statistics, which reveal patterns, which improve the guidance your technicians receive next time.
+                Most field service AI is static. It only knows what was programmed. FieldTek is built
+                to learn: outcomes from completed jobs become reviewed lessons that your team approves
+                before they shape future guidance. We're proving this loop with our design partners now —
+                nothing enters your knowledge base without human sign-off.
               </p>
             </ScrollReveal>
 

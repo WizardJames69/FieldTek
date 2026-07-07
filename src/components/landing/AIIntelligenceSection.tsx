@@ -10,25 +10,25 @@ const capabilities = [
     icon: BookOpen,
     title: "Manual-Grounded Guidance",
     description:
-      "Upload manuals. AI retrieves the exact procedure, page, and paragraph, verified by a quality judge before reaching your tech.",
+      "Sentinel reads your uploaded manuals and answers with the exact procedure, page, and paragraph. When it isn't sure, it says so — no confident guessing.",
   },
   {
     icon: Network,
     title: "Equipment Context",
     description:
-      "Maps every equipment model, its components, known failure modes, and which repairs actually worked. Updated with every job.",
+      "Every unit's model, serial, specs, and full service history in one place — the context Sentinel draws on when answering about your equipment.",
   },
   {
     icon: GitBranch,
     title: "Pattern Recognition",
     description:
-      "Detects repair patterns from completed jobs and suggests new workflows. Your best technicians' methods become your company standard.",
+      "Coming with our design partners: repair patterns surfaced from completed jobs, reviewed by your team before they shape the guidance techs see.",
   },
   {
     icon: Brain,
     title: "Compounding Intelligence",
     description:
-      "Tracks every diagnostic outcome. Discovers which symptom-to-repair sequences have the highest success rates. Ranks hypotheses by confidence.",
+      "Built to learn: reviewed lessons from completed jobs become citable knowledge — approved by your team, cited like any manual.",
   },
 ];
 

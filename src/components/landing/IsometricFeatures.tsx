@@ -197,8 +197,8 @@ function KnowledgeNetworkIllustration() {
 const figures = [
   {
     id: "FIG 1",
-    title: "AI-Powered Compliance",
-    description: "Every install verified against manufacturer specs in real-time. Fewer callbacks. Fewer warranty disputes.",
+    title: "Spec-Grounded Guidance",
+    description: "Manufacturer specs and procedures from your uploaded manuals, on every job. Fewer callbacks. Fewer warranty disputes.",
     Illustration: ComplianceIllustration,
   },
   {
@@ -209,8 +209,8 @@ const figures = [
   },
   {
     id: "FIG 3",
-    title: "Learning from Every Job",
-    description: "Maps equipment, failure modes, and proven fixes. Gets smarter with every repair.",
+    title: "Built to Learn",
+    description: "Reviewed lessons from completed jobs become knowledge your whole team can use — approved before they shape guidance.",
     Illustration: KnowledgeNetworkIllustration,
   },
 ];
