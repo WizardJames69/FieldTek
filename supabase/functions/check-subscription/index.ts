@@ -1,23 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getStripeMode, productToTier } from "../_shared/stripeCatalog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-// Mapping of Stripe product IDs to subscription tiers
-// Includes both monthly and yearly product IDs
-const PRODUCT_TO_TIER: Record<string, string> = {
-  // Monthly products
-  "prod_TnJRvBGtJmXOKk": "starter",
-  "prod_TnJRx1P7LOKR8k": "growth",
-  "prod_TnJS2o21anjuku": "professional",
-  // Yearly products
-  "prod_TnJYHeFoo7ZMKr": "starter",
-  "prod_TnJYlRK2IgK6yl": "growth",
-  "prod_TnJYbiX5D0hesT": "professional",
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -93,6 +81,7 @@ serve(async (req) => {
     const hasValidSub = !!activeSubscription;
     const isPastDue = !!pastDueSubscription && !activeSubscription;
     let tier = "trial";
+    let tierUnknown = false;
     let subscriptionEnd = null;
     let isTrialing = false;
     let trialEnd = null;
@@ -111,8 +100,21 @@ serve(async (req) => {
       // Get product ID to determine tier
       const priceId = subscription.items.data[0].price.id;
       const productId = subscription.items.data[0].price.product as string;
-      tier = PRODUCT_TO_TIER[productId] || "starter";
-      logStep("Determined subscription tier", { priceId, productId, tier });
+      const mappedTier = productToTier(productId);
+      if (mappedTier) {
+        tier = mappedTier;
+      } else {
+        // Unknown product must not silently downgrade a paying tenant to
+        // starter — the reconciliation block below substitutes the tenant's
+        // current DB tier instead.
+        tierUnknown = true;
+        tier = "starter";
+        logStep("WARNING: Unknown Stripe product ID — will preserve DB tier", {
+          productId,
+          mode: getStripeMode(),
+        });
+      }
+      logStep("Determined subscription tier", { priceId, productId, tier, tierUnknown });
 
       if (isPastDue) {
         subscriptionStatus = "past_due";
@@ -149,13 +151,6 @@ serve(async (req) => {
         .maybeSingle();
 
       if (tenantUser?.tenant_id) {
-        const expectedTier = subscription ? tier : "trial";
-        const expectedStatus = isPastDue
-          ? "past_due"
-          : hasValidSub
-            ? (isTrialing ? "trialing" : "active")
-            : "trial";
-
         const { data: currentTenant } = await supabaseClient
           .from("tenants")
           .select("subscription_tier, subscription_status, stripe_customer_id, cancel_at_period_end")
@@ -163,6 +158,19 @@ serve(async (req) => {
           .single();
 
         if (currentTenant) {
+          // Unknown product ID: keep the tenant's current DB tier instead of
+          // the provisional "starter" — no unintended downgrade.
+          if (tierUnknown && subscription) {
+            tier = currentTenant.subscription_tier;
+          }
+
+          const expectedTier = subscription ? tier : "trial";
+          const expectedStatus = isPastDue
+            ? "past_due"
+            : hasValidSub
+              ? (isTrialing ? "trialing" : "active")
+              : "trial";
+
           const updates: Record<string, unknown> = {};
 
           if (currentTenant.subscription_tier !== expectedTier) {

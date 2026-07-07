@@ -1,26 +1,17 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  FOUNDING_COUPON_ID,
+  getPriceId,
+  getStripeMode,
+  isPaidTier,
+  PAID_TIERS,
+} from "../_shared/stripeCatalog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-// Mapping of subscription tiers to Stripe price IDs
-const TIER_PRICES: Record<string, { monthly: string; yearly: string }> = {
-  starter: {
-    monthly: "price_1SpiodJZanOkZUMQ1U3Wc8nJ",
-    yearly: "price_1Spiv5JZanOkZUMQRjHs1PXx",
-  },
-  growth: {
-    monthly: "price_1SpiorJZanOkZUMQdG0vsg7D",
-    yearly: "price_1SpivVJZanOkZUMQRITnNHCo",
-  },
-  professional: {
-    monthly: "price_1SpipAJZanOkZUMQ4hvNutoN",
-    yearly: "price_1SpivhJZanOkZUMQpGSV3o5z",
-  },
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -43,7 +34,7 @@ serve(async (req) => {
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-    logStep("Stripe key verified");
+    logStep("Stripe key verified", { mode: getStripeMode(stripeKey) });
 
     // Get request body
     let body;
@@ -68,14 +59,14 @@ serve(async (req) => {
       );
     }
     
-    if (!TIER_PRICES[tier]) {
+    if (!isPaidTier(tier)) {
       logStep("ERROR", { message: `Invalid tier: ${tier}` });
       return new Response(
-        JSON.stringify({ error: `Invalid tier: ${tier}. Must be one of: ${Object.keys(TIER_PRICES).join(", ")}` }),
+        JSON.stringify({ error: `Invalid tier: ${tier}. Must be one of: ${PAID_TIERS.join(", ")}` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-    
+
     // Validate billing period
     if (billing_period !== "monthly" && billing_period !== "yearly") {
       logStep("ERROR", { message: `Invalid billing_period: ${billing_period}` });
@@ -84,8 +75,10 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-    
-    const priceId = TIER_PRICES[tier][billing_period as "monthly" | "yearly"];
+
+    // Throws in live mode while Live price IDs are still placeholders —
+    // checkout must fail loudly rather than run against a wrong price.
+    const priceId = getPriceId(tier, billing_period, getStripeMode(stripeKey));
     logStep("Tier selected", { tier, billing_period, skip_trial: !!skip_trial, priceId });
 
     const authHeader = req.headers.get("Authorization");
@@ -156,8 +149,8 @@ serve(async (req) => {
     let discounts: { coupon: string }[] = [];
     if (isBetaFounder) {
       try {
-        await stripe.coupons.retrieve('WQMyNyRo');
-        discounts = [{ coupon: 'WQMyNyRo' }];
+        await stripe.coupons.retrieve(FOUNDING_COUPON_ID);
+        discounts = [{ coupon: FOUNDING_COUPON_ID }];
       } catch {
         logStep("Beta founder coupon not found in Stripe, proceeding without discount");
       }
