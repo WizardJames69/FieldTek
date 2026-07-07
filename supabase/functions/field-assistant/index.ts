@@ -63,6 +63,7 @@ import { writeAuditLog, trackConversation } from "./audit.ts";
 import type { AuditLogData } from "./audit.ts";
 
 import { createRetrievalAdapter, lexicalRescueChunks } from "./retrieval.ts";
+import { isValidJobId, verifyJobTenantOwnership } from "./complianceGuard.ts";
 import {
   classifyDegradedAnswer,
   countQueryContentWords,
@@ -358,7 +359,25 @@ serve(async (req) => {
     let complianceBlockingVerdicts: ComplianceVerdict[] = [];
     let stepEvidenceRecords: StepEvidenceRecord[] = [];
 
+    // 0. Tenant ownership guard (PR-SEC-3). Everything below runs on the
+    // service-role client (RLS bypassed) keyed off caller-supplied
+    // context.job.id, so the job must be proven to belong to the caller's
+    // tenant BEFORE any job-keyed read or write. Missing and foreign-tenant
+    // jobs are indistinguishable by construction (single tenant-filtered
+    // lookup): both skip the block silently and the assistant continues
+    // normally. Fails closed on lookup errors.
+    let complianceJobOwned = false;
     if (complianceActive && context?.job?.id) {
+      complianceJobOwned = isValidJobId(context.job.id) &&
+        (await verifyJobTenantOwnership(serviceRoleClient, context.job.id, tenantUser.tenant_id));
+      if (!complianceJobOwned) {
+        console.warn(
+          `[compliance] Skipping evaluation — context.job.id ${String(context.job.id).slice(0, 64)} is not a job in tenant ${tenantUser.tenant_id}`,
+        );
+      }
+    }
+
+    if (complianceJobOwned) {
       try {
         // 1. Fetch workflow state
         const workflowState = await fetchWorkflowState(serviceRoleClient, context.job.id);
