@@ -100,30 +100,37 @@ export async function recordStageTransition(
 
 // ── Fetch Workflow Execution Context ──────────────────────
 
-// In-memory request cache — persists only for the lifetime of the edge function execution
+// In-memory cache. Module-level, so it persists for the LIFETIME OF THE EDGE
+// ISOLATE and can serve MULTIPLE requests (and tenants) — the key MUST be
+// tenant-scoped (PR-SEC-4) or a cached context could leak across tenants.
 const workflowExecutionContextCache = new Map<string, WorkflowExecutionContext | null>();
 
 export async function fetchWorkflowExecutionContext(
   client: SupabaseClient,
   jobId: string,
   equipmentType: string | null,
-  tenantId?: string,
+  tenantId: string,
 ): Promise<WorkflowExecutionContext | null> {
-  if (workflowExecutionContextCache.has(jobId)) {
-    return workflowExecutionContextCache.get(jobId)!;
+  const cacheKey = `${tenantId}:${jobId}`;
+  if (workflowExecutionContextCache.has(cacheKey)) {
+    return workflowExecutionContextCache.get(cacheKey)!;
   }
 
-  // 1. Get the most recent workflow execution for this job
+  // 1. Get the most recent workflow execution for this job.
+  // Tenant filter is defense-in-depth (service_role bypasses RLS): even if a
+  // caller skipped the job-ownership guard, a foreign job's execution cannot
+  // be selected. Steps 2-4 hang off this row's FKs.
   const { data: exec } = await client
     .from("workflow_executions")
     .select("id, workflow_id, status, current_step_number, started_at")
     .eq("job_id", jobId)
+    .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!exec) {
-    workflowExecutionContextCache.set(jobId, null);
+    workflowExecutionContextCache.set(cacheKey, null);
     return null;
   }
 
@@ -149,7 +156,7 @@ export async function fetchWorkflowExecutionContext(
     .order("step_number", { ascending: true });
 
   if (!templateSteps || !stepExecs) {
-    workflowExecutionContextCache.set(jobId, null);
+    workflowExecutionContextCache.set(cacheKey, null);
     return null;
   }
 
@@ -191,9 +198,7 @@ export async function fetchWorkflowExecutionContext(
     query = query.in("step_id", stepIds);
 
     // Enforce tenant isolation (service_role bypasses RLS)
-    if (tenantId) {
-      query = query.eq("tenant_id", tenantId);
-    }
+    query = query.eq("tenant_id", tenantId);
 
     // Filter by equipment type if available
     if (equipmentType) {
@@ -230,9 +235,7 @@ export async function fetchWorkflowExecutionContext(
       .select("step_id, success_rate, total_executions, avg_duration_seconds")
       .in("step_id", stepIds);
     // Enforce tenant isolation (service_role bypasses RLS)
-    if (tenantId) {
-      statsQuery = statsQuery.eq("tenant_id", tenantId);
-    }
+    statsQuery = statsQuery.eq("tenant_id", tenantId);
     if (equipmentType) {
       statsQuery = statsQuery.eq("equipment_type", equipmentType);
     }
@@ -259,6 +262,6 @@ export async function fetchWorkflowExecutionContext(
     stepStatistics,
   };
 
-  workflowExecutionContextCache.set(jobId, result);
+  workflowExecutionContextCache.set(cacheKey, result);
   return result;
 }

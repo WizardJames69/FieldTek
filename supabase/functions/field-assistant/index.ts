@@ -63,7 +63,7 @@ import { writeAuditLog, trackConversation } from "./audit.ts";
 import type { AuditLogData } from "./audit.ts";
 
 import { createRetrievalAdapter, lexicalRescueChunks } from "./retrieval.ts";
-import { isValidJobId, verifyJobTenantOwnership } from "./complianceGuard.ts";
+import { isValidJobId, verifyJobTenantOwnership } from "./jobOwnership.ts";
 import {
   classifyDegradedAnswer,
   countQueryContentWords,
@@ -372,7 +372,7 @@ serve(async (req) => {
         (await verifyJobTenantOwnership(serviceRoleClient, context.job.id, tenantUser.tenant_id));
       if (!complianceJobOwned) {
         console.warn(
-          `[compliance] Skipping evaluation — context.job.id ${String(context.job.id).slice(0, 64)} is not a job in tenant ${tenantUser.tenant_id}`,
+          `[compliance] Skipping evaluation — context.job.id (${String(context.job.id).slice(0, 8)}…) is not a job in tenant ${tenantUser.tenant_id}`,
         );
       }
     }
@@ -507,15 +507,31 @@ serve(async (req) => {
     // ── 7c. Workflow Execution Context (Phase 4) ────────────
     let workflowExecutionContext: WorkflowExecutionContext | null = null;
     if (context?.job?.workflow_execution_id) {
-      try {
-        workflowExecutionContext = await fetchWorkflowExecutionContext(
-          serviceRoleClient,
-          context.job.id,
-          context.equipment?.equipment_type || null,
-          tenantUser.tenant_id,
+      // Tenant ownership guard (PR-SEC-4). This path runs on the service-role
+      // client (RLS bypassed) keyed off caller-supplied context.job.id, so the
+      // job must be proven to belong to the caller's tenant before any
+      // workflow execution/template/step data is read. Reuses 7b's verified
+      // result when the compliance block already checked this job; otherwise
+      // checks here. Missing and foreign jobs are indistinguishable (same
+      // silent skip, same null context, same response). Fails closed.
+      const workflowJobOwned = complianceJobOwned ||
+        (isValidJobId(context?.job?.id) &&
+          (await verifyJobTenantOwnership(serviceRoleClient, context.job.id, tenantUser.tenant_id)));
+      if (!workflowJobOwned) {
+        console.warn(
+          `[workflow] Skipping execution context — context.job.id (${String(context?.job?.id).slice(0, 8)}…) is not a job in tenant ${tenantUser.tenant_id}`,
         );
-      } catch (wfErr) {
-        console.error("[workflow] Execution context fetch error (non-fatal):", wfErr);
+      } else {
+        try {
+          workflowExecutionContext = await fetchWorkflowExecutionContext(
+            serviceRoleClient,
+            context.job.id,
+            context.equipment?.equipment_type || null,
+            tenantUser.tenant_id,
+          );
+        } catch (wfErr) {
+          console.error("[workflow] Execution context fetch error (non-fatal):", wfErr);
+        }
       }
     }
 
