@@ -152,14 +152,30 @@ update public.tenants set subscription_tier = 'professional' where id = '<tenant
 update public.tenants set trial_ends_at = now() + interval '30 days' where id = '<tenant_uuid>';
 ```
 
-> **Gotcha — why the manual tier bump is currently stable:** `check-subscription`
-> reconciles the DB tier against Stripe on every billing-page load, but it
-> throws immediately on `fgem` because no `STRIPE_SECRET_KEY` is set — so the
-> manual tier survives. **The day Stripe secrets are set on `fgem`** (sandbox
-> verification or Live flip), reconciliation will find no Stripe subscription
-> and rewrite the partner back to `trial`/`trial`. Re-check every design-partner
-> tenant's tier as part of any future Stripe wiring step (this is also noted in
-> the Stripe Live readiness plan).
+> **Gotcha — how the manual tier bump interacts with Stripe reconciliation:**
+> `check-subscription` reconciles the DB tier against Stripe on every
+> billing-page load. Today it throws immediately on `fgem` (no
+> `STRIPE_SECRET_KEY` set), so the manual tier always survives. Once Stripe
+> secrets are set on `fgem` (sandbox verification or Live flip):
+>
+> - **No Stripe customer exists for the owner's email** → `check-subscription`
+>   returns early and never touches the DB — the manual tier bump survives.
+> - **A Stripe customer exists for that email but has no active subscription**
+>   (e.g. an earlier checkout test, or an email collision) → reconciliation
+>   runs and rewrites the tenant back to `trial`/`trial`, wiping the bump.
+>
+> Either way the operational advice stands: **re-check every design-partner
+> tenant's tier and status as part of any future Stripe wiring step** (also
+> noted in the Stripe Live readiness plan).
+
+> **Trial expiry is a separate risk the tier bump does NOT cover:**
+> `expire_stale_trials` (cron) flips any tenant with
+> `subscription_status = 'trial'` and `trial_ends_at < now()` to `canceled` —
+> it keys on **status**, not tier, so a professional-tier bump with status
+> still `trial` expires like any other trial. The only protections are
+> extending `trial_ends_at` (step 3 above) or deliberately changing the
+> trial/status state. Any extension is a deliberate founder action — record
+> the date, the new expiry, and the reason in the partner's notes.
 
 ---
 
@@ -186,9 +202,27 @@ set allowed_tenant_ids = array_append(coalesce(allowed_tenant_ids, '{}'), '<tena
 where key in ('lesson_citations', 'workflow_intelligence');
 ```
 
-Verify afterwards: `npm run verify:pilot -- --tenant-id <tenant_uuid>` — expect
-these two flags effective-ON for the tenant, judge flags OFF, and treat any
-other drift as a stop-and-investigate.
+**Verify afterwards — know what the tooling can and cannot show:**
+
+- `npm run verify:pilot -- --tenant-id <tenant_uuid>` reports judge flags
+  (expect OFF) and `lesson_citations` — which it will show as **drift**
+  against its "do not widen" expectation. For the approved design-partner
+  tenant, and only after explicit founder approval, that drift is **expected
+  and intentional**; any lesson_citations drift on any *other* tenant is a
+  stop-and-investigate.
+- `workflow_intelligence` is **not reported by verify:pilot** at all. Verify it
+  directly — allowlist inspection:
+
+  ```sql
+  select key, allowed_tenant_ids from public.feature_flags
+  where key = 'workflow_intelligence';
+  ```
+
+  and behaviorally: `workflow_intelligence_edges` rows accrue for the tenant
+  after their first completed job (also a §6 monitoring item).
+- Follow-up (separate code PR): update `PILOT_RELEVANT_FLAGS` in
+  `scripts/lib/pilotReadiness.ts` so the `lesson_citations` note reflects the
+  design-partner allowlist decision once it executes.
 
 ---
 
