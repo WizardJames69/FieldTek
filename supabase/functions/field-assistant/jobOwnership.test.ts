@@ -1,12 +1,13 @@
 import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
-import { isValidJobId, verifyJobTenantOwnership } from "./complianceGuard.ts";
+import { isValidJobId, verifyJobTenantOwnership } from "./jobOwnership.ts";
 
-// PR-SEC-3 tenant-ownership guard for the deterministic compliance block.
-// Pure/stubbed only — no model, no I/O; run via `deno test --allow-env`.
-// The compliance block in index.ts runs on the service-role client (RLS
-// bypassed) keyed off caller-supplied context.job.id; index.ts gates the
-// ENTIRE block (workflow-state read, checklist/evidence reads, verdict
-// persist, compliance_status write) on verifyJobTenantOwnership returning
+// Tenant-ownership guard (PR-SEC-3 compliance block, PR-SEC-4 workflow
+// execution context). Pure/stubbed only — no model, no I/O; run via
+// `deno test --allow-env`. Both guarded sections in index.ts run on the
+// service-role client (RLS bypassed) keyed off caller-supplied
+// context.job.id; index.ts gates each ENTIRE section (workflow-state read,
+// checklist/evidence reads, verdict persist, compliance_status write,
+// workflow execution context fetch) on verifyJobTenantOwnership returning
 // true. These tests prove: same-tenant jobs pass, foreign/missing/invalid
 // jobs are skipped, lookups fail CLOSED, foreign and missing jobs are
 // indistinguishable (no existence leak), and the lookup always filters by
