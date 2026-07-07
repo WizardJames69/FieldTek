@@ -13,7 +13,7 @@ export default function Pricing() {
     <div className="min-h-screen bg-[#09090B]">
       <Helmet>
         <title>Pricing | FieldTek - Plans for Every Team Size</title>
-        <meta name="description" content="Transparent pricing for HVAC, electrical, plumbing, and mechanical contractors. Plans starting at $99/mo with Sentinel AI diagnostics, compliance reporting, and job management." />
+        <meta name="description" content="Transparent pricing for HVAC, electrical, plumbing, and mechanical contractors. Plans starting at $99/mo with Sentinel AI manual-grounded answers, job records, and job management." />
         <meta name="keywords" content="field service pricing, HVAC software pricing, contractor software cost, field service management plans, Sentinel AI pricing" />
         <link rel="canonical" href="https://fieldtek.ai/pricing" />
         <meta property="og:title" content="FieldTek Pricing - Plans Starting at $99/mo" />
@@ -28,7 +28,7 @@ export default function Pricing() {
           "@context": "https://schema.org",
           "@type": "Product",
           "name": "FieldTek",
-          "description": "AI-powered field service platform with Sentinel AI for compliance diagnostics and warranty protection.",
+          "description": "AI-powered field service platform. Sentinel AI answers from your uploaded manuals with citations; job records, scheduling, invoicing, and a customer portal included.",
           "url": "https://fieldtek.ai/pricing",
           "brand": { "@type": "Brand", "name": "FieldTek" },
           "offers": {
@@ -36,12 +36,11 @@ export default function Pricing() {
             "priceCurrency": "USD",
             "lowPrice": "99",
             "highPrice": "449",
-            "offerCount": "4",
+            "offerCount": "3",
             "offers": [
               { "@type": "Offer", "name": "Starter", "price": "99", "priceCurrency": "USD", "description": "For small teams. 2 technicians included." },
               { "@type": "Offer", "name": "Growth", "price": "229", "priceCurrency": "USD", "description": "For growing teams. 5 technicians included." },
-              { "@type": "Offer", "name": "Professional", "price": "449", "priceCurrency": "USD", "description": "For large teams. 10 technicians included, unlimited jobs." },
-              { "@type": "Offer", "name": "Enterprise", "price": "0", "priceCurrency": "USD", "description": "Custom pricing for unlimited technicians." }
+              { "@type": "Offer", "name": "Professional", "price": "449", "priceCurrency": "USD", "description": "For large teams. 10 technicians included, unlimited jobs." }
             ]
           }
         })}</script>

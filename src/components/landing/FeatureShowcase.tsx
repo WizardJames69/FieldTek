@@ -8,13 +8,13 @@ const features = [
     eyebrow: "Sentinel AI",
     title: "Your documentation, your expert. On every job.",
     description:
-      "Sentinel AI reads your uploaded manuals, wiring diagrams, and spec sheets, then delivers step-by-step guidance, code compliance alerts, and diagnostic reasoning directly to your techs in the field.",
+      "Sentinel AI reads your uploaded manuals, wiring diagrams, and spec sheets, then answers your techs' questions with the exact procedure, page, and paragraph — grounded guidance they can check in the field.",
     bullets: [
-      "Diagnostic reasoning with failure probability analysis",
-      "Real-time NEC, IPC, and IMC code compliance alerts",
+      "Answers with page-level citations from your own documentation",
+      "Code-aware guidance grounded in NEC, IPC, and IMC references",
       "Equipment-specific guidance from uploaded manufacturer documentation",
       "Step-by-step workflow tracking from symptom to resolution",
-      "Cross-references diagnostic history, workflow statistics, and discovered repair patterns to rank the most likely repair solutions",
+      "Honest by design: when the answer isn't in your documents, Sentinel says so instead of guessing",
     ],
     icon: MessageSquare,
     mockup: "ai-assistant",
@@ -35,14 +35,14 @@ const features = [
   },
   {
     eyebrow: "Compliance & Reporting",
-    title: "Documentation that writes itself",
+    title: "Every job documented, start to finish",
     description:
-      "Automatically generates compliance-ready documentation from completed checklists and job data. When the inspector shows up or a warranty claim comes in, you're covered.",
+      "Checklists, photos, and timestamps are captured as your techs work. When the inspector shows up or a warranty claim comes in, the record is already there.",
     bullets: [
-      "Auto-generated service reports",
+      "Step-by-step job records with photo evidence",
       "NEC, IPC, IMC code compliance reference",
-      "Warranty verification before job close",
-      "Exportable audit trails",
+      "Equipment warranty dates tracked on every unit",
+      "Complete, timestamped job history",
     ],
     icon: FileCheck,
     mockup: "compliance",

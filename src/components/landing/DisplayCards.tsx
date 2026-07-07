@@ -49,9 +49,9 @@ export function DisplayCards({ cards }: DisplayCardsProps) {
       className:
         "[grid-area:stack] hover:-translate-y-10 before:absolute before:w-[100%] before:outline-1 before:rounded-xl before:outline-zinc-700 before:h-[100%] before:content-[''] before:bg-blend-overlay before:bg-[#09090B]/50 grayscale-[100%] hover:before:opacity-0 before:transition-opacity before:duration-700 hover:grayscale-0 before:left-0 before:top-0",
       icon: <Network className="size-4 text-orange-300" />,
-      title: "Knowledge Graph",
-      description: "Equipment relationships mapped",
-      date: "4 models connected",
+      title: "Equipment Records",
+      description: "Models, specs, service history",
+      date: "4 units tracked",
       titleClassName: "text-orange-400",
     },
     {
@@ -67,9 +67,9 @@ export function DisplayCards({ cards }: DisplayCardsProps) {
       className:
         "[grid-area:stack] translate-x-24 sm:translate-x-32 translate-y-20 hover:translate-y-10",
       icon: <Brain className="size-4 text-orange-300" />,
-      title: "Diagnostic Loop",
-      description: "Learning from every repair",
-      date: "142 outcomes analyzed",
+      title: "Lesson Library",
+      description: "Reviewed lessons, citable answers",
+      date: "12 lessons approved",
       titleClassName: "text-orange-400",
     },
   ];

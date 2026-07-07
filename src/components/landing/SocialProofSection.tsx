@@ -52,8 +52,8 @@ export function SocialProofSection({ onApply }: SocialProofSectionProps) {
           </ScrollReveal>
           <ScrollReveal delay={0.1}>
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto mt-4">
-              We're partnering with contractors to shape FieldTek before public launch.
-              Early access members get direct input on features, priority support, and founding member pricing.
+              We're partnering with a small group of contractors before public launch.
+              You get founder-level support and founding-member pricing; we get your honest feedback.
             </p>
           </ScrollReveal>
         </div>
@@ -83,6 +83,26 @@ export function SocialProofSection({ onApply }: SocialProofSectionProps) {
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Honest roadmap framing: shipped today vs built with design partners */}
+        <ScrollReveal delay={0.12}>
+          <div className="rounded-xl bg-[#0C0D0F] border border-white/[0.06] p-6 md:p-7 mb-10 max-w-3xl mx-auto space-y-3">
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              <span className="font-semibold text-zinc-200">Today:</span>{" "}
+              grounded answers with citations, step-by-step job records, photo evidence capture,
+              scheduling, client portal, invoicing, and an offline-capable mobile app.
+            </p>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              <span className="font-semibold text-orange-500">Coming — built with our design partners:</span>{" "}
+              real-time compliance alerts, auto-generated service reports, and reviewed intelligence
+              loops that learn from your completed jobs.
+            </p>
+            <p className="text-sm text-zinc-500 leading-relaxed">
+              Your data stays yours: tenant-isolated by design, row-level security on every table,
+              and your documents are never used to train shared models.
+            </p>
+          </div>
+        </ScrollReveal>
 
         <ScrollReveal delay={0.15}>
           <div className="text-center">

@@ -42,7 +42,7 @@ function EvidenceMockup() {
             <div className="flex items-center gap-3 text-[10px] text-zinc-500">
               <span>10:42 AM</span>
               <span>37.7749, -122.4194</span>
-              <span className="text-emerald-500">AI Verified</span>
+              <span className="text-emerald-500">Verified</span>
             </div>
           </div>
 
@@ -76,7 +76,7 @@ function EvidenceMockup() {
             <div className="flex items-center gap-3 text-[10px] text-zinc-500">
               <span>10:58 AM</span>
               <span>37.7749, -122.4194</span>
-              <span className="text-emerald-500">AI Verified</span>
+              <span className="text-emerald-500">Verified</span>
             </div>
           </div>
 

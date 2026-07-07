@@ -78,6 +78,14 @@ const faqItems = [
     answer: "Yes, annual billing saves you 20% compared to monthly billing. Toggle the billing switch above to see annual pricing for each plan.",
   },
   {
+    question: "Are there limits on Sentinel AI usage?",
+    answer: "Yes — plans include fair-use daily limits on AI queries: 50 per day on Growth and 200 per day on Professional (trial accounts get 10 per day). Limits reset daily, and most teams stay well under them.",
+  },
+  {
+    question: "Is there a free trial?",
+    answer: "Yes — every new account starts with a 30-day free trial with full feature access. No credit card required to start.",
+  },
+  {
     question: "How do I get started?",
     answer: "We're currently in beta. Apply for early access to get hands-on with the full platform. No credit card required to start.",
   },
@@ -111,6 +119,9 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
           </h2>
           <p className="text-lg text-zinc-400">
             Transparent pricing that scales with your team. No long-term contracts.
+          </p>
+          <p className="text-sm text-orange-400 mt-3">
+            Beta pricing: founding members lock in 50% off their first year and a direct line to the founding team.
           </p>
         </motion.div>
 
