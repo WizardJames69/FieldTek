@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { productToTier } from "../_shared/stripeCatalog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,13 +53,6 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Tier mapping
-    const PRODUCT_TO_TIER: Record<string, string> = {
-      "prod_TnJRvBGtJmXOKk": "starter",
-      "prod_TnJRx1P7LOKR8k": "growth",
-      "prod_TnJS2o21anjuku": "professional",
-    };
-
     const TIER_PRICES: Record<string, number> = {
       "starter": 99,
       "growth": 229,
@@ -82,7 +76,7 @@ serve(async (req) => {
 
     for (const sub of subscriptions.data) {
       const productId = sub.items.data[0]?.price?.product as string;
-      const tier = PRODUCT_TO_TIER[productId] || "unknown";
+      const tier = productToTier(productId) ?? "unknown";
       const monthlyAmount = (sub.items.data[0]?.price?.unit_amount || 0) / 100;
 
       mrr += monthlyAmount;

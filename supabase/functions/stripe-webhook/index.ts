@@ -1,23 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getStripeMode, productToTier } from "../_shared/stripeCatalog.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
-
-// Mapping of Stripe product IDs to subscription tiers (must match check-subscription)
-// Includes both monthly and yearly product IDs
-const PRODUCT_TO_TIER: Record<string, "starter" | "growth" | "professional"> = {
-  // Monthly products
-  "prod_TnJRvBGtJmXOKk": "starter",
-  "prod_TnJRx1P7LOKR8k": "growth",
-  "prod_TnJS2o21anjuku": "professional",
-  // Yearly products
-  "prod_TnJYHeFoo7ZMKr": "starter",
-  "prod_TnJYlRK2IgK6yl": "growth",
-  "prod_TnJYbiX5D0hesT": "professional",
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -206,14 +194,31 @@ serve(async (req) => {
       let subscriptionTier: "trial" | "starter" | "growth" | "professional" = "trial";
       let subscriptionStatus: "trialing" | "active" | "past_due" | "canceled" = "canceled";
 
-      if (subscription.status === "active" || subscription.status === "trialing") {
+      if (
+        subscription.status === "active" ||
+        subscription.status === "trialing" ||
+        subscription.status === "past_due"
+      ) {
         const productId = subscription.items.data[0]?.price?.product as string;
-        subscriptionTier = PRODUCT_TO_TIER[productId] || "starter";
-        subscriptionStatus = subscription.status === "trialing" ? "trialing" : "active";
-      } else if (subscription.status === "past_due") {
-        const productId = subscription.items.data[0]?.price?.product as string;
-        subscriptionTier = PRODUCT_TO_TIER[productId] || "starter";
-        subscriptionStatus = "past_due";
+        const mappedTier = productToTier(productId);
+        if (mappedTier) {
+          subscriptionTier = mappedTier;
+        } else {
+          // Unknown product must not silently downgrade a paying tenant to
+          // starter — keep the tenant's current tier and flag the gap.
+          subscriptionTier = (currentTenant?.subscription_tier ??
+            "starter") as typeof subscriptionTier;
+          logStep("WARNING: Unknown Stripe product ID — preserving current tier", {
+            productId,
+            mode: getStripeMode(),
+            preservedTier: subscriptionTier,
+          });
+        }
+        subscriptionStatus = subscription.status === "trialing"
+          ? "trialing"
+          : subscription.status === "past_due"
+          ? "past_due"
+          : "active";
       } else {
         // Subscription is canceled, incomplete, etc.
         subscriptionStatus = "canceled";
