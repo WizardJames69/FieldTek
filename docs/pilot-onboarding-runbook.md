@@ -132,7 +132,8 @@ Run as a real human through the UI. Each step maps to a real route/table.
 3. **Onboard** — `/onboarding` (company → industry → branding → launch); land on
    `/dashboard` with no redirect loop and no `WorkspaceLoadError`.
 4. **Verify seed** — `npm run verify:pilot -- --tenant-id <new-uuid>`: tier `trial`,
-   trial date ~14d out, `tenant_ai_policies` absent (permissive) or present+enabled.
+   trial date ~30d out (DB default since migration `20260208151124`),
+   `tenant_ai_policies` absent (permissive) or present+enabled.
 5. **Customer** — create 1 client (`/clients` or via the job form); it appears in
    the job-form client dropdown.
 6. **Job** — `/jobs` → create 1 job (title + priority); lists with `status='pending'`.
