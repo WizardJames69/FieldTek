@@ -75,16 +75,8 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
 
       <ContainerScroll
         titleComponent={
-          <div className="max-w-4xl mx-auto pt-20 pb-10 md:pt-32 md:pb-0 lg:pt-40 text-center md:text-left">
+          <div className="max-w-4xl mx-auto pt-24 pb-10 md:pt-32 md:pb-0 lg:pt-40 text-center md:text-left">
             <AnimatedGroup variants={heroVariants}>
-              {/* Announcement pill */}
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 mb-5 md:mb-7">
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
-                <span className="text-xs font-medium tracking-wide text-zinc-400">
-                  Private beta · Design partner alpha
-                </span>
-              </div>
-
               {/* H1 */}
               <h1 className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-5 md:mb-6 text-balance">
                 Guide Every Repair.
