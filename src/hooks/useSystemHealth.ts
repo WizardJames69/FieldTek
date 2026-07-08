@@ -28,6 +28,8 @@ export interface HealthSummary {
   overall_status: "healthy" | "degraded" | "unhealthy";
   active_alerts: number;
   critical_alerts: number;
+  /** Critical alerts created within the last 60 minutes — the ones that indicate a live problem. */
+  recent_critical_alerts: number;
   last_check: string | null;
   services: {
     database: { status: string; latency: number | null };
@@ -79,15 +81,25 @@ export function useSystemAlerts(includeResolved = false) {
   });
 }
 
+// Alert creators dedup on a 1-hour window, so a critical older than this
+// reflects a condition that has not re-fired — backlog to review, not a live outage.
+const RECENT_CRITICAL_WINDOW_MS = 60 * 60 * 1000;
+
 // Get health summary
 export function useHealthSummary() {
   const { data: metrics } = useHealthMetrics(1); // Last hour
   const { data: alerts } = useSystemAlerts(false);
 
+  const criticalAlerts = alerts?.filter(a => a.severity === "critical") || [];
+  const recentCriticalAlerts = criticalAlerts.filter(
+    a => Date.now() - new Date(a.created_at).getTime() < RECENT_CRITICAL_WINDOW_MS,
+  );
+
   const summary: HealthSummary = {
     overall_status: "healthy",
     active_alerts: alerts?.length || 0,
-    critical_alerts: alerts?.filter(a => a.severity === "critical").length || 0,
+    critical_alerts: criticalAlerts.length,
+    recent_critical_alerts: recentCriticalAlerts.length,
     last_check: metrics?.[0]?.recorded_at || null,
     services: {
       database: { status: "unknown", latency: null },
@@ -124,17 +136,14 @@ export function useHealthSummary() {
       };
     }
 
-    // Determine overall status
+    // Determine overall status. Only criticals from the last hour force
+    // unhealthy — stale unresolved criticals are backlog needing review, so
+    // they hold the status at degraded instead of masquerading as a live outage.
     const statuses = Object.values(summary.services).map(s => s.status);
-    if (statuses.includes("unhealthy")) {
+    if (statuses.includes("unhealthy") || summary.recent_critical_alerts > 0) {
       summary.overall_status = "unhealthy";
-    } else if (statuses.includes("degraded")) {
+    } else if (statuses.includes("degraded") || summary.critical_alerts > 0) {
       summary.overall_status = "degraded";
-    }
-
-    // Check alerts for critical status
-    if (summary.critical_alerts > 0) {
-      summary.overall_status = "unhealthy";
     }
   }
 

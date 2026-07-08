@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Activity, 
-  RefreshCw, 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Activity,
+  RefreshCw,
   Database,
-  CreditCard, 
+  CreditCard,
   Shield,
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  ChevronDown,
   Clock,
   Bell,
   BellOff,
@@ -119,6 +121,55 @@ export default function AdminSystemHealth() {
     }
   };
 
+  // Honest one-line explanation of why the overall status is what it is:
+  // stale unresolved criticals are backlog to review, not a live outage.
+  const serviceStatuses = Object.values(summary.services).map(s => s.status);
+  const statusCaption = (() => {
+    if (summary.recent_critical_alerts > 0) {
+      return "Critical alert in the last hour.";
+    }
+    if (serviceStatuses.includes("unhealthy")) {
+      return "A live service check is failing.";
+    }
+    if (serviceStatuses.includes("degraded")) {
+      return "A live service check is degraded.";
+    }
+    if (summary.critical_alerts > 0) {
+      return `Live service checks healthy. ${summary.critical_alerts} unresolved critical alert${summary.critical_alerts === 1 ? "" : "s"} pending review.`;
+    }
+    if (summary.active_alerts > 0) {
+      return `Live service checks healthy. ${summary.active_alerts} unresolved alert${summary.active_alerts === 1 ? "" : "s"} pending review.`;
+    }
+    return "All service checks healthy.";
+  })();
+
+  // Group unresolved alerts by type so repeated re-fires of the same
+  // condition read as one line with a count instead of a wall of rows.
+  const severityRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+  const alertGroups = alerts
+    ? Object.values(
+        alerts.reduce<Record<string, { type: string; items: SystemAlert[] }>>((acc, alert) => {
+          (acc[alert.alert_type] ??= { type: alert.alert_type, items: [] }).items.push(alert);
+          return acc;
+        }, {}),
+      )
+        .map(group => ({
+          ...group,
+          highestSeverity: group.items.reduce(
+            (worst, a) => (severityRank[a.severity] < severityRank[worst] ? a.severity : worst),
+            group.items[0].severity,
+          ),
+          newest: group.items.reduce((max, a) => (a.created_at > max ? a.created_at : max), group.items[0].created_at),
+        }))
+        .sort(
+          (a, b) =>
+            severityRank[a.highestSeverity] - severityRank[b.highestSeverity] ||
+            b.items.length - a.items.length,
+        )
+    : [];
+
+  const isStaleGroup = (newest: string) => Date.now() - new Date(newest).getTime() > 24 * 60 * 60 * 1000;
+
   const getSeverityBadge = (severity: string) => {
     const styles = {
       critical: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
@@ -201,6 +252,7 @@ export default function AdminSystemHealth() {
                   {summary.overall_status}
                 </span>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">{statusCaption}</p>
             </CardContent>
           </Card>
 
@@ -219,8 +271,11 @@ export default function AdminSystemHealth() {
                 )}
                 <span className="text-2xl font-bold">{summary.active_alerts}</span>
                 {summary.critical_alerts > 0 && (
-                  <Badge variant="destructive" className="ml-2">
-                    {summary.critical_alerts} critical
+                  <Badge
+                    variant={summary.recent_critical_alerts > 0 ? "destructive" : "secondary"}
+                    className="ml-2"
+                  >
+                    {summary.critical_alerts} critical, {summary.recent_critical_alerts} recent
                   </Badge>
                 )}
               </div>
@@ -310,9 +365,9 @@ export default function AdminSystemHealth() {
                       <div>
                         <p className="font-medium">Stripe</p>
                         <p className="text-sm text-muted-foreground">
-                          {summary.services.stripe.latency !== null 
-                            ? `${summary.services.stripe.latency}ms latency` 
-                            : "Not configured"}
+                          {summary.services.stripe.latency !== null
+                            ? `${summary.services.stripe.latency}ms latency`
+                            : "Not configured (expected during Alpha)"}
                         </p>
                       </div>
                     </div>
@@ -413,7 +468,9 @@ export default function AdminSystemHealth() {
             <Card>
               <CardHeader>
                 <CardTitle>Active Alerts</CardTitle>
-                <CardDescription>Unresolved system alerts requiring attention</CardDescription>
+                <CardDescription>
+                  Unresolved alerts grouped by type. Older unresolved alerts are history to review, not necessarily a current outage.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {alertsLoading ? (
@@ -422,55 +479,90 @@ export default function AdminSystemHealth() {
                   </div>
                 ) : alerts && alerts.length > 0 ? (
                   <div className="space-y-3">
-                    {alerts.map((alert) => (
-                      <div 
-                        key={alert.id}
-                        className={cn(
-                          "flex items-start justify-between p-4 rounded-lg border",
-                          alert.severity === "critical" && "border-red-500/50 bg-red-50/50 dark:bg-red-900/10",
-                          alert.severity === "high" && "border-orange-500/50 bg-orange-50/50 dark:bg-orange-900/10"
-                        )}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            {getSeverityBadge(alert.severity)}
-                            <span className="font-medium">{alert.alert_type.replace(/_/g, " ")}</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{alert.message}</p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>
-                              Created {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
-                            </span>
-                            {alert.acknowledged_at && (
-                              <span className="text-amber-600">
-                                Acknowledged {formatDistanceToNow(new Date(alert.acknowledged_at), { addSuffix: true })}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {!alert.acknowledged_at && (
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => acknowledgeAlert.mutate(alert.id)}
-                              disabled={acknowledgeAlert.isPending}
-                            >
-                              <Bell className="h-3 w-3 mr-1" />
-                              Acknowledge
-                            </Button>
+                    {alerts.length >= 100 && (
+                      <p className="text-xs text-muted-foreground">
+                        Showing the 100 most recent unresolved alerts (100+ total).
+                      </p>
+                    )}
+                    {alertGroups.map((group) => (
+                      <Collapsible key={group.type}>
+                        <div
+                          className={cn(
+                            "rounded-lg border",
+                            group.highestSeverity === "critical" && "border-red-500/50 bg-red-50/50 dark:bg-red-900/10",
+                            group.highestSeverity === "high" && "border-orange-500/50 bg-orange-50/50 dark:bg-orange-900/10"
                           )}
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            onClick={() => resolveAlert.mutate(alert.id)}
-                            disabled={resolveAlert.isPending}
-                          >
-                            <Check className="h-3 w-3 mr-1" />
-                            Resolve
-                          </Button>
+                        >
+                          <CollapsibleTrigger className="group flex w-full flex-wrap items-center justify-between gap-2 p-4 text-left">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {getSeverityBadge(group.highestSeverity)}
+                              <span className="font-medium">{group.type.replace(/_/g, " ")}</span>
+                              <Badge variant="secondary">x{group.items.length}</Badge>
+                              {isStaleGroup(group.newest) && (
+                                <Badge variant="outline" className="text-muted-foreground">
+                                  stale
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>
+                                newest {formatDistanceToNow(new Date(group.newest), { addSuffix: true })}
+                              </span>
+                              <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <div className="space-y-3 px-4 pb-4">
+                              {group.items.map((alert) => (
+                                <div
+                                  key={alert.id}
+                                  className="flex items-start justify-between gap-2 p-4 rounded-lg border bg-background/60"
+                                >
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      {getSeverityBadge(alert.severity)}
+                                      <span className="font-medium">{alert.alert_type.replace(/_/g, " ")}</span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">{alert.message}</p>
+                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                      <span>
+                                        Created {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                                      </span>
+                                      {alert.acknowledged_at && (
+                                        <span className="text-amber-600">
+                                          Acknowledged {formatDistanceToNow(new Date(alert.acknowledged_at), { addSuffix: true })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {!alert.acknowledged_at && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => acknowledgeAlert.mutate(alert.id)}
+                                        disabled={acknowledgeAlert.isPending}
+                                      >
+                                        <Bell className="h-3 w-3 mr-1" />
+                                        Acknowledge
+                                      </Button>
+                                    )}
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      onClick={() => resolveAlert.mutate(alert.id)}
+                                      disabled={resolveAlert.isPending}
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Resolve
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
                         </div>
-                      </div>
+                      </Collapsible>
                     ))}
                   </div>
                 ) : (

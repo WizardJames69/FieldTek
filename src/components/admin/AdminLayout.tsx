@@ -31,9 +31,10 @@ import { checkIsPlatformAdmin } from "@/lib/authRouting";
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { label: "Onboarding Pipeline", icon: GitBranch, path: "/admin/onboarding-pipeline" },
-  { label: "Demo Requests", icon: Calendar, path: "/admin/demo-requests" },
+  { label: "Consultation Requests", icon: Calendar, path: "/admin/demo-requests" },
   { label: "Beta Applications", icon: FlaskConical, path: "/admin/beta-applications" },
-  { label: "AI Demo Analytics", icon: Volume2, path: "/admin/demo-analytics" },
+  // "AI Demo Analytics" (/admin/demo-analytics) removed from the sidebar: its data
+  // sources are only written by retired public demo widgets. Route stays URL-reachable.
   { label: "AI Audit Logs", icon: ShieldX, path: "/admin/ai-audit" },
   { label: "RAG Quality", icon: BarChart3, path: "/admin/rag-quality" },
   { label: "Lesson Review", icon: GraduationCap, path: "/admin/lesson-review" },
