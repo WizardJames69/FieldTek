@@ -10,13 +10,13 @@ const capabilities = [
     icon: BookOpen,
     title: "Manual-Grounded Guidance",
     description:
-      "Sentinel reads your uploaded manuals and answers with the exact procedure, page, and paragraph. When it isn't sure, it says so — no confident guessing.",
+      "Sentinel reads your uploaded manuals and answers with the exact procedure, page, and paragraph. When it isn't sure, it says so instead of guessing.",
   },
   {
     icon: Network,
     title: "Equipment Context",
     description:
-      "Every unit's model, serial, specs, and full service history in one place — the context Sentinel draws on when answering about your equipment.",
+      "Every unit's model, serial, specs, and full service history in one place: the context Sentinel draws on when answering about your equipment.",
   },
   {
     icon: GitBranch,
@@ -28,7 +28,7 @@ const capabilities = [
     icon: Brain,
     title: "Compounding Intelligence",
     description:
-      "Built to learn: reviewed lessons from completed jobs become citable knowledge — approved by your team, cited like any manual.",
+      "Built to learn: reviewed lessons from completed jobs become citable knowledge, approved by your team and cited like any manual.",
   },
 ];
 
@@ -47,7 +47,7 @@ export function AIIntelligenceSection() {
               </h2>
             </ScrollReveal>
             <ScrollReveal delay={0.1}>
-              <p className="text-lg text-zinc-400 leading-relaxed mb-10">
+              <p className="text-base md:text-lg text-zinc-400 leading-relaxed mb-7 md:mb-10">
                 Sentinel AI reads your uploaded manuals, cross-references your repair history, and delivers guidance grounded in real equipment data. Every completed job makes the next diagnosis more accurate.
               </p>
             </ScrollReveal>

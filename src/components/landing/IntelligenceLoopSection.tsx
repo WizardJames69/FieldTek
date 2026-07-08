@@ -138,8 +138,8 @@ export function IntelligenceLoopSection() {
               <p className="text-zinc-400 leading-relaxed mb-8">
                 Most field service AI is static. It only knows what was programmed. FieldTek is built
                 to learn: outcomes from completed jobs become reviewed lessons that your team approves
-                before they shape future guidance. We're proving this loop with our design partners now —
-                nothing enters your knowledge base without human sign-off.
+                before they shape future guidance. We're proving this loop with our design partners now.
+                Nothing enters your knowledge base without human sign-off.
               </p>
             </ScrollReveal>
 

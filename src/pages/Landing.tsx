@@ -113,16 +113,16 @@ export default function Landing() {
     <div className="landing-page min-h-screen overflow-x-hidden noise-overlay">
       <Helmet>
         <title>FieldTek | AI-Powered Field Service Platform | Guide Every Repair. Learn From Every Job.</title>
-        <meta name="description" content="FieldTek's Sentinel AI answers technician questions from your uploaded manuals — with page-level citations. Job records, scheduling, invoicing, and a customer portal built in. For HVAC, electrical, plumbing, and mechanical contractors." />
+        <meta name="description" content="FieldTek's Sentinel AI answers technician questions from your uploaded manuals, with page-level citations. Job records, scheduling, invoicing, and a customer portal built in. For HVAC, electrical, plumbing, and mechanical contractors." />
         <meta name="keywords" content="field service management, HVAC software, AI field service, install documentation, Sentinel AI, technician guidance, HVAC technician app, plumbing software, electrical contractor software, mechanical contractor software, field service app, AI assistant for technicians, NEC code reference" />
         <link rel="canonical" href="https://fieldtek.ai/" />
         <meta property="og:title" content="FieldTek | Guide Every Repair. Learn From Every Job." />
-        <meta property="og:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals — with citations. Scheduling, job records, invoicing, and a customer portal built in." />
+        <meta property="og:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals, with citations. Scheduling, job records, invoicing, and a customer portal built in." />
         <meta property="og:url" content="https://fieldtek.ai/" />
         <meta property="og:image" content="https://fieldtek.ai/og-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="FieldTek | Guide Every Repair. Learn From Every Job." />
-        <meta name="twitter:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals — with citations." />
+        <meta name="twitter:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals, with citations." />
         <meta name="twitter:image" content="https://fieldtek.ai/og-image.png" />
       </Helmet>
 
