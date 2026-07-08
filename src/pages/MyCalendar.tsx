@@ -38,6 +38,7 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -501,8 +502,22 @@ export default function MyCalendar() {
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto sheet-glass">
           {selectedJob && (
             <>
-              <SheetHeader className="sticky top-0 glass-morphism -mx-6 px-6 py-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
-                <SheetTitle className="text-xl font-bold">{selectedJob.title}</SheetTitle>
+              <SheetHeader className="sticky top-0 glass-morphism -mx-6 px-6 pt-4 pb-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
+                {/* Explicit back control matching MyJobs: the default sheet close (X)
+                    is absolutely positioned inside the scroll area, so it scrolls out
+                    of view behind this sticky glass header — on mobile the full-width
+                    sheet reads as a separate page with no way back. */}
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    aria-label="Back to Calendar"
+                    className="flex items-center gap-1 -ml-1.5 mb-1 w-fit text-sm font-semibold text-muted-foreground hover:text-foreground touch-native"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                    Back to Calendar
+                  </button>
+                </SheetClose>
+                <SheetTitle className="text-xl font-bold text-left">{selectedJob.title}</SheetTitle>
               </SheetHeader>
 
               <div className="mt-8 space-y-8">

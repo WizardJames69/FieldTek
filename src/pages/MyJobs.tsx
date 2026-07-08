@@ -283,7 +283,7 @@ export default function MyJobs() {
                   className="flex items-center gap-1 -ml-1.5 mb-1 w-fit text-sm font-semibold text-muted-foreground hover:text-foreground touch-native"
                 >
                   <ChevronLeft className="h-5 w-5" />
-                  My Jobs
+                  Back to My Jobs
                 </button>
                 <SheetTitle className="text-xl font-bold text-left">{selectedJob.title}</SheetTitle>
               </SheetHeader>

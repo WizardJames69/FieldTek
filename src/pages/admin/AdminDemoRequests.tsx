@@ -78,8 +78,8 @@ export default function AdminDemoRequests() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("Error fetching demo requests:", error);
-      toast.error("Failed to load demo requests");
+      console.error("Error fetching consultation requests:", error);
+      toast.error("Failed to load consultation requests");
     } else {
       setRequests(data || []);
     }
@@ -163,9 +163,9 @@ export default function AdminDemoRequests() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Demo Requests</h1>
+        <h1 className="text-3xl font-bold">Consultation Requests</h1>
         <p className="text-muted-foreground mt-1">
-          Manage and respond to demo requests from potential customers
+          Manage and respond to consultation requests from potential customers
         </p>
       </div>
 
@@ -199,9 +199,9 @@ export default function AdminDemoRequests() {
         <CardContent>
           {filteredRequests.length === 0 ? (
             <p className="text-muted-foreground text-center py-12">
-              {searchQuery || statusFilter !== "all" 
-                ? "No demo requests match your filters" 
-                : "No demo requests yet"}
+              {searchQuery || statusFilter !== "all"
+                ? "No consultation requests match your filters"
+                : "No consultation requests yet"}
             </p>
           ) : (
             <div className="rounded-md border">
@@ -416,7 +416,7 @@ export default function AdminDemoRequests() {
                 {/* Quick Actions */}
                 <div className="pt-4 border-t space-y-2">
                   <Button className="w-full" asChild>
-                    <a href={`mailto:${selectedRequest.email}?subject=FieldTek Demo Follow-up`}>
+                    <a href={`mailto:${selectedRequest.email}?subject=FieldTek Consultation Follow-up`}>
                       <Mail className="h-4 w-4 mr-2" />
                       Send Email
                     </a>
