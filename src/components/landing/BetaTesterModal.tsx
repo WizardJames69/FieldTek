@@ -5,8 +5,7 @@ import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Loader2, FlaskConical, X } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { MetalButton } from "@/components/ui/metal-button";
-import { LiquidButton } from "@/components/ui/liquid-button";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
@@ -184,6 +183,9 @@ export function BetaTesterModal({ open, onOpenChange }: BetaTesterModalProps) {
           className="fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] max-h-[90vh] overflow-y-auto bg-[#111214] border border-white/[0.06] rounded-2xl p-8 md:p-10 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]"
           aria-describedby={undefined}
         >
+          {/* Radix requires a DialogTitle for screen readers; the visible h2 changes
+              between form and success states, so keep a stable hidden title. */}
+          <DialogPrimitive.Title className="sr-only">Apply for Beta Access</DialogPrimitive.Title>
           <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm text-[#6B7280] transition-colors hover:text-white focus:outline-none" aria-label="Close dialog">
             <X className="h-4 w-4" aria-hidden="true" />
           </DialogPrimitive.Close>
@@ -364,18 +366,19 @@ export function BetaTesterModal({ open, onOpenChange }: BetaTesterModalProps) {
                       )}
                     />
 
-                    <div className="flex gap-3 pt-2">
-                      <LiquidButton
+                    <div className="flex gap-3 pt-4">
+                      <Button
                         type="button"
-                        className="flex-1 h-11"
+                        variant="coolOutline"
+                        className="flex-1"
                         onClick={() => onOpenChange(false)}
                       >
                         Maybe Later
-                      </LiquidButton>
-                      <MetalButton
+                      </Button>
+                      <Button
                         type="submit"
-                        variant="fieldtek"
-                        className="flex-1 h-11"
+                        variant="cool"
+                        className="flex-1"
                         disabled={isSubmitting}
                       >
                         {isSubmitting ? (
@@ -386,7 +389,7 @@ export function BetaTesterModal({ open, onOpenChange }: BetaTesterModalProps) {
                         ) : (
                           "Apply Now"
                         )}
-                      </MetalButton>
+                      </Button>
                     </div>
                   </form>
                 </Form>

@@ -81,7 +81,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 mb-5 md:mb-7">
                 <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
                 <span className="text-xs font-medium tracking-wide text-zinc-400">
-                  Private beta · Now building with design partners
+                  Private beta · Design partner alpha
                 </span>
               </div>
 
@@ -107,19 +107,14 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
                 <Button variant="cool" size="lg" onClick={onApply}>
                   Apply for Beta Access
                 </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="lg"
-                  className="border-white/15 bg-transparent text-zinc-200 hover:bg-white/10 hover:text-white"
-                >
+                <Button asChild variant="coolOutline" size="lg">
                   <a href="#features">See How It Works</a>
                 </Button>
               </div>
 
               {/* Mobile microcopy */}
               <p className="mt-4 text-xs text-zinc-500 md:hidden">
-                Built with design partners before public launch.
+                Founder-guided access before public launch.
               </p>
 
               {/* Entity definition for SEO/AEO/GEO — screen-reader and crawler accessible */}
