@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useTenant } from "@/contexts/TenantContext";
 import { PostCheckoutWizard } from "@/components/billing/PostCheckoutWizard";
 import type { OnboardingProgress } from "@/hooks/useOnboardingProgress";
+import { PAYMENT_COLLECTION_ENABLED } from "@/config/payments";
 
 export default function BillingSuccess() {
   const navigate = useNavigate();
@@ -117,6 +118,12 @@ export default function BillingSuccess() {
   }, [status, autoRedirectEnabled, showSetupWizard, navigate, postCheckoutRoute, tenantLoading]);
 
   useEffect(() => {
+    // Design Partner Alpha: payment collection disabled — this page is only
+    // reachable via a Stripe redirect that cannot happen, so skip the
+    // verify-checkout-session call and the check-subscription polling
+    // entirely (a direct URL hit would otherwise fire ~10 failing calls).
+    if (!PAYMENT_COLLECTION_ENABLED) return;
+
     let attempts = 0;
     const maxAttempts = 10;
     const timeouts: number[] = [];
@@ -254,6 +261,28 @@ export default function BillingSuccess() {
       clearAllTimers();
     };
   }, [queryClient, checkoutSessionId, refreshKey]);
+
+  // Design Partner Alpha disabled state (all hooks above have run).
+  if (!PAYMENT_COLLECTION_ENABLED) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Payments are not enabled during the alpha</CardTitle>
+            <CardDescription>
+              FieldTek is in design partner alpha. Your workspace runs on a trial managed by the FieldTek team, so there is no checkout to confirm.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button onClick={() => navigate("/dashboard")}>
+              Go to Dashboard
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Show setup wizard for new users after success
   if (status === "success" && showSetupWizard && onboardingProgress) {

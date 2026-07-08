@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
 import { StripeConnectSettings } from "./StripeConnectSettings";
 import { TIER_CONFIG, UPGRADE_PATH, SubscriptionTier } from "@/config/pricing";
+import { PAYMENT_COLLECTION_ENABLED } from "@/config/payments";
 
 export function BillingSettings() {
   const { tenant } = useTenant();
@@ -62,6 +63,10 @@ export function BillingSettings() {
   const { data: stripeStatus, isLoading: isLoadingStripe, refetch: refetchStripe } = useQuery({
     queryKey: ["stripe-subscription"],
     queryFn: async () => {
+      // Guard inside the queryFn too: refetch() bypasses `enabled`, and the
+      // function always errors while fgem has no Stripe secrets.
+      if (!PAYMENT_COLLECTION_ENABLED) return null;
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return null;
 
@@ -83,6 +88,7 @@ export function BillingSettings() {
         cancel_at: string | null;
       };
     },
+    enabled: PAYMENT_COLLECTION_ENABLED,
     staleTime: 30000,
   });
 
@@ -151,6 +157,10 @@ export function BillingSettings() {
   const techsLimit = typeof tierConfig.includedTechs === "number" ? tierConfig.includedTechs : null;
 
   const handleUpgrade = async (tier: SubscriptionTier) => {
+    // Defense in depth: no checkout during Design Partner Alpha even if a
+    // render path slips through. See src/config/payments.ts.
+    if (!PAYMENT_COLLECTION_ENABLED) return;
+
     const stripeTier = TIER_CONFIG[tier].stripeTier;
     if (!stripeTier) return;
 
@@ -229,6 +239,9 @@ export function BillingSettings() {
   };
 
   const handleManageSubscription = async () => {
+    // Defense in depth: no Stripe customer portal during Design Partner Alpha.
+    if (!PAYMENT_COLLECTION_ENABLED) return;
+
     setIsLoading("portal");
 
     const inIframe = (() => {
@@ -356,14 +369,16 @@ export function BillingSettings() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => refetchStripe()}
-                disabled={isLoadingStripe}
-              >
-                <RefreshCw className={cn("h-4 w-4", isLoadingStripe && "animate-spin")} />
-              </Button>
+              {PAYMENT_COLLECTION_ENABLED && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => refetchStripe()}
+                  disabled={isLoadingStripe}
+                >
+                  <RefreshCw className={cn("h-4 w-4", isLoadingStripe && "animate-spin")} />
+                </Button>
+              )}
               {tierConfig.monthlyPrice !== null && (
                 <div className="text-right">
                   <p className="text-2xl font-bold text-foreground">
@@ -471,8 +486,23 @@ export function BillingSettings() {
         </CardContent>
       </Card>
 
+      {/* Design Partner Alpha: payment collection is disabled — honest notice
+          instead of checkout buttons. See src/config/payments.ts. */}
+      {!PAYMENT_COLLECTION_ENABLED && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Subscription payments are not enabled yet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              FieldTek is in design partner alpha. Your workspace runs on a trial managed by the FieldTek team. No payment is required and no card will be charged.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Upgrade Options */}
-      {upgradeTiers.length > 0 && (
+      {PAYMENT_COLLECTION_ENABLED && upgradeTiers.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -649,9 +679,11 @@ export function BillingSettings() {
                   : "No payment method on file"}
               </p>
             </div>
-            {stripeStatus?.subscribed ? (
-              <Button 
-                variant="outline" 
+            {!PAYMENT_COLLECTION_ENABLED ? (
+              <p className="text-sm text-muted-foreground">Not required during the alpha</p>
+            ) : stripeStatus?.subscribed ? (
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={handleManageSubscription}
                 disabled={isLoading === "portal"}
@@ -660,8 +692,8 @@ export function BillingSettings() {
                 Update
               </Button>
             ) : (
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => handleUpgrade("starter")}
                 disabled={!!isLoading}

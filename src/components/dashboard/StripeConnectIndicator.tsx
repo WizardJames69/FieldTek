@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useTenant, useUserRole } from '@/contexts/TenantContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { PAYMENT_COLLECTION_ENABLED } from '@/config/payments';
 
 export function StripeConnectIndicator() {
   const navigate = useNavigate();
@@ -16,6 +17,9 @@ export function StripeConnectIndicator() {
   const { data: stripeStatus, isLoading } = useQuery({
     queryKey: ['stripe-connect-status-dashboard', tenant?.id],
     queryFn: async () => {
+      // Guard inside the queryFn too: refetch() bypasses `enabled`, and the
+      // function always errors while fgem has no Stripe secrets.
+      if (!PAYMENT_COLLECTION_ENABLED) return null;
       if (!tenant?.id) return null;
 
       const { data: session } = await supabase.auth.getSession();
@@ -34,9 +38,13 @@ export function StripeConnectIndicator() {
 
       return data;
     },
-    enabled: !!tenant?.id && (isAdmin || isOwner),
+    enabled: PAYMENT_COLLECTION_ENABLED && !!tenant?.id && (isAdmin || isOwner),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  // Design Partner Alpha: payment collection disabled — no Connect nudge and
+  // no failing stripe-connect-status calls. See src/config/payments.ts.
+  if (!PAYMENT_COLLECTION_ENABLED) return null;
 
   // Only show for admins/owners
   if (!isAdmin && !isOwner) return null;

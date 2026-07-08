@@ -19,6 +19,7 @@ import {
 import { format, isPast } from 'date-fns';
 import { toast } from 'sonner';
 import { PortalAuthGuard } from '@/components/portal/PortalAuthGuard';
+import { PAYMENT_COLLECTION_ENABLED } from '@/config/payments';
 
 export default function PortalInvoices() {
   const { client, loading: authLoading, clientLoading, user } = usePortalAuth();
@@ -85,6 +86,9 @@ export default function PortalInvoices() {
     .reduce((sum, i) => sum + (Number(i.total) || 0), 0) || 0;
 
   const handlePayInvoice = async (invoiceId: string) => {
+    // Defense in depth: no online payment during Design Partner Alpha.
+    if (!PAYMENT_COLLECTION_ENABLED) return;
+
     setPayingInvoiceId(invoiceId);
 
     try {
@@ -134,8 +138,11 @@ export default function PortalInvoices() {
     }
   };
 
+  // Online payment is gated off during Design Partner Alpha; when the kill
+  // switch is off, no Pay Now button renders and create-invoice-payment is
+  // never invoked. See src/config/payments.ts.
   const canPayInvoice = (status: string | null) => {
-    return status === 'sent' || status === 'overdue';
+    return PAYMENT_COLLECTION_ENABLED && (status === 'sent' || status === 'overdue');
   };
 
   return (
@@ -145,6 +152,11 @@ export default function PortalInvoices() {
         <div className="page-header-glass rounded-xl p-4 md:p-6 bg-background/60 backdrop-blur-xl border border-border/30">
           <h1 className="text-2xl font-bold font-display">Invoices</h1>
           <p className="text-muted-foreground">View and manage your invoices</p>
+          {!PAYMENT_COLLECTION_ENABLED && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Online payment is coming soon. Please arrange payment directly with your service provider.
+            </p>
+          )}
         </div>
 
         {/* Summary Cards with 3D effect */}
