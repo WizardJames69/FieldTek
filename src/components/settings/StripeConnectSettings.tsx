@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSearchParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { PAYMENT_COLLECTION_ENABLED } from "@/config/payments";
 
 interface ConnectStatus {
   connected: boolean;
@@ -61,6 +62,12 @@ export function StripeConnectSettings() {
   const { data: connectStatus, isLoading, refetch } = useQuery<ConnectStatus>({
     queryKey: ["stripe-connect-status"],
     queryFn: async () => {
+      // Guard inside the queryFn too: refetch() bypasses `enabled`, and the
+      // function always errors while fgem has no Stripe secrets.
+      if (!PAYMENT_COLLECTION_ENABLED) {
+        return { connected: false, status: "not_connected", accountId: null, chargesEnabled: false, payoutsEnabled: false, detailsSubmitted: false };
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
         return { connected: false, status: "not_connected", accountId: null, chargesEnabled: false, payoutsEnabled: false, detailsSubmitted: false };
@@ -73,10 +80,14 @@ export function StripeConnectSettings() {
       if (error) throw error;
       return data;
     },
+    enabled: PAYMENT_COLLECTION_ENABLED,
     staleTime: 30000,
   });
 
   const handleConnect = async () => {
+    // Defense in depth: no Connect onboarding during Design Partner Alpha.
+    if (!PAYMENT_COLLECTION_ENABLED) return;
+
     setIsConnecting(true);
 
     const inIframe = (() => {
@@ -174,6 +185,29 @@ export function StripeConnectSettings() {
         );
     }
   };
+
+  // Design Partner Alpha: Connect onboarding is disabled — honest notice
+  // instead of the "Enable Online Payments" pitch. All hooks above have run,
+  // so this early return is hook-safe. See src/config/payments.ts.
+  if (!PAYMENT_COLLECTION_ENABLED) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Building2 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Online invoice payments are not enabled yet</CardTitle>
+              <CardDescription>
+                Customers pay you directly, exactly as they do today. FieldTek can still track invoice status with Mark as Paid.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <Card>
