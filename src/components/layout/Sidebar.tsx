@@ -211,7 +211,7 @@ export function Sidebar() {
     return (
       <aside
         className={cn(
-          'flex flex-col h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300',
+          'flex flex-col h-full bg-sidebar border-r border-sidebar-border transition-all duration-300',
           collapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -260,7 +260,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col h-screen bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transition-all duration-300 sidebar-enhanced relative overflow-hidden',
+        'hidden md:flex flex-col h-full bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transition-all duration-300 sidebar-enhanced relative overflow-hidden',
         collapsed ? 'w-16' : 'w-64'
       )}
     >

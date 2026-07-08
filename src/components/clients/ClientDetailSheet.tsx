@@ -163,7 +163,7 @@ export function ClientDetailSheet({ open, onOpenChange, client, onEdit }: Client
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-2 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
           <div className="app-glass-container rounded-lg p-3 text-center">
             <p className="text-2xl font-bold">{jobStats.total}</p>
             <p className="text-xs text-muted-foreground">Total {t('jobs')}</p>

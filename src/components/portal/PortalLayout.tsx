@@ -64,12 +64,12 @@ export function PortalLayout({ children }: PortalLayoutProps) {
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <div className="min-h-screen bg-background relative">
+      <div className="min-h-dvh bg-background relative">
       {/* Subtle floating orbs in background */}
       <FloatingOrbs intensity="subtle" />
       
       {/* Header with Premium Glassmorphism */}
-      <header className="sticky top-0 z-50 glass-navbar shadow-sm">
+      <header className="sticky top-0 z-50 glass-navbar shadow-sm safe-area-top">
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">

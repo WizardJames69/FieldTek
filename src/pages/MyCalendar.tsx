@@ -316,6 +316,48 @@ export default function MyCalendar() {
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(currentDate);
+
+    // Mobile: day-grouped agenda instead of cramming desktop day cells into
+    // ~50px columns (mirrors the week view's isMobile branch). Month query
+    // only fetches monthStart..monthEnd, so iterate the real month range,
+    // not the padded week grid.
+    if (isMobile) {
+      const daysWithJobs = eachDayOfInterval({ start: monthStart, end: monthEnd })
+        .map((day) => ({ day, dayJobs: getJobsForDate(day) }))
+        .filter(({ dayJobs }) => dayJobs.length > 0);
+
+      return (
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full">
+            {daysWithJobs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+                <Inbox className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">No jobs scheduled this month</p>
+              </div>
+            ) : (
+              <div className="p-3 pb-24 space-y-4">
+                {daysWithJobs.map(({ day, dayJobs }) => (
+                  <div key={day.toISOString()} className="space-y-2">
+                    <p className={cn('text-sm font-semibold px-1', isToday(day) && 'text-primary')}>
+                      {format(day, 'EEEE, MMMM d')}
+                    </p>
+                    {dayJobs.map((job) => (
+                      <TechnicianCalendarJobCard
+                        key={job.id}
+                        job={job}
+                        onClick={() => setSelectedJob(job)}
+                        onQuickAction={handleQuickAction}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      );
+    }
+
     const start = startOfWeek(monthStart, { weekStartsOn: 0 });
     const end = endOfWeek(monthEnd, { weekStartsOn: 0 });
     const days = eachDayOfInterval({ start, end });
@@ -402,7 +444,7 @@ export default function MyCalendar() {
 
         {/* Calendar - Premium glass container */}
         <div 
-          className="flex flex-col h-[calc(100vh-220px)] md:h-[calc(100vh-280px)] rounded-2xl border border-border/50 overflow-hidden glass-morphism shadow-xl shadow-black/5"
+          className="flex flex-col h-[calc(100dvh-220px)] md:h-[calc(100dvh-280px)] rounded-2xl border border-border/50 overflow-hidden glass-morphism shadow-xl shadow-black/5"
           {...mobileSwipeProps}
         >
           {/* Header - Premium styling */}
@@ -414,7 +456,7 @@ export default function MyCalendar() {
               <Button variant="outline" size="icon" onClick={navigateNext} className="touch-native h-10 w-10 rounded-xl">
                 <ChevronRight className="h-5 w-5" />
               </Button>
-              <Button variant="outline" size="sm" onClick={goToToday} className="touch-native h-10 px-4 rounded-xl font-semibold">
+              <Button variant="outline" size="sm" onClick={goToToday} className="touch-native h-10 px-3 sm:px-4 rounded-xl font-semibold">
                 Today
               </Button>
               <h2 className="text-lg font-bold ml-3 hidden sm:block">{getTitle()}</h2>
@@ -427,7 +469,7 @@ export default function MyCalendar() {
                   size="sm"
                   onClick={() => setViewMode(mode)}
                   className={cn(
-                    "capitalize rounded-lg h-9 px-4 font-semibold transition-all",
+                    "capitalize rounded-lg h-9 px-2.5 sm:px-4 font-semibold transition-all",
                     viewMode === mode && "shadow-lg shadow-primary/20"
                   )}
                 >

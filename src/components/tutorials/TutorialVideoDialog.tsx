@@ -87,8 +87,10 @@ export function TutorialVideoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
+      {/* Flex column with a pinned header/footer and a scrollable body so tall
+          content (video placeholder + learn card) never clips on mobile */}
+      <DialogContent className="sm:max-w-2xl flex flex-col max-h-[calc(100dvh-2rem)] overflow-hidden p-0 gap-0">
+        <DialogHeader className="shrink-0 p-6 pb-4 border-b border-border/40">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant="secondary">{categoryLabel}</Badge>
             <span className="text-sm text-muted-foreground flex items-center gap-1">
@@ -102,7 +104,7 @@ export function TutorialVideoDialog({
           )}
         </DialogHeader>
 
-        <div className="mt-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 pt-4">
           {hasVideo ? (
             <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
               <video
@@ -149,7 +151,7 @@ export function TutorialVideoDialog({
           )}
         </div>
 
-        <div className="flex items-center justify-between mt-4">
+        <div className="shrink-0 flex items-center justify-between gap-2 px-6 py-4 border-t border-border/40 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="text-sm text-muted-foreground">
             {watchTime > 0 && (
               <span>Watched: {formatDuration(watchTime)}</span>

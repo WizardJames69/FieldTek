@@ -30,7 +30,12 @@ export function BetaFeedbackFAB() {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 1 }}
-          className={cn("fixed right-6 z-50", hasBottomInput ? "bottom-32" : "bottom-6")}
+          className={cn(
+            "fixed right-6 z-50",
+            hasBottomInput
+              ? "bottom-[calc(8rem+env(safe-area-inset-bottom))]"
+              : "bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
+          )}
         >
           <Button
             onClick={() => setOpen(true)}
