@@ -116,10 +116,10 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
           </div>
           <p className="font-semibold truncate flex-1">{job.title}</p>
           {job.priority && (job.priority === 'urgent' || job.priority === 'high') && (
-            <Badge 
-              variant={priorityStyle.variant} 
+            <Badge
+              variant={priorityStyle.variant}
               glow={priorityStyle.glow}
-              className="text-[10px] px-1.5 py-0 h-5"
+              className="text-[10px] px-1.5 py-0 h-5 shrink-0"
             >
               {job.priority}
             </Badge>
@@ -132,9 +132,10 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
           </div>
         )}
 
-        {/* Quick Actions on Hover - Enhanced */}
+        {/* Quick Actions on Hover - hover-capable pointers only; on touch the
+            tap-latched hover state would overlay the chip content */}
         {showQuickActions && (
-          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex gap-1.5">
+          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden [@media(hover:hover)]:flex gap-1.5">
             {canStart && (
               <Button
                 size="icon"
@@ -228,9 +229,10 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
         )}
       </div>
 
-      {/* Quick Actions on Hover - Enhanced */}
+      {/* Quick Actions on Hover - hover-capable pointers only; on touch the
+          tap-latched hover state would cover the badges */}
       {showQuickActions && (
-        <div className="absolute right-3 top-3 flex gap-2">
+        <div className="absolute right-3 top-3 hidden [@media(hover:hover)]:flex gap-2">
           {canStart && (
             <Button
               size="sm"

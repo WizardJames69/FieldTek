@@ -18,7 +18,7 @@ export function DemoChecklistFAB() {
   return (
     <>
       {/* FAB - only visible on mobile/tablet (below lg breakpoint) */}
-      <div className="fixed bottom-6 right-6 lg:hidden z-40 overflow-visible">
+      <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 lg:hidden z-40 overflow-visible">
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

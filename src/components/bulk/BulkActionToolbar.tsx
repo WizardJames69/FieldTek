@@ -26,7 +26,7 @@ export function BulkActionToolbar({
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.2 }}
           className={cn(
-            'fixed bottom-6 left-1/2 -translate-x-1/2 z-50',
+            'fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50',
             'bg-background/95 backdrop-blur-lg border rounded-xl shadow-2xl',
             'px-4 py-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3',
             'max-w-[calc(100vw-2rem)]',

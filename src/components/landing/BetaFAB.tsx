@@ -49,7 +49,7 @@ export function BetaFAB({ onApply }: BetaFABProps) {
           animate={{ opacity: 1, x: 0, y: 0 }}
           exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: -20, y: 20 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed bottom-20 left-4 sm:left-6 z-50 overflow-visible"
+          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 sm:left-6 z-50 overflow-visible"
         >
           <div className="relative overflow-visible">
             <Button

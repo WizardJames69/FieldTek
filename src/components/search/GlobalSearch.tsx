@@ -61,8 +61,9 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         placeholder={`Search ${t('jobs').toLowerCase()}, ${t('clients').toLowerCase()}, invoices, ${t('equipment').toLowerCase()}...`}
         value={query}
         onValueChange={setQuery}
+        className="focus-visible:ring-0 focus-visible:ring-offset-0"
       />
-      <CommandList>
+      <CommandList className="max-h-[min(300px,calc(100dvh-14rem))] pb-[env(safe-area-inset-bottom)]">
         {isLoading && (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

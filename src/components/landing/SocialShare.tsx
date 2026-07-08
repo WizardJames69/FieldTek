@@ -89,7 +89,7 @@ export function SocialShare({ variant = "inline", className = "" }: SocialShareP
         <PopoverTrigger asChild>
           <Button
             size="icon"
-            className={`fixed bottom-24 right-4 sm:right-6 z-40 h-12 w-12 rounded-full shadow-lg bg-primary hover:bg-primary/90 ${className}`}
+            className={`fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 sm:right-6 z-40 h-12 w-12 rounded-full shadow-lg bg-primary hover:bg-primary/90 ${className}`}
             aria-label="Share FieldTek"
           >
             <Share2 className="h-5 w-5" />

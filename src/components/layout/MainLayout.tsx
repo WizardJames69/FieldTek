@@ -154,7 +154,7 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
       <Helmet>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-      <div className="flex flex-col h-screen bg-background overflow-hidden">
+      <div className="flex flex-col h-dvh bg-background overflow-hidden safe-area-top">
       <OfflineBanner />
       <ImpersonationBanner />
       <div className="flex flex-1 overflow-hidden">
@@ -174,7 +174,7 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
 
       {/* Mobile Navigation Sheet */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent side="left" className="w-80 p-0">
+        <SheetContent side="left" className="w-80 p-0 safe-area-top">
           <SheetHeader className="p-4 border-b">
             <SheetTitle className="flex items-center gap-2">
               {logoUrl ? (
@@ -214,7 +214,7 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
             </nav>
 
             {/* User Profile & Sign Out */}
-            <div className="p-4 border-t space-y-3">
+            <div className="p-4 border-t space-y-3 safe-area-bottom">
               <div className="flex items-center gap-3 px-2">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src="" />

@@ -71,7 +71,7 @@ export function DemoWaitlistPrompt({ onJoinWaitlist }: DemoWaitlistPromptProps) 
           animate={{ opacity: 1, y: 0, x: 0 }}
           exit={{ opacity: 0, y: 20 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="fixed bottom-4 right-4 z-50 max-w-sm"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-50 max-w-sm"
         >
           <div className="bg-card border border-border rounded-xl shadow-xl overflow-hidden">
             {/* Header */}
