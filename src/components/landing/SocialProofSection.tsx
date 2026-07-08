@@ -93,7 +93,7 @@ export function SocialProofSection({ onApply }: SocialProofSectionProps) {
               scheduling, client portal, invoicing, and an offline-capable mobile app.
             </p>
             <p className="text-sm text-zinc-400 leading-relaxed">
-              <span className="font-semibold text-orange-500">Coming — built with our design partners:</span>{" "}
+              <span className="font-semibold text-orange-500">Coming with our design partners:</span>{" "}
               real-time compliance alerts, auto-generated service reports, and reviewed intelligence
               loops that learn from your completed jobs.
             </p>

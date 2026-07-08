@@ -8,25 +8,25 @@ const problems = [
     icon: AlertTriangle,
     title: "Failed Installs & Callbacks",
     description:
-      "Technicians miss manufacturer specs because they're working from memory. The result: warranty voids, callbacks, and lost revenue.",
+      "Specs get missed when techs work from memory. The result: warranty voids, callbacks, and lost revenue.",
   },
   {
     icon: FileX,
     title: "No Documentation Trail",
     description:
-      "Work gets done but nothing is recorded. When a warranty claim comes in or an inspector asks questions, there's no proof of compliance.",
+      "Work gets done but nothing is recorded, so there's no proof when an inspector or warranty claim asks.",
   },
   {
     icon: UserMinus,
     title: "Knowledge Walks Out the Door",
     description:
-      "When your best tech retires, decades of institutional knowledge leave with them. New hires start from scratch every time.",
+      "When your best tech retires, decades of know-how leave with them. New hires start from scratch.",
   },
   {
     icon: RotateCcw,
     title: "Diagnostics Start From Scratch",
     description:
-      "Each technician independently troubleshoots the same symptoms again and again. No system captures what actually worked before.",
+      "Every tech troubleshoots the same symptoms again, because nothing captures what actually worked.",
   },
 ];
 
@@ -47,10 +47,10 @@ export function ProblemSection() {
   return (
     <section className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
-        <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-8 md:mb-16">
           <AnimatedEyebrow label="The Problem" center />
           <ScrollReveal delay={0.05}>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-[-0.02em] text-white leading-[1.15]">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-[-0.02em] text-white leading-[1.15] text-balance">
               Field service runs on paper, memory, and hope
             </h2>
           </ScrollReveal>
@@ -61,13 +61,13 @@ export function ProblemSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-60px" }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8"
         >
           {problems.map((problem, i) => (
             <motion.div
               key={i}
               variants={staggerItem}
-              className="border-l-[3px] border-orange-500 pl-4 md:pl-6"
+              className="border-l-[3px] border-orange-500 pl-4 md:pl-6 max-md:rounded-r-xl max-md:bg-white/[0.02] max-md:py-4 max-md:pr-4"
             >
               <div className="flex items-center gap-3 mb-3">
                 <problem.icon className="h-5 w-5 text-zinc-400" />

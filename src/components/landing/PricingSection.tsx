@@ -79,11 +79,11 @@ const faqItems = [
   },
   {
     question: "Are there limits on Sentinel AI usage?",
-    answer: "Yes — plans include fair-use daily limits on AI queries: 50 per day on Growth and 200 per day on Professional (trial accounts get 10 per day). Limits reset daily, and most teams stay well under them.",
+    answer: "Yes. Plans include fair-use daily limits on AI queries: 50 per day on Growth and 200 per day on Professional (trial accounts get 10 per day). Limits reset daily, and most teams stay well under them.",
   },
   {
     question: "Is there a free trial?",
-    answer: "Yes — every new account starts with a 30-day free trial with full feature access. No credit card required to start.",
+    answer: "Yes. Every new account starts with a 30-day free trial with full feature access. No credit card required to start.",
   },
   {
     question: "How do I get started?",

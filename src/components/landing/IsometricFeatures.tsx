@@ -210,7 +210,7 @@ const figures = [
   {
     id: "FIG 3",
     title: "Built to Learn",
-    description: "Reviewed lessons from completed jobs become knowledge your whole team can use — approved before they shape guidance.",
+    description: "Reviewed lessons from completed jobs become knowledge your whole team can use, approved before they shape guidance.",
     Illustration: KnowledgeNetworkIllustration,
   },
 ];

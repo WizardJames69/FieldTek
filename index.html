@@ -75,6 +75,13 @@
       #root { min-height: 100vh; }
       .dark body { background: hsl(20 14% 6%); color: hsl(30 20% 96%); }
     </style>
+
+    <!-- Landing is always dark: claim the dark canvas before first paint so the
+         window between stylesheet load and React mount never flashes light.
+         Landing.tsx owns the class after mount and removes it on unmount. -->
+    <script>
+      if (location.pathname === "/") document.documentElement.classList.add("landing-html-bg");
+    </script>
     
     <!-- Favicon declarations for Google Search and browsers -->
     <link rel="icon" href="/favicon.png" sizes="48x48" type="image/png" />
@@ -89,13 +96,13 @@
     <link rel="apple-touch-icon" sizes="192x192" href="/pwa-icon-192.png" />
     <link rel="apple-touch-icon" sizes="512x512" href="/pwa-icon-512.png" />
     <title>FieldTek | AI-Powered Field Service Platform | Guide Every Repair. Learn From Every Job.</title>
-    <meta name="description" content="FieldTek's Sentinel AI answers technician questions from your uploaded manuals — with page-level citations. Job records, scheduling, invoicing, and a customer portal built in. For HVAC, electrical, plumbing, and mechanical contractors." />
+    <meta name="description" content="FieldTek's Sentinel AI answers technician questions from your uploaded manuals, with page-level citations. Job records, scheduling, invoicing, and a customer portal built in. For HVAC, electrical, plumbing, and mechanical contractors." />
     <meta name="keywords" content="field service management, HVAC software, AI field service, install documentation, Sentinel AI, technician guidance, HVAC technician app, plumbing software, electrical contractor software, mechanical contractor software, field service app, AI assistant for technicians, NEC code reference" />
     <meta name="author" content="FieldTek" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
 
     <meta property="og:title" content="FieldTek | Guide Every Repair. Learn From Every Job." />
-    <meta property="og:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals — with citations. Scheduling, job records, invoicing, and a customer portal built in." />
+    <meta property="og:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals, with citations. Scheduling, job records, invoicing, and a customer portal built in." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="FieldTek" />
     <meta property="og:image" content="https://fieldtek.ai/og-image.png" />
@@ -107,7 +114,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@FieldTek" />
     <meta name="twitter:title" content="FieldTek | Guide Every Repair. Learn From Every Job." />
-    <meta name="twitter:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals — with citations." />
+    <meta name="twitter:description" content="AI-powered field service software. Sentinel AI answers technician questions from your uploaded manuals, with citations." />
     <meta name="twitter:image" content="https://fieldtek.ai/og-image.png" />
 
     <link rel="canonical" href="https://fieldtek.ai/" />

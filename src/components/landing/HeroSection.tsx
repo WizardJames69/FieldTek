@@ -75,29 +75,52 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
 
       <ContainerScroll
         titleComponent={
-          <div className="max-w-4xl mx-auto pt-24 pb-16 md:pt-32 md:pb-0 lg:pt-40">
+          <div className="max-w-4xl mx-auto pt-20 pb-10 md:pt-32 md:pb-0 lg:pt-40 text-center md:text-left">
             <AnimatedGroup variants={heroVariants}>
+              {/* Announcement pill */}
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 mb-5 md:mb-7">
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+                <span className="text-xs font-medium tracking-wide text-zinc-400">
+                  Private beta · Now building with design partners
+                </span>
+              </div>
+
               {/* H1 */}
-              <h1 className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-6 text-balance">
+              <h1 className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-5 md:mb-6 text-balance">
                 Guide Every Repair.
                 <br />
                 <span className="text-orange-500">Learn From Every Job.</span>
               </h1>
 
-              {/* Subtitle */}
-              <p className="text-lg md:text-xl text-[#9CA3AF] max-w-[540px] mb-6 md:mb-14 leading-relaxed">
-                The AI-native operating system for service teams. Answers grounded in your manuals and equipment history — with citations your techs can check.
+              {/* Subtitle — short scannable line on mobile, full sentence on desktop */}
+              <p className="text-base md:text-xl text-[#9CA3AF] max-w-[400px] md:max-w-[540px] mx-auto md:mx-0 mb-8 md:mb-14 leading-relaxed">
+                <span className="md:hidden">
+                  Answers from your own manuals, equipment records, and job history. Citations your techs can check.
+                </span>
+                <span className="hidden md:inline">
+                  FieldTek gives service teams answers from their own manuals, equipment records, and job history, with citations techs can check.
+                </span>
               </p>
 
               {/* CTA buttons */}
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center md:justify-start gap-3 max-w-xs sm:max-w-none mx-auto md:mx-0">
                 <Button variant="cool" size="lg" onClick={onApply}>
                   Apply for Beta Access
                 </Button>
-                <Button asChild variant="ghost" size="lg" className="text-zinc-400 hover:text-white hover:bg-white/10">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-white/15 bg-transparent text-zinc-200 hover:bg-white/10 hover:text-white"
+                >
                   <a href="#features">See How It Works</a>
                 </Button>
               </div>
+
+              {/* Mobile microcopy */}
+              <p className="mt-4 text-xs text-zinc-500 md:hidden">
+                Built with design partners before public launch.
+              </p>
 
               {/* Entity definition for SEO/AEO/GEO — screen-reader and crawler accessible */}
               <p className="sr-only">
@@ -111,7 +134,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
       </ContainerScroll>
 
       {/* Bottom gradient: dark to dark transition */}
-      <div className="h-12 md:h-32 bg-gradient-to-b from-[#09090B] to-[#0C0D0F]" />
+      <div className="h-8 md:h-32 bg-gradient-to-b from-[#09090B] to-[#0C0D0F]" />
     </section>
   );
 });

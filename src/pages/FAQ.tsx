@@ -8,7 +8,7 @@ import { Footer } from "@/components/landing/Footer";
 const faqs = [
   {
     question: "How is FieldTek different from traditional field service software?",
-    answer: "Most field service platforms are built around scheduling and invoicing. FieldTek starts there too, but adds an AI layer that traditional tools don't have. Your technicians get answers pulled from your actual manufacturer documentation — with page-level citations they can check — and every job builds a step-by-step record with photo evidence. Setup takes hours, not months, and there are no consultants or lengthy implementations required."
+    answer: "Most field service platforms are built around scheduling and invoicing. FieldTek starts there too, but adds an AI layer that traditional tools don't have. Your technicians get answers pulled from your actual manufacturer documentation, with page-level citations they can check, and every job builds a step-by-step record with photo evidence. Setup takes hours, not months, and there are no consultants or lengthy implementations required."
   },
   {
     question: "Can I switch from my current FSM software?",

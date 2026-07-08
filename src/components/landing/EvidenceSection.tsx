@@ -86,7 +86,7 @@ function EvidenceMockup() {
               <div className="h-3.5 w-3.5 rounded-full border-2 border-orange-500 flex items-center justify-center">
                 <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
               </div>
-              <span className="text-xs font-medium text-orange-400">Step 4: Startup Test — Photo Required</span>
+              <span className="text-xs font-medium text-orange-400">Step 4: Startup Test · Photo Required</span>
             </div>
           </div>
         </div>

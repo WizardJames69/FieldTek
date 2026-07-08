@@ -1489,8 +1489,11 @@
 /* The landing page is dark in every theme. The global --background must stay
    light for the app, so the dark canvas lives here: Landing's root paints it,
    and the html-level class keeps iOS rubber-band overscroll from flashing
-   white above/below the page (the original "white border" bug). */
+   white above/below the page (the original "white border" bug). The body rule
+   matters too: Safari derives its toolbar tint and the overscroll canvas from
+   the body background, which is light for the app. */
 html.landing-html-bg,
+html.landing-html-bg body,
 .landing-page {
   background-color: #09090B;
 }
