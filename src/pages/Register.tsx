@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Mail, Lock, Eye, EyeOff, User, ArrowRight, Loader2, KeyRound } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { MetalButton } from '@/components/ui/metal-button';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -184,7 +184,8 @@ export default function Register() {
           <div className="mb-4">
             <span className="font-display text-2xl font-bold text-white">Field</span>
             <span className="font-display text-2xl font-bold text-orange-500">Tek</span>
-            <span className="ml-2 inline-flex items-center bg-orange-500/10 text-orange-500 text-[11px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full">
+            <span className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-0.5 text-[11px] uppercase tracking-wider font-semibold text-orange-400">
+              <span className="h-1 w-1 rounded-full bg-orange-500" />
               Beta
             </span>
           </div>
@@ -193,7 +194,7 @@ export default function Register() {
           </h1>
           <p className="mt-2 text-sm text-zinc-500">
             {hasAccess
-              ? 'Beta access — Founding Member'
+              ? 'Beta access · Founding member'
               : 'Approved beta testers receive a code via email'}
           </p>
         </div>
@@ -222,10 +223,10 @@ export default function Register() {
               {accessError && <p className="text-sm text-red-400">{accessError}</p>}
             </div>
 
-            <MetalButton
+            <Button
               type="submit"
-              variant="fieldtek"
-              className="w-full h-11"
+              variant="cool"
+              className="w-full"
               disabled={isValidatingAccess}
               data-testid="verify-access-button"
             >
@@ -240,13 +241,13 @@ export default function Register() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
-            </MetalButton>
+            </Button>
 
             <div className="text-center space-y-3">
               <p className="text-zinc-500 text-sm">
                 Don't have an access code?{' '}
                 <button
-                  className="text-orange-500 hover:text-orange-400 transition-colors"
+                  className="font-medium text-orange-500 hover:text-orange-400 transition-colors"
                   onClick={() => setBetaModalOpen(true)}
                 >
                   Apply for beta access
@@ -255,7 +256,7 @@ export default function Register() {
               <p className="text-zinc-500 text-sm">
                 Already have an account?{' '}
                 <button
-                  className="text-orange-500 hover:text-orange-400 transition-colors"
+                  className="font-medium text-orange-500 hover:text-orange-400 transition-colors"
                   onClick={() => navigate('/auth')}
                 >
                   Sign in
@@ -344,23 +345,23 @@ export default function Register() {
                 {errors.confirmPassword && <p className="text-sm text-red-400">{errors.confirmPassword}</p>}
               </div>
 
-              <MetalButton
+              <Button
                 type="submit"
-                variant="fieldtek"
-                className="w-full h-11"
+                variant="cool"
+                className="w-full"
                 disabled={isLoading}
                 data-testid="register-submit-button"
               >
                 {isLoading ? 'Creating account...' : 'Create account'}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </MetalButton>
+              </Button>
             </form>
 
             <div className="text-center">
               <p className="text-zinc-500 text-sm">
                 Already have an account?{' '}
                 <button
-                  className="text-orange-500 hover:text-orange-400 transition-colors"
+                  className="font-medium text-orange-500 hover:text-orange-400 transition-colors"
                   onClick={() => navigate('/auth')}
                 >
                   Sign in
