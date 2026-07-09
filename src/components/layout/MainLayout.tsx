@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { Link, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { TechnicianBottomNav } from './TechnicianBottomNav';
 import { useBrandingColors } from '@/hooks/useBrandingColors';
 import { ImpersonationBanner } from '@/components/admin/ImpersonationBanner';
 import { BetaFeedbackFAB } from '@/components/feedback/BetaFeedbackFAB';
@@ -119,6 +120,10 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
   const filteredMainNav = filterByRole(mainNavItems);
   const filteredBottomNav = filterByRole(bottomNavItems);
 
+  // Technicians get a mobile bottom tab bar for thumb-zone navigation, except on
+  // /assistant where the chat composer already owns the bottom of the screen.
+  const showTechBottomNav = role === 'technician' && location.pathname !== '/assistant';
+
   const MobileNavLink = ({ item }: { item: NavItem }) => {
     const isActive = location.pathname === item.href;
     const Icon = item.icon;
@@ -166,7 +171,13 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
             actions={actions} 
             onMenuToggle={() => setMobileNavOpen(true)}
           />
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+          <div
+            className={cn(
+              'flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar',
+              // Clear the fixed technician bottom nav on mobile so content isn't hidden behind it.
+              showTechBottomNav && 'max-md:pb-24'
+            )}
+          >
             {children}
           </div>
         </main>
@@ -259,6 +270,11 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Technician mobile bottom tab bar (thumb-zone primaries; "More" reopens the sheet above) */}
+      {showTechBottomNav && (
+        <TechnicianBottomNav onMore={() => setMobileNavOpen(true)} />
+      )}
 
       {/* Beta Feedback FAB */}
       <BetaFeedbackFAB />

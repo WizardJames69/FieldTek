@@ -44,6 +44,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { TechnicianCalendarJobCard } from '@/components/calendar/TechnicianCalendarJobCard';
@@ -103,7 +104,7 @@ export default function MyCalendar() {
     threshold: 50,
   });
 
-  const { data: jobs, isLoading } = useQuery({
+  const { data: jobs, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['my-calendar-jobs', user?.id, tenant?.id, currentDate, viewMode],
     queryFn: async () => {
       if (!user?.id || !tenant?.id) return [];
@@ -430,6 +431,20 @@ export default function MyCalendar() {
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
+      </MainLayout>
+    );
+  }
+
+  if (isError) {
+    return (
+      <MainLayout title="My Calendar" subtitle="Your scheduled jobs">
+        <QueryErrorState
+          title="Couldn't load your calendar"
+          description="Something went wrong fetching your scheduled jobs. Check your connection and try again."
+          onRetry={() => refetch()}
+          retrying={isFetching}
+          testId="my-calendar-error-state"
+        />
       </MainLayout>
     );
   }
