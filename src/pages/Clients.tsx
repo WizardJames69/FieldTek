@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -70,6 +71,7 @@ export default function Clients() {
 
   const [clients, setClients] = useState<ClientWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -122,6 +124,7 @@ export default function Clients() {
 
   const fetchClients = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       // Fetch clients
       const { data: clientsData, error: clientsError } = await supabase
@@ -166,6 +169,7 @@ export default function Clients() {
 
       setClients(clientsWithStats);
     } catch (error: any) {
+      setLoadError(true);
       toast({
         variant: 'destructive',
         title: 'Error loading clients',
@@ -359,6 +363,13 @@ export default function Clients() {
               </Card>
             ))}
           </div>
+        ) : loadError ? (
+          <QueryErrorState
+            title={`Couldn't load ${t('clients').toLowerCase()}`}
+            onRetry={fetchClients}
+            retrying={loading}
+            testId="clients-error-state"
+          />
         ) : filteredClients.length === 0 ? (
           <Card className="border-dashed app-glass-container" data-testid="clients-empty-state">
             <CardContent className="p-12 text-center">

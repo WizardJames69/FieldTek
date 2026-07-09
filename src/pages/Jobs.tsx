@@ -21,6 +21,7 @@ import {
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -478,23 +479,6 @@ export default function Jobs() {
 
   const filteredJobIds = useMemo(() => filteredJobs.map(j => j.id), [filteredJobs]);
 
-  // Light-theme readability: the previous bg-<token>/10 text-<token> badges used
-  // bright mid-lightness semantic colors (warning/success/info) that wash out on
-  // the near-white background (failed WCAG AA, e.g. in_progress ~1.86:1). The
-  // .dark block doesn't re-tint those tokens, so dark mode was already fine.
-  // These palette colors carry an explicit light/dark text split (matching the
-  // detail drawer's badges) so they read in both themes.
-  const getStatusBadge = (status: JobStatus) => {
-    const styles: Record<JobStatus, string> = {
-      pending: 'bg-muted text-foreground/80',
-      scheduled: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
-      in_progress: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-      completed: 'bg-green-500/15 text-green-700 dark:text-green-300',
-      cancelled: 'bg-red-500/15 text-red-700 dark:text-red-300',
-    };
-    return styles[status];
-  };
-
   const getPriorityBadge = (priority: JobPriority) => {
     const styles: Record<JobPriority, string> = {
       low: 'border-muted-foreground/40 text-foreground/80',
@@ -709,9 +693,7 @@ export default function Jobs() {
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge className={getStatusBadge(job.status)}>
-                              {job.status.replace('_', ' ')}
-                            </Badge>
+                            <StatusBadge status={job.status} />
                             <Badge variant="outline" className={cn('gap-1', getPriorityBadge(job.priority))}>
                               {getPriorityIcon(job.priority)}
                               {job.priority}

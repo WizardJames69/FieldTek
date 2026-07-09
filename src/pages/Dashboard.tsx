@@ -16,6 +16,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { useAuth } from '@/contexts/AuthContext';
@@ -360,22 +361,15 @@ export default function Dashboard() {
     );
   }
 
-  const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      pending: 'bg-muted text-muted-foreground',
-      scheduled: 'bg-info/10 text-info',
-      in_progress: 'bg-warning/10 text-warning',
-      completed: 'bg-success/10 text-success',
-    };
-    return styles[status] || styles.pending;
-  };
-
+  // Explicit light/dark split (mirrors the Jobs page): the mid-lightness
+  // --info/--warning tokens as `text-<token>` fail WCAG on the near-white
+  // dashboard background.
   const getPriorityBadge = (priority: string) => {
     const styles: Record<string, string> = {
-      low: 'bg-muted text-muted-foreground',
-      medium: 'bg-info/10 text-info',
-      high: 'bg-warning/10 text-warning',
-      urgent: 'bg-destructive/10 text-destructive',
+      low: 'bg-muted text-foreground/80',
+      medium: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
+      high: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+      urgent: 'bg-red-500/15 text-red-700 dark:text-red-300',
     };
     return styles[priority] || styles.medium;
   };
@@ -550,7 +544,7 @@ export default function Dashboard() {
                           <Badge className={getPriorityBadge(job.priority)}>{job.priority}</Badge>
                         )}
                         {job.status && (
-                          <Badge className={getStatusBadge(job.status)}>{job.status.replace('_', ' ')}</Badge>
+                          <StatusBadge status={job.status} />
                         )}
                         <span className="text-sm text-muted-foreground hidden sm:inline">
                           {job.assigned_to && profiles?.[job.assigned_to] 
