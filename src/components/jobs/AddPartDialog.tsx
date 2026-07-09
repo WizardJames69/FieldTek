@@ -569,8 +569,9 @@ export function AddPartDialog({
                         className="absolute top-2 right-2 h-6 w-6"
                         onClick={clearReceipt}
                         disabled={isExtracting}
+                        aria-label="Remove receipt image"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                   ) : (

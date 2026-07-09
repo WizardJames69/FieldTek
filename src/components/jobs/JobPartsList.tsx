@@ -239,8 +239,9 @@ export function JobPartsList({ jobId, readOnly = false }: JobPartsListProps) {
                       size="icon"
                       className="h-8 w-8 shrink-0"
                       onClick={() => deletePart.mutate(part.id)}
+                      aria-label={`Remove ${part.part_name || 'part'}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   )}
                 </div>

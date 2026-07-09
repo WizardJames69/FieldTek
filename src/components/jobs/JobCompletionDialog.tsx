@@ -119,7 +119,7 @@ export function JobCompletionDialog({
                 key={tpl}
                 type="button"
                 variant={selectedTemplate === tpl ? 'secondary' : 'outline'}
-                className="text-xs h-7 px-2.5"
+                className="text-xs h-9 px-3"
                 onClick={() => handleSelectTemplate(tpl)}
                 disabled={isSubmitting}
               >

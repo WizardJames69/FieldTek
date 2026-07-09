@@ -35,7 +35,7 @@ export function PullToRefreshIndicator({
           </>
         ) : pullProgress >= 1 ? (
           <>
-            <ArrowDown className="h-5 w-5 text-primary animate-bounce" />
+            <ArrowDown className="h-5 w-5 text-primary rotate-180 transition-transform" />
             <span className="text-sm font-medium">Release to refresh</span>
           </>
         ) : (

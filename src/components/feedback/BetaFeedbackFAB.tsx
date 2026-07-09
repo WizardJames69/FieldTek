@@ -5,13 +5,14 @@ import { MessageSquarePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FeedbackDialog } from './FeedbackDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTenant } from '@/contexts/TenantContext';
+import { useTenant, useUserRole } from '@/contexts/TenantContext';
 import { cn } from '@/lib/utils';
 
 export function BetaFeedbackFAB() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { tenant } = useTenant();
+  const { role } = useUserRole();
   const location = useLocation();
 
   // Only show for authenticated users within a tenant
@@ -21,6 +22,9 @@ export function BetaFeedbackFAB() {
 
   // Move FAB higher on pages with bottom input bars (e.g. /assistant)
   const hasBottomInput = location.pathname === '/assistant';
+  // Technicians have a fixed mobile bottom nav everywhere except /assistant;
+  // lift the FAB above it on mobile so the two don't overlap.
+  const hasTechBottomNav = role === 'technician' && !hasBottomInput;
 
   return (
     <>
@@ -34,7 +38,9 @@ export function BetaFeedbackFAB() {
             "fixed right-6 z-50",
             hasBottomInput
               ? "bottom-[calc(8rem+env(safe-area-inset-bottom))]"
-              : "bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
+              : hasTechBottomNav
+                ? "bottom-[calc(1.5rem+env(safe-area-inset-bottom))] max-md:bottom-[calc(5.25rem+env(safe-area-inset-bottom))]"
+                : "bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
           )}
         >
           <Button
