@@ -185,7 +185,7 @@ export function BetaTesterModal({ open, onOpenChange }: BetaTesterModalProps) {
         >
           {/* Radix requires a DialogTitle for screen readers; the visible h2 changes
               between form and success states, so keep a stable hidden title. */}
-          <DialogPrimitive.Title className="sr-only">Apply for Beta Access</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="sr-only">Apply for Early Access</DialogPrimitive.Title>
           <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm text-[#6B7280] transition-colors hover:text-white focus:outline-none" aria-label="Close dialog">
             <X className="h-4 w-4" aria-hidden="true" />
           </DialogPrimitive.Close>
@@ -225,7 +225,7 @@ export function BetaTesterModal({ open, onOpenChange }: BetaTesterModalProps) {
                 <div className="flex flex-col space-y-1.5 mb-6">
                   <div className="flex items-center gap-2">
                     <FlaskConical className="h-5 w-5 text-orange-500" />
-                    <h2 className="text-2xl font-semibold text-white">Apply for Beta Access</h2>
+                    <h2 className="text-2xl font-semibold text-white">Apply for Early Access</h2>
                   </div>
                   <p className="text-[15px] text-[#9CA3AF]">
                     Help shape FieldTek and get <span className="text-orange-500 font-semibold">50% off</span> your first year subscription.

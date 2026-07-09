@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
 
 const steps = [
@@ -47,9 +46,8 @@ export function HowItWorksSection() {
     <section id="how-it-works" className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
-          <AnimatedEyebrow label="Get Started" center />
-          <ScrollReveal delay={0.05}>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15]">
+          <ScrollReveal>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] text-balance">
               Up and running in four steps
             </h2>
           </ScrollReveal>
@@ -67,10 +65,6 @@ export function HowItWorksSection() {
               key={i}
               variants={staggerItem}
               className="relative rounded-xl bg-[#111214] border border-white/[0.06] p-6 md:p-7"
-              style={{
-                borderLeftWidth: "2px",
-                borderImage: "linear-gradient(to bottom, #F97316, transparent 70%) 1",
-              }}
             >
               <div className="text-base font-semibold text-orange-500 font-mono tabular-nums mb-2">
                 {step.number}

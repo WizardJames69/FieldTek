@@ -1,5 +1,4 @@
 import { CheckCircle2, ShieldCheck, ClipboardCheck, Scale, UserCheck } from "lucide-react";
-import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
 
 // ── Evidence Mockup ────────────────────────────────────────────
@@ -112,8 +111,7 @@ export function EvidenceSection() {
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div className="md:order-last">
-            <AnimatedEyebrow label="Evidence & Accountability" colorClass="text-orange-500" className="mb-3" />
-            <ScrollReveal delay={0.05}>
+            <ScrollReveal>
               <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                 Every step documented. Every claim defensible.
               </h2>

@@ -1,26 +1,10 @@
-import { MessageSquare, Calendar, FileCheck, CheckCircle2 } from "lucide-react";
-import { AnimatedEyebrow } from "./AnimatedEyebrow";
+import { Calendar, FileCheck, CheckCircle2 } from "lucide-react";
 import { ScrollReveal } from "./ScrollReveal";
-import { SentinelCommandPanel } from "./SentinelCommandPanel";
 
+// The Sentinel AI deep-dive lives in SentinelSection (demo-led); this
+// showcase covers the rest of the platform so the AI story is told once.
 const features = [
   {
-    eyebrow: "Sentinel AI",
-    title: "Your documentation, your expert. On every job.",
-    description:
-      "Sentinel AI reads your uploaded manuals, wiring diagrams, and spec sheets, then answers your techs' questions with the exact procedure, page, and paragraph: grounded guidance they can check in the field.",
-    bullets: [
-      "Answers with page-level citations from your own documentation",
-      "Code-aware guidance grounded in NEC, IPC, and IMC references",
-      "Equipment-specific guidance from uploaded manufacturer documentation",
-      "Step-by-step workflow tracking from symptom to resolution",
-      "Honest by design: when the answer isn't in your documents, Sentinel says so instead of guessing",
-    ],
-    icon: MessageSquare,
-    mockup: "ai-assistant",
-  },
-  {
-    eyebrow: "Job Management",
     title: "Jobs that run the way you designed them",
     description:
       "Define your workflows once. FieldTek enforces the right steps, assigns the right people, and auto-generates recurring maintenance jobs. Your process becomes your standard, not a suggestion.",
@@ -34,7 +18,6 @@ const features = [
     mockup: "job-management",
   },
   {
-    eyebrow: "Compliance & Reporting",
     title: "Every job documented, start to finish",
     description:
       "Checklists, photos, and timestamps are captured as your techs work. When the inspector shows up or a warranty claim comes in, the record is already there.",
@@ -50,14 +33,6 @@ const features = [
 ];
 
 function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
-  if (type === "ai-assistant") {
-    return (
-      <div className={reverse ? "md:order-first" : ""}>
-        <SentinelCommandPanel />
-      </div>
-    );
-  }
-
   return (
     <div className={`rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden ${reverse ? "md:order-first" : ""}`}>
       <div className="p-1">
@@ -114,8 +89,7 @@ export function FeatureShowcase() {
               className={`grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center`}
             >
               <div className={reverse ? "md:order-last" : ""}>
-                <AnimatedEyebrow label={feature.eyebrow} colorClass="text-orange-500" className="mb-3" />
-                <ScrollReveal delay={0.05}>
+                <ScrollReveal>
                   <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                     {feature.title}
                   </h2>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { usePrefersReducedMotion } from "@/hooks/useReducedAnimations";
 
 interface AnimatedCounterProps {
   value: string;
@@ -9,6 +10,7 @@ export function AnimatedCounter({ value, className = "" }: AnimatedCounterProps)
   const ref = useRef<HTMLSpanElement>(null);
   const [displayValue, setDisplayValue] = useState(value);
   const hasAnimated = useRef(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const parseValue = useCallback((val: string) => {
     const match = val.match(/^([^\d]*)(\d+(?:\.\d+)?)(.*)$/);
@@ -25,6 +27,13 @@ export function AnimatedCounter({ value, className = "" }: AnimatedCounterProps)
 
   useEffect(() => {
     if (hasAnimated.current) return;
+
+    // Vestibular safety: with reduced motion on, show the final value
+    // immediately instead of rolling the number up.
+    if (prefersReducedMotion) {
+      setDisplayValue(value);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -71,7 +80,7 @@ export function AnimatedCounter({ value, className = "" }: AnimatedCounterProps)
     }
 
     return () => observer.disconnect();
-  }, [value, parseValue]);
+  }, [value, parseValue, prefersReducedMotion]);
 
   return (
     <span ref={ref} className={className}>

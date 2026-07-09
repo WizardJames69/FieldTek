@@ -156,7 +156,7 @@ export default function BlogPost() {
                     Get 50% off your first year as a Founding Member. Limited to 10 companies.
                   </p>
                   <Button asChild className="bg-orange-500 hover:bg-orange-600 text-white">
-                    <Link to="/register">Apply for Beta Access</Link>
+                    <Link to="/register">Apply for Early Access</Link>
                   </Button>
                 </div>
 
@@ -229,7 +229,7 @@ export default function BlogPost() {
                 <Link to="/register">Apply for Early Access</Link>
               </Button>
               <Button asChild size="lg" className="bg-transparent border border-white/[0.1] text-white hover:bg-white/5">
-                <Link to="/register">Apply for Beta Access</Link>
+                <Link to="/register">Apply for Early Access</Link>
               </Button>
             </div>
           </div>

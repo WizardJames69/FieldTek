@@ -21,9 +21,9 @@ const heroVariants = {
       filter: "blur(0px)",
       y: 0,
       transition: {
-        type: "spring" as const,
-        bounce: 0.3,
-        duration: 1.2,
+        // Exponential ease-out; no bounce on entrance motion.
+        duration: 0.9,
+        ease: [0.16, 1, 0.3, 1] as const,
       },
     },
   },
@@ -97,7 +97,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
               {/* CTA buttons */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center md:justify-start gap-3 max-w-xs sm:max-w-none mx-auto md:mx-0">
                 <Button variant="cool" size="lg" onClick={onApply}>
-                  Apply for Beta Access
+                  Apply for Early Access
                 </Button>
                 <Button asChild variant="coolOutline" size="lg">
                   <a href="#features">See How It Works</a>

@@ -200,7 +200,7 @@ export default function Blog() {
                 <Link to="/register">Apply for Early Access</Link>
               </Button>
               <Button asChild size="lg" className="bg-transparent border border-white/[0.1] text-white hover:bg-white/5">
-                <Link to="/register">Apply for Beta Access</Link>
+                <Link to="/register">Apply for Early Access</Link>
               </Button>
             </div>
           </div>

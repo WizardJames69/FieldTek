@@ -196,19 +196,19 @@ function KnowledgeNetworkIllustration() {
 
 const figures = [
   {
-    id: "FIG 1",
+    id: "guidance",
     title: "Spec-Grounded Guidance",
     description: "Manufacturer specs and procedures from your uploaded manuals, on every job. Fewer callbacks. Fewer warranty disputes.",
     Illustration: ComplianceIllustration,
   },
   {
-    id: "FIG 2",
+    id: "documentation",
     title: "Automatic Documentation",
     description: "Every step captured, timestamped, and stored, without lifting a pen. Ready for inspectors, audits, or warranty claims.",
     Illustration: DocumentationIllustration,
   },
   {
-    id: "FIG 3",
+    id: "learning",
     title: "Built to Learn",
     description: "Reviewed lessons from completed jobs become knowledge your whole team can use, approved before they shape guidance.",
     Illustration: KnowledgeNetworkIllustration,
@@ -226,6 +226,15 @@ export function IsometricFeatures() {
     const cardWidth = el.scrollWidth / figures.length;
     const index = Math.round(scrollLeft / cardWidth);
     setActiveIndex(Math.min(index, figures.length - 1));
+  }, []);
+
+  // Dots are real controls, not just indicators: tapping one scrolls the
+  // mobile carousel to that card.
+  const scrollToCard = useCallback((index: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardWidth = el.scrollWidth / figures.length;
+    el.scrollTo({ left: cardWidth * index, behavior: "smooth" });
   }, []);
 
   return (
@@ -251,9 +260,6 @@ export function IsometricFeatures() {
               bg-[#111113] border border-[#1e1e22] rounded-2xl p-6 md:p-8
             "
           >
-            {/* FIG label */}
-            <span className="text-[11px] font-mono text-zinc-600 mb-3 tracking-wider">{fig.id}</span>
-
             {/* Illustration container */}
             <div className="w-full max-w-[280px] aspect-[14/11] mb-4 mx-auto">
               <fig.Illustration />
@@ -265,15 +271,22 @@ export function IsometricFeatures() {
         ))}
       </div>
 
-      {/* Dot indicators — mobile only */}
-      <div className="flex justify-center gap-2 mt-4 md:hidden">
-        {figures.map((_, i) => (
-          <div
-            key={i}
-            className={`h-1.5 w-1.5 rounded-full transition-colors duration-200 ${
-              i === activeIndex ? "bg-orange-500" : "bg-zinc-600"
-            }`}
-          />
+      {/* Dot controls — mobile only */}
+      <div className="flex justify-center gap-1 mt-3 md:hidden">
+        {figures.map((fig, i) => (
+          <button
+            key={fig.id}
+            type="button"
+            aria-label={`Go to ${fig.title}`}
+            onClick={() => scrollToCard(i)}
+            className="p-2"
+          >
+            <span
+              className={`block h-1.5 w-1.5 rounded-full transition-colors duration-200 ${
+                i === activeIndex ? "bg-orange-500" : "bg-zinc-600"
+              }`}
+            />
+          </button>
         ))}
       </div>
     </div>
