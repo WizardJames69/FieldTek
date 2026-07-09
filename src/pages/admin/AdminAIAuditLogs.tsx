@@ -575,14 +575,15 @@ export default function AdminAIAuditLogs() {
                     )}
                   </div>
 
-                  {/* Block Reason */}
-                  {selectedLog.response_blocked && selectedLog.block_reason && (
+                  {/* Block Reason — always shown for blocked responses; a block with no
+                      recorded reason is still a block and must not disappear from the sheet. */}
+                  {selectedLog.response_blocked && (
                     <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
                       <h4 className="font-semibold text-destructive mb-2 flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4" />
                         Block Reason
                       </h4>
-                      <p className="text-sm">{selectedLog.block_reason}</p>
+                      <p className="text-sm">{selectedLog.block_reason || 'Not recorded'}</p>
                       {selectedLog.validation_patterns_matched && (
                         <div className="mt-2">
                           <span className="text-xs text-muted-foreground">Patterns matched:</span>
