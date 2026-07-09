@@ -146,7 +146,14 @@ test.describe('AI Audit Log Viewer', () => {
       expect(firstRowText).toContain('Deterministic / human review');
       expect(firstRowText).not.toContain('Judge blocked');
       await auditPage.openLogDetail(0);
-      await expect(page.getByText('Block Reason')).toBeVisible();
+      // The deterministic outcome is two-sided (response_blocked OR
+      // human_review_required — see classifyAuditOutcome), so the detail sheet
+      // must show the matching section: "Block Reason" for blocked responses,
+      // "Human review required" for escalations. On shared fixtures the newest
+      // row can be either kind.
+      await expect(
+        page.getByText('Block Reason').or(page.getByText('Human review required')).first(),
+      ).toBeVisible();
     }
   });
 });
