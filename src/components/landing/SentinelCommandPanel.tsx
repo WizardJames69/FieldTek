@@ -120,7 +120,7 @@ export function SentinelCommandPanel() {
   return (
     <div
       ref={containerRef}
-      className="rounded-xl md:rounded-2xl border border-white/[0.06] bg-[#0C0D0F] overflow-hidden"
+      className="rounded-xl md:rounded-2xl border border-white/[0.06] bg-[var(--landing-surface)] overflow-hidden"
       style={{
         ...vis(1),
         touchAction: "manipulation",
@@ -128,7 +128,7 @@ export function SentinelCommandPanel() {
     >
       {/* ─── Top bar ─────────────────────────────────────────────── */}
       <div
-        className={`flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-[#111214] ${transBase}`}
+        className={`flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06] bg-[var(--landing-surface-raised)] ${transBase}`}
         style={vis(2)}
       >
         {/* Icon */}
@@ -168,7 +168,7 @@ export function SentinelCommandPanel() {
       {/* ─── Three columns ───────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-[35%_30%_35%]">
         {/* ── LEFT: Sentinel Analysis ───────────────────────────── */}
-        <div className="bg-[#111214] p-4 md:p-5 order-1">
+        <div className="bg-[var(--landing-surface-raised)] p-4 md:p-5 order-1">
           <div
             className={`text-[11px] uppercase tracking-widest text-[#6B7280] mb-3 ${transBase}`}
             style={vis(3)}
@@ -312,7 +312,7 @@ export function SentinelCommandPanel() {
         </div>
 
         {/* ── RIGHT: Compliance & Documentation ─────────────────── */}
-        <div className="bg-[#111214] p-4 md:p-5 order-2 md:order-3">
+        <div className="bg-[var(--landing-surface-raised)] p-4 md:p-5 order-2 md:order-3">
           {/* Compliance alert */}
           <div
             className={`border-l-2 pl-3 mb-4 ${transBase}`}

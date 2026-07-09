@@ -49,7 +49,7 @@ export const Navbar = memo(function Navbar({ onApply }: NavbarProps) {
     >
       <div className="mx-auto max-w-6xl px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="font-display font-bold text-xl text-white">
+        <Link to="/" className="font-landing-display font-bold text-xl text-white">
           Field<span className="text-orange-500">Tek</span>
         </Link>
 

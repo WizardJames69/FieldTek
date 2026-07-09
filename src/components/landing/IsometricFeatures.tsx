@@ -257,7 +257,7 @@ export function IsometricFeatures() {
               flex flex-col
               w-[78vw] flex-shrink-0 snap-start
               md:w-auto md:flex-shrink
-              bg-[#111113] border border-[#1e1e22] rounded-2xl p-6 md:p-8
+              bg-[var(--landing-panel)] border border-[#1e1e22] rounded-2xl p-6 md:p-8
             "
           >
             {/* Illustration container */}
@@ -265,7 +265,7 @@ export function IsometricFeatures() {
               <fig.Illustration />
             </div>
 
-            <h3 className="text-base font-semibold text-white mb-1.5">{fig.title}</h3>
+            <h3 className="font-landing-display text-base font-semibold text-white mb-1.5">{fig.title}</h3>
             <p className="text-sm text-zinc-500 leading-relaxed max-w-[260px]">{fig.description}</p>
           </div>
         ))}

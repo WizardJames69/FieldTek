@@ -4,12 +4,12 @@ import { SentinelCommandPanel } from "./SentinelCommandPanel";
 import { IsometricLights } from "./IsometricLights";
 
 /**
- * The single Sentinel story section. Merges the former AIIntelligenceSection,
- * IntelligenceLoopSection, and SentinelReasoningSection into one narrative:
- * the live diagnosis demo leads, a plain-language four-step flow replaces the
- * old seven-node pipeline diagram, and the capability list carries the
- * honest-claims copy. This is the page's peak moment, so it gets more
- * vertical room than the sections around it.
+ * The single Sentinel story section. Consolidates the three former,
+ * back-to-back Sentinel sections (an intro, an abstract loop diagram, and a
+ * reasoning walkthrough) into one narrative: the live diagnosis demo leads, a
+ * plain-language four-step flow replaces the old seven-node pipeline diagram,
+ * and the capability list carries the honest-claims copy. This is the page's
+ * peak moment, so it gets more vertical room than the sections around it.
  */
 
 // Plain-language flow. Four steps, one line each. Visible on mobile too
@@ -59,7 +59,7 @@ export function SentinelSection() {
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center mb-10 md:mb-14">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] text-balance">
+            <h2 className="font-landing-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] text-balance">
               Your documentation. Your history. Grounded answers on every job.
             </h2>
           </ScrollReveal>
@@ -110,7 +110,7 @@ export function SentinelSection() {
                   <cap.icon className="h-4 w-4 text-orange-500" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-white mb-1">{cap.title}</h3>
+                  <h3 className="font-landing-display text-base font-semibold text-white mb-1">{cap.title}</h3>
                   <p className="text-sm text-zinc-400 leading-relaxed">{cap.description}</p>
                 </div>
               </div>

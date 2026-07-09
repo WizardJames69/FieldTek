@@ -10,9 +10,9 @@ const bullets = [
 
 function PortalMockup() {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden">
+    <div className="rounded-xl border border-white/[0.06] bg-[var(--landing-surface-raised)] overflow-hidden">
       <div className="p-1">
-        <div className="rounded-lg bg-[#111113] p-4 min-h-0 md:min-h-[320px] space-y-4">
+        <div className="rounded-lg bg-[var(--landing-panel)] p-4 min-h-0 md:min-h-[320px] space-y-4">
           {/* Form mockup */}
           <div className="space-y-3">
             <div className="text-xs font-medium text-zinc-300 mb-2">New Service Request</div>
@@ -40,7 +40,7 @@ function PortalMockup() {
           <div className="h-px bg-zinc-800" />
 
           {/* Submitted request card */}
-          <div className="rounded-md bg-[#141416] border border-zinc-800 p-3 space-y-2.5">
+          <div className="rounded-md bg-[var(--landing-elevated)] border border-zinc-800 p-3 space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-medium text-zinc-200">HVAC Not Cooling - Unit 4B</div>
               <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
@@ -90,12 +90,12 @@ function PortalMockup() {
 
 export function ClientPortalSection() {
   return (
-    <section className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
+    <section className="bg-[var(--landing-surface)] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div>
             <ScrollReveal>
-              <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
+              <h2 className="font-landing-display text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                 Give your clients a front door
               </h2>
             </ScrollReveal>

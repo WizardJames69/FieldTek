@@ -24,7 +24,7 @@ const trades = [
 // signal, framed by a truthful status line instead of a generic kicker.
 export function TrustBar() {
   return (
-    <section className="bg-[#0C0D0F] py-10 md:py-12 border-y border-white/[0.06]">
+    <section className="bg-[var(--landing-surface)] py-10 md:py-12 border-y border-white/[0.06]">
       <div className="mx-auto max-w-5xl px-4">
         <p className="text-sm text-zinc-400 mb-8 text-center">
           <span className="text-white font-medium">Design partner alpha.</span>{" "}
@@ -33,9 +33,9 @@ export function TrustBar() {
 
         <div className="relative">
           {/* Left fade */}
-          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#0C0D0F] to-transparent z-10 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[var(--landing-surface)] to-transparent z-10 pointer-events-none" />
           {/* Right fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#0C0D0F] to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[var(--landing-surface)] to-transparent z-10 pointer-events-none" />
 
           <Carousel
             opts={{ loop: true, dragFree: true }}

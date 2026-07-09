@@ -5,14 +5,14 @@ import { ScrollReveal } from "./ScrollReveal";
 
 function EvidenceMockup() {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden">
+    <div className="rounded-xl border border-white/[0.06] bg-[var(--landing-surface-raised)] overflow-hidden">
       <div className="p-1">
-        <div className="rounded-lg bg-[#111113] p-4 min-h-0 md:min-h-[340px] space-y-3">
+        <div className="rounded-lg bg-[var(--landing-panel)] p-4 min-h-0 md:min-h-[340px] space-y-3">
           {/* Header */}
           <div className="text-xs font-medium text-zinc-300 mb-1">Workflow Step Evidence</div>
 
           {/* Step 1: Completed with photo */}
-          <div className="rounded-md bg-[#141416] border border-zinc-800 p-3">
+          <div className="rounded-md bg-[var(--landing-elevated)] border border-zinc-800 p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
@@ -46,7 +46,7 @@ function EvidenceMockup() {
           </div>
 
           {/* Step 2: Completed with photo */}
-          <div className="rounded-md bg-[#141416] border border-zinc-800 p-3">
+          <div className="rounded-md bg-[var(--landing-elevated)] border border-zinc-800 p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
@@ -80,7 +80,7 @@ function EvidenceMockup() {
           </div>
 
           {/* Step 3: Current */}
-          <div className="rounded-md bg-[#141416] border border-orange-500/20 p-3">
+          <div className="rounded-md bg-[var(--landing-elevated)] border border-orange-500/20 p-3">
             <div className="flex items-center gap-2">
               <div className="h-3.5 w-3.5 rounded-full border-2 border-orange-500 flex items-center justify-center">
                 <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
@@ -107,12 +107,12 @@ const benefits = [
 
 export function EvidenceSection() {
   return (
-    <section className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
+    <section className="bg-[var(--landing-surface)] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div className="md:order-last">
             <ScrollReveal>
-              <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
+              <h2 className="font-landing-display text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                 Every step documented. Every claim defensible.
               </h2>
             </ScrollReveal>

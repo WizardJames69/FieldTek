@@ -34,9 +34,9 @@ const features = [
 
 function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
   return (
-    <div className={`rounded-xl border border-white/[0.06] bg-[#111214] overflow-hidden ${reverse ? "md:order-first" : ""}`}>
+    <div className={`rounded-xl border border-white/[0.06] bg-[var(--landing-surface-raised)] overflow-hidden ${reverse ? "md:order-first" : ""}`}>
       <div className="p-1">
-        <div className="rounded-lg bg-[#111113] p-4 min-h-0 md:min-h-[320px] flex items-center justify-center">
+        <div className="rounded-lg bg-[var(--landing-panel)] p-4 min-h-0 md:min-h-[320px] flex items-center justify-center">
           {type === "job-management" && (
             <div className="w-full space-y-2">
               {[
@@ -79,7 +79,7 @@ function FeatureMockup({ type, reverse }: { type: string; reverse: boolean }) {
 
 export function FeatureShowcase() {
   return (
-    <section className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
+    <section className="bg-[var(--landing-surface)] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4 space-y-12 md:space-y-20 lg:space-y-24">
         {features.map((feature, i) => {
           const reverse = i % 2 !== 0;
@@ -90,7 +90,7 @@ export function FeatureShowcase() {
             >
               <div className={reverse ? "md:order-last" : ""}>
                 <ScrollReveal>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
+                  <h2 className="font-landing-display text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                     {feature.title}
                   </h2>
                 </ScrollReveal>

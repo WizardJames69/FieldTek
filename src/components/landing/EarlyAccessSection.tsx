@@ -69,11 +69,11 @@ const staggerItem = {
 
 export function EarlyAccessSection({ onApply }: EarlyAccessSectionProps) {
   return (
-    <section className="bg-[#111214] py-6 md:py-8 lg:py-10">
+    <section className="bg-[var(--landing-surface-raised)] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center mb-12 md:mb-16">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white text-balance">
+            <h2 className="font-landing-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white text-balance">
               Built with a small group of contractors, not for a waitlist
             </h2>
           </ScrollReveal>
@@ -96,12 +96,12 @@ export function EarlyAccessSection({ onApply }: EarlyAccessSectionProps) {
             <motion.div
               key={benefit.title}
               variants={staggerItem}
-              className="rounded-xl bg-[#111214] border border-white/[0.06] p-6 md:p-7"
+              className="rounded-xl bg-[var(--landing-surface-raised)] border border-white/[0.06] p-6 md:p-7"
             >
               <div className="h-9 w-9 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4">
                 <benefit.icon className="h-4 w-4 text-orange-500" aria-hidden="true" />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">{benefit.title}</h3>
+              <h3 className="font-landing-display text-lg font-semibold text-white mb-2">{benefit.title}</h3>
               <p className="text-[15px] text-zinc-400 leading-relaxed">{benefit.description}</p>
             </motion.div>
           ))}
@@ -119,7 +119,7 @@ export function EarlyAccessSection({ onApply }: EarlyAccessSectionProps) {
             <motion.div
               key={card.label}
               variants={staggerItem}
-              className="rounded-xl bg-[#0C0D0F] border border-white/[0.06] p-5 md:p-6"
+              className="rounded-xl bg-[var(--landing-surface)] border border-white/[0.06] p-5 md:p-6"
             >
               <div className="flex items-center gap-2 mb-3">
                 <card.icon className={`h-4 w-4 ${card.iconClass}`} aria-hidden="true" />

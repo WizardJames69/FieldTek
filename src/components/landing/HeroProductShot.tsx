@@ -46,7 +46,7 @@ export function HeroProductShot() {
       </div>
 
       {/* Dashboard content */}
-      <div className="p-4 md:p-6 space-y-4 bg-[#111113]">
+      <div className="p-4 md:p-6 space-y-4 bg-[var(--landing-panel)]">
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {stats.map((stat, i) => (
@@ -96,8 +96,8 @@ export function HeroProductShot() {
                     job.priority === "urgent"
                       ? "border-l-2 border-l-red-500 bg-red-500/5"
                       : job.priority === "high"
-                      ? "border-l-2 border-l-amber-500 bg-[#141416]"
-                      : "bg-[#141416]"
+                      ? "border-l-2 border-l-amber-500 bg-[var(--landing-elevated)]"
+                      : "bg-[var(--landing-elevated)]"
                   }`}
                 >
                   <div>
@@ -134,7 +134,7 @@ export function HeroProductShot() {
             </div>
             <div className="space-y-2">
               {requests.map((req, i) => (
-                <div key={i} className="rounded-md bg-[#141416] border border-white/[0.04] p-2.5">
+                <div key={i} className="rounded-md bg-[var(--landing-elevated)] border border-white/[0.04] p-2.5">
                   <div className="text-sm font-medium text-zinc-200">{req.title}</div>
                   <div className="text-xs text-zinc-500">{req.client}</div>
                   <div className="text-xs text-zinc-600 mt-1">{req.time}</div>
