@@ -158,6 +158,9 @@ export default function Assistant() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<number>(0);
   const pendingDiagnosticDataRef = useRef<Record<string, string> | null>(null);
+  // Whether any assistant reply (streamed token or JSON body) arrived for the
+  // in-flight send; decides if a failed send is pulled back into the composer.
+  const assistantRepliedRef = useRef(false);
 
 
   // Fetch jobs for context selection with optional search
@@ -285,11 +288,14 @@ export default function Assistant() {
     lastMessageIdRef.current = 0;
   };
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change. The ref sits on the ScrollArea
+  // root, which is overflow-hidden; the actual scrollable node is the Radix
+  // viewport inside it, so scroll that.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    const root = scrollRef.current;
+    if (!root) return;
+    const viewport = root.querySelector<HTMLElement>("[data-radix-scroll-area-viewport]") ?? root;
+    viewport.scrollTop = viewport.scrollHeight;
   }, [messages]);
 
   const streamChat = async (userMessages: Message[]) => {
@@ -388,12 +394,14 @@ export default function Assistant() {
           "",
           "An owner or admin can override this from the job's workflow panel.",
         ].join("\n");
+        assistantRepliedRef.current = true;
         setMessages((prev) => [...prev, { role: "assistant", content }]);
         return;
       }
 
       const text: string | undefined = body.response || body.error;
       if (!text) throw new Error("Empty response from assistant");
+      assistantRepliedRef.current = true;
       setMessages((prev) => [
         ...prev,
         {
@@ -443,6 +451,7 @@ export default function Assistant() {
           const content = parsed.choices?.[0]?.delta?.content as string | undefined;
           if (content) {
             assistantContent += content;
+            assistantRepliedRef.current = true;
             setMessages((prev) => {
               const last = prev[prev.length - 1];
               if (last?.role === "assistant") {
@@ -516,6 +525,8 @@ export default function Assistant() {
     }
 
     const userMsg: Message = { role: "user", content: messageContent };
+    const imagesSnapshot = attachedImages;
+    assistantRepliedRef.current = false;
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setAttachedImages([]);
@@ -525,15 +536,18 @@ export default function Assistant() {
       await streamChat([...messages, userMsg]);
     } catch (error) {
       console.error("Chat error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to get response");
-      // Remove the last assistant message if there was an error during streaming
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && !last.content) {
-          return prev.slice(0, -1);
-        }
-        return prev;
-      });
+      if (!assistantRepliedRef.current) {
+        // Nothing came back: pull the failed message out of the transcript
+        // and put it back in the composer so a retry is one tap, not a retype.
+        toast.error(error instanceof Error ? error.message : "Failed to get response", {
+          description: "Your message was restored. Tap send to retry.",
+        });
+        setMessages((prev) => (prev[prev.length - 1] === userMsg ? prev.slice(0, -1) : prev));
+        setInput(messageText);
+        if (imagesSnapshot.length > 0) setAttachedImages(imagesSnapshot);
+      } else {
+        toast.error(error instanceof Error ? error.message : "Failed to get response");
+      }
     } finally {
       setIsLoading(false);
     }

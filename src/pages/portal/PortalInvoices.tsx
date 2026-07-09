@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, DollarSign, AlertCircle, CheckCircle, CreditCard, Loader2, Download } from 'lucide-react';
+import { FileText, DollarSign, AlertCircle, CheckCircle, CreditCard, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortalAuth } from '@/contexts/PortalAuthContext';
 import { PortalLayout } from '@/components/portal/PortalLayout';
@@ -112,7 +112,12 @@ export default function PortalInvoices() {
     }
   };
 
-  const handleDownloadPdf = async (invoiceId: string, invoiceNumber: string) => {
+  const handleViewInvoice = async (invoiceId: string, invoiceNumber: string) => {
+    // The function currently returns a print-ready HTML document, not a PDF,
+    // so present it as a view/print page (matching the tenant app) instead of
+    // downloading a file named like one. Open the window synchronously inside
+    // the tap gesture so mobile browsers don't block it.
+    const printWindow = window.open('', '_blank');
     try {
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { invoiceId },
@@ -120,21 +125,27 @@ export default function PortalInvoices() {
 
       if (error) throw error;
 
-      // Create blob and download directly (avoids popup blockers on mobile)
-      const blob = new Blob([data], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Invoice-${invoiceNumber}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      toast.success('Invoice downloaded');
+      if (printWindow) {
+        printWindow.document.write(data);
+        printWindow.document.close();
+        printWindow.document.title = `Invoice ${invoiceNumber}`;
+      } else {
+        // Pop-up blocked: fall back to saving the document as a file.
+        const blob = new Blob([data], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Invoice-${invoiceNumber}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Invoice saved');
+      }
     } catch (error) {
+      printWindow?.close();
       console.error('Download error:', error);
-      toast.error('Failed to download invoice');
+      toast.error('Failed to open invoice');
     }
   };
 
@@ -251,10 +262,10 @@ export default function PortalInvoices() {
                           size="sm"
                           variant="outline"
                           className="touch-native flex-1"
-                          onClick={() => handleDownloadPdf(invoice.id, invoice.invoice_number)}
+                          onClick={() => handleViewInvoice(invoice.id, invoice.invoice_number)}
                         >
-                          <Download className="h-4 w-4 mr-1" />
-                          Download
+                          <FileText className="h-4 w-4 mr-1" />
+                          View invoice
                         </Button>
                         {canPayInvoice(invoice.status) && (
                           <Button
@@ -317,10 +328,10 @@ export default function PortalInvoices() {
                                 size="sm"
                                 variant="outline"
                                 className="touch-native opacity-70 group-hover:opacity-100 transition-opacity"
-                                onClick={() => handleDownloadPdf(invoice.id, invoice.invoice_number)}
+                                onClick={() => handleViewInvoice(invoice.id, invoice.invoice_number)}
                               >
-                                <Download className="h-4 w-4" />
-                                <span className="sr-only">Download</span>
+                                <FileText className="h-4 w-4" />
+                                <span className="sr-only">View invoice</span>
                               </Button>
                               {canPayInvoice(invoice.status) && (
                                 <Button

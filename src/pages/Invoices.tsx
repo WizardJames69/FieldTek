@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,6 +83,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 
 export default function Invoices() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
   const { isAdmin } = useUserRole();
@@ -172,6 +173,28 @@ export default function Invoices() {
       fetchInvoices();
     }
   }, [tenant?.id, fetchInvoices]);
+
+  // Deep links: the header "New" menu and Cmd+K palette navigate here with
+  // ?action=new; global search results navigate with ?open=<id>.
+  useEffect(() => {
+    if (searchParams.get("action") === "new") {
+      setDialogOpen(true);
+      setSearchParams((params) => { params.delete("action"); return params; }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const openId = searchParams.get("open");
+    if (!openId || loading) return;
+    const invoice = invoices.find((inv) => inv.id === openId);
+    if (invoice) {
+      setSelectedInvoice(invoice);
+      setDetailOpen(true);
+    } else {
+      toast.error("Not found", { description: "That record is no longer available." });
+    }
+    setSearchParams((params) => { params.delete("open"); return params; }, { replace: true });
+  }, [searchParams, loading, invoices, setSearchParams]);
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter((inv) => {

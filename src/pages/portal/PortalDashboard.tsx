@@ -116,7 +116,7 @@ export default function PortalDashboard() {
             <>
               <h1 className="text-3xl md:text-4xl font-bold">Wrong Portal</h1>
               <p className="text-muted-foreground mt-2">
-                This account is not a customer account. Please use the <a href="/auth" className="text-primary underline">main login</a> instead.
+                This account is not a customer account. Please use the <Link to="/auth" className="text-primary underline">main login</Link> instead.
               </p>
             </>
           ) : (

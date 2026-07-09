@@ -36,6 +36,20 @@ const stepTypeColors: Record<string, string> = {
   decision: 'bg-amber-100 text-amber-800',
 };
 
+const evidenceTypeLabels: Record<string, string> = {
+  photo: 'Photo',
+  measurement: 'Measurement',
+  serial_number: 'Serial number',
+  gps_checkin: 'GPS check-in',
+};
+
+// Raw enum values like "gps_checkin — pending" must never reach a technician.
+const evidenceLabel = (e: { evidence_type: string; verification_status: string }) => {
+  const type = evidenceTypeLabels[e.evidence_type] ?? e.evidence_type.replace(/_/g, ' ');
+  const status = e.verification_status.replace(/_/g, ' ');
+  return `${type}: ${status}`;
+};
+
 const stageColors: Record<string, string> = {
   Startup: 'bg-sky-100 text-sky-800',
   Service: 'bg-indigo-100 text-indigo-800',
@@ -203,7 +217,7 @@ export function WorkflowStepCard({
             <div className="flex gap-2 flex-wrap">
               {stepEvidence.map((e) => (
                 <Badge key={e.id} variant="outline" className="text-xs">
-                  {e.evidence_type} — {e.verification_status}
+                  {evidenceLabel(e)}
                 </Badge>
               ))}
             </div>

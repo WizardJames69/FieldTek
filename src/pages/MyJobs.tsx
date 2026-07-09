@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
@@ -402,10 +403,10 @@ export default function MyJobs() {
                 {/* Sentinel AI Link */}
                 <div className="section-divider" />
                 <Button variant="outline" className="w-full btn-shimmer touch-native h-14 font-semibold text-base" asChild>
-                  <a href={`/assistant?job=${selectedJob.id}`}>
+                  <Link to={`/assistant?job=${selectedJob.id}`}>
                     <MessageSquare className="h-5 w-5 mr-2" />
                     Ask Sentinel AI
-                  </a>
+                  </Link>
                 </Button>
               </div>
             </>

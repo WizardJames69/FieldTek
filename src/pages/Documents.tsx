@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, FileText, Loader2, HardDrive } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +24,15 @@ export default function Documents() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const { stats, limits, percentages, thresholds } = useUsageStats();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep link: the header "New" menu navigates here with ?action=new.
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setUploadOpen(true);
+      setSearchParams((params) => { params.delete('action'); return params; }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const formatBytes = (bytes: number) => {
     if (bytes >= 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
