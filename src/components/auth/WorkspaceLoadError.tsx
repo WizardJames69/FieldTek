@@ -38,7 +38,7 @@ export function WorkspaceLoadError({
 
   return (
     <div role="alert" className="min-h-screen flex items-center justify-center p-6">
-      <Card className="max-w-md w-full dialog-glass">
+      <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertTriangle className="h-6 w-6 text-destructive" aria-hidden="true" />

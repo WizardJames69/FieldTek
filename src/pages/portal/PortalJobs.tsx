@@ -75,26 +75,26 @@ export default function PortalJobs() {
   });
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'info'; glow?: boolean; label: string }> = {
-      pending: { variant: 'info', glow: true, label: 'Scheduled' },
-      in_progress: { variant: 'default', glow: true, label: 'In Progress' },
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'info'; label: string }> = {
+      pending: { variant: 'info', label: 'Scheduled' },
+      in_progress: { variant: 'default', label: 'In Progress' },
       completed: { variant: 'success', label: 'Completed' },
       cancelled: { variant: 'destructive', label: 'Cancelled' },
     };
     const config = variants[status] || { variant: 'secondary', label: status };
-    return <Badge variant={config.variant as any} glow={config.glow}>{config.label}</Badge>;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   const getPriorityBadge = (priority: string) => {
-    const configs: Record<string, { variant: 'destructive' | 'warning' | 'info' | 'secondary'; glow?: boolean }> = {
-      urgent: { variant: 'destructive', glow: true },
-      high: { variant: 'warning', glow: true },
+    const configs: Record<string, { variant: 'destructive' | 'warning' | 'info' | 'secondary' }> = {
+      urgent: { variant: 'destructive' },
+      high: { variant: 'warning' },
       medium: { variant: 'info' },
       low: { variant: 'secondary' },
     };
     const config = configs[priority] || configs.medium;
     return (
-      <Badge variant={config.variant} glow={config.glow} className="capitalize text-xs">
+      <Badge variant={config.variant} className="capitalize text-xs">
         {priority}
       </Badge>
     );
@@ -104,14 +104,10 @@ export default function PortalJobs() {
   const completedJobs = jobs?.filter(j => j.status === 'completed') || [];
 
   const JobCard = ({ job }: { job: Job }) => {
-    const priorityGlowClass = job.priority === 'urgent' ? 'priority-glow-urgent' : 
-                              job.priority === 'high' ? 'priority-glow-high' : '';
-    
     return (
-      <Card 
+      <Card
         variant="interactive"
-        glow={job.priority === 'urgent' ? 'destructive' : job.priority === 'high' ? 'warning' : 'primary'}
-        className={`overflow-hidden cursor-pointer ${priorityGlowClass}`}
+        className="overflow-hidden cursor-pointer"
         onClick={() => setSelectedJob(job)}
       >
         <CardContent className="p-4">
@@ -217,7 +213,7 @@ export default function PortalJobs() {
     <PortalAuthGuard>
     <PortalLayout>
       <div className="space-y-6">
-        <div className="page-header-glass rounded-xl p-4 md:p-6 bg-background/60 backdrop-blur-xl border border-border/30">
+        <div className="rounded-xl border bg-card p-4 md:p-6">
           <h1 className="text-2xl font-bold font-display">My Jobs</h1>
           <p className="text-muted-foreground">View all your scheduled and completed service jobs</p>
         </div>
@@ -264,7 +260,7 @@ export default function PortalJobs() {
 
       {/* Job Detail Sheet */}
       <Sheet open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto glass-surface">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {selectedJob && (
             <>
               <SheetHeader className="pb-4 border-b border-border/50">

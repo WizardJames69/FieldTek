@@ -144,7 +144,7 @@ export function JobChecklist({ jobId, items }: JobChecklistProps) {
   return (
     <div className="space-y-6">
       {/* Progress indicator */}
-      <div className="p-4 rounded-2xl glass-morphism border border-border/30">
+      <div className="p-4 rounded-2xl bg-card border border-border/30">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-muted-foreground">Progress</span>
           <span className="text-sm font-bold text-foreground">{completedCount}/{totalCount}</span>

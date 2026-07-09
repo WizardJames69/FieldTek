@@ -107,23 +107,15 @@ export function JobStatusUpdater({ jobId, currentStatus, jobTitle, clientName }:
       <Button
         size="lg"
         className={cn(
-          "w-full h-16 text-lg font-bold btn-3d btn-shimmer touch-native relative overflow-hidden group",
-          isStarting 
-            ? "bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85 shadow-lg shadow-primary/25" 
-            : "bg-gradient-to-r from-success to-success/90 hover:from-success/95 hover:to-success/85 shadow-lg shadow-success/25"
+          "w-full h-16 text-lg font-bold touch-native",
+          isStarting
+            ? "bg-primary hover:bg-primary/90 shadow-md"
+            : "bg-success hover:bg-success/90 shadow-md"
         )}
         onClick={handleStatusUpdate}
         disabled={isUpdating}
         aria-busy={isUpdating}
       >
-        {/* Background pulse effect */}
-        <span className={cn(
-          "absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-          isStarting 
-            ? "bg-[radial-gradient(circle_at_50%_50%,hsl(var(--primary)/0.3),transparent_70%)]"
-            : "bg-[radial-gradient(circle_at_50%_50%,hsl(var(--success)/0.3),transparent_70%)]"
-        )} />
-        
         <span className="relative flex items-center gap-3">
           {isUpdating ? (
             <Loader2 className="h-6 w-6 animate-spin" />

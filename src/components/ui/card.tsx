@@ -3,52 +3,35 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+// One quiet elevation system: static cards sit flat, emphasized cards carry a
+// slightly stronger shadow, and only interactive cards move on hover.
 const cardVariants = cva(
-  "rounded-xl border bg-card/95 backdrop-blur-sm text-card-foreground shadow-sm transition-all duration-200",
+  "rounded-xl border bg-card text-card-foreground shadow-sm",
   {
     variants: {
       variant: {
-        default: "hover:shadow-md hover:border-primary/20",
-        elevated: [
-          "shadow-md",
-          "hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5",
-        ],
-        interactive: [
-          "cursor-pointer touch-native",
-          "hover:shadow-lg hover:border-primary/30 hover:-translate-y-1",
-          "active:scale-[0.99] active:shadow-md",
-        ],
-        glass: [
-          "bg-card/80 backdrop-blur-xl",
-          "border-border/50",
-          "shadow-[0_4px_20px_-4px_hsl(0_0%_0%/0.08),inset_0_1px_0_0_hsl(0_0%_100%/0.08)]",
-        ],
-      },
-      glow: {
-        none: "",
-        primary: "hover:shadow-[0_8px_24px_-4px_hsl(var(--primary)/0.15)]",
-        success: "hover:shadow-[0_8px_24px_-4px_hsl(var(--success)/0.15)]",
-        warning: "hover:shadow-[0_8px_24px_-4px_hsl(var(--warning)/0.15)]",
-        destructive: "hover:shadow-[0_8px_24px_-4px_hsl(var(--destructive)/0.15)]",
+        default: "",
+        elevated: "shadow-md",
+        interactive:
+          "cursor-pointer touch-native transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99] active:shadow-md",
       },
     },
     defaultVariants: {
       variant: "default",
-      glow: "none",
     },
   }
 );
 
-export interface CardProps 
+export interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof cardVariants> {}
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant, glow, ...props }, ref) => (
-    <div 
-      ref={ref} 
-      className={cn(cardVariants({ variant, glow }), className)} 
-      {...props} 
+  ({ className, variant, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(cardVariants({ variant }), className)}
+      {...props}
     />
   )
 );

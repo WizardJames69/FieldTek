@@ -147,9 +147,9 @@ export default function Team() {
       <div className="space-y-4 md:space-y-6">
         {/* Pending Invitations */}
         <PendingInvitationsList onInvitationChange={fetchTeamMembers} />
-        {/* Stats Cards - Phase 5: Enhanced with glass effect */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          <Card className="stat-card-glass overflow-hidden border-primary/20">
+          <Card className="overflow-hidden border-primary/20">
             <CardContent className="p-4 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
               <div className="flex items-center gap-3 relative">
@@ -164,7 +164,7 @@ export default function Team() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card-glass overflow-hidden border-orange-500/20">
+          <Card className="overflow-hidden border-orange-500/20">
             <CardContent className="p-4 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
               <div className="flex items-center gap-3 relative">
@@ -179,7 +179,7 @@ export default function Team() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card-glass overflow-hidden border-blue-500/20">
+          <Card className="overflow-hidden border-blue-500/20">
             <CardContent className="p-4 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
               <div className="flex items-center gap-3 relative">
@@ -194,7 +194,7 @@ export default function Team() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card-glass overflow-hidden border-green-500/20">
+          <Card className="overflow-hidden border-green-500/20">
             <CardContent className="p-4 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
               <div className="flex items-center gap-3 relative">
@@ -267,7 +267,7 @@ export default function Team() {
                   {/* Phase 5: Enhanced empty state */}
                   <div className="relative w-12 h-12 mx-auto mb-4">
                     <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-xl" />
-                    <div className="relative flex items-center justify-center empty-state-glow">
+                    <div className="relative flex items-center justify-center">
                       <Users className="h-12 w-12 text-muted-foreground/50" />
                     </div>
                   </div>

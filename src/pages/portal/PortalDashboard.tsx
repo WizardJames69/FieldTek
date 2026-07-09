@@ -20,7 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { GlowDivider } from '@/components/landing/GlowDivider';
 import { cn } from '@/lib/utils';
 import { PortalAuthGuard } from '@/components/portal/PortalAuthGuard';
 
@@ -92,28 +91,22 @@ export default function PortalDashboard() {
   });
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info'; label: string; glow?: boolean }> = {
-      pending: { variant: 'warning', label: 'Scheduled', glow: true },
-      in_progress: { variant: 'info', label: 'In Progress', glow: true },
+    const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info'; label: string }> = {
+      pending: { variant: 'warning', label: 'Scheduled' },
+      in_progress: { variant: 'info', label: 'In Progress' },
       completed: { variant: 'success', label: 'Completed' },
       cancelled: { variant: 'destructive', label: 'Cancelled' },
     };
     const config = variants[status] || { variant: 'secondary', label: status };
-    return <Badge variant={config.variant} glow={config.glow}>{config.label}</Badge>;
-  };
-
-  const getPriorityClass = (priority?: string | null) => {
-    if (priority === 'urgent') return 'list-item-native--urgent';
-    if (priority === 'high') return 'list-item-native--high';
-    return '';
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   return (
     <PortalAuthGuard>
     <PortalLayout>
       <div className="space-y-8">
-        {/* Welcome Header with gradient text */}
-        <div className="page-header-glass p-6 md:p-8">
+        {/* Welcome Header */}
+        <div className="rounded-xl border bg-card p-6 md:p-8">
           {isWrongUserType ? (
             <>
               <h1 className="text-3xl md:text-4xl font-bold">Wrong Portal</h1>
@@ -124,7 +117,7 @@ export default function PortalDashboard() {
           ) : (
             <>
               <h1 className="text-3xl md:text-4xl font-bold">
-                Welcome back, <span className="text-gradient-animate">{client?.name?.split(' ')[0] || 'there'}</span>
+                Welcome back, {client?.name?.split(' ')[0] || 'there'}
               </h1>
               <p className="text-muted-foreground mt-2">
                 Here's an overview of your account
@@ -133,9 +126,9 @@ export default function PortalDashboard() {
           )}
         </div>
 
-        {/* Stats Grid - 3D Cards with status glows */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card variant="interactive" glow="primary" className="metric-card-glow metric-card-glow--primary">
+          <Card variant="interactive">
             <CardContent className="pt-6 relative">
               <div className="flex items-center justify-between">
                 <div>
@@ -146,14 +139,14 @@ export default function PortalDashboard() {
                     <p className="text-3xl font-bold">{stats?.activeJobs || 0}</p>
                   )}
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-primary/10 backdrop-blur-sm shadow-inner ring-1 ring-primary/20 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
                   <Briefcase className="h-6 w-6 text-primary" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card variant="interactive" glow="warning" className="metric-card-glow metric-card-glow--warning">
+          <Card variant="interactive">
             <CardContent className="pt-6 relative">
               <div className="flex items-center justify-between">
                 <div>
@@ -171,14 +164,14 @@ export default function PortalDashboard() {
                     </>
                   )}
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-warning/10 backdrop-blur-sm shadow-inner ring-1 ring-warning/20 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center">
                   <FileText className="h-6 w-6 text-warning" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card variant="interactive" className="metric-card-glow metric-card-glow--info">
+          <Card variant="interactive">
             <CardContent className="pt-6 relative">
               <div className="flex items-center justify-between">
                 <div>
@@ -189,14 +182,14 @@ export default function PortalDashboard() {
                     <p className="text-3xl font-bold">{stats?.equipmentCount || 0}</p>
                   )}
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-info/10 backdrop-blur-sm shadow-inner ring-1 ring-info/20 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-info/10 flex items-center justify-center">
                   <Wrench className="h-6 w-6 text-info" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card variant="interactive" glow="success" className="metric-card-glow metric-card-glow--success">
+          <Card variant="interactive">
             <CardContent className="pt-6 relative">
               <div className="flex items-center justify-between">
                 <div>
@@ -207,7 +200,7 @@ export default function PortalDashboard() {
                     <p className="text-3xl font-bold">{stats?.completedJobs || 0}</p>
                   )}
                 </div>
-                <div className="h-12 w-12 rounded-xl bg-success/10 backdrop-blur-sm shadow-inner ring-1 ring-success/20 flex items-center justify-center">
+                <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center">
                   <CheckCircle className="h-6 w-6 text-success" />
                 </div>
               </div>
@@ -215,17 +208,16 @@ export default function PortalDashboard() {
           </Card>
         </div>
 
-        <GlowDivider />
 
         {/* Quick Actions & Recent Jobs */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Quick Actions */}
-          <Card variant="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button asChild className="w-full justify-start btn-3d btn-shimmer touch-native" variant="default">
+              <Button asChild className="w-full justify-start touch-native" variant="default">
                 <Link to="/portal/request">
                   <AlertCircle className="h-4 w-4 mr-2" />
                   Submit Service Request
@@ -247,7 +239,7 @@ export default function PortalDashboard() {
           </Card>
 
           {/* Recent Jobs */}
-          <Card variant="glass" className="lg:col-span-2">
+          <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Recent Jobs</CardTitle>
               <Button asChild variant="ghost" size="sm" className="touch-native">
@@ -286,10 +278,7 @@ export default function PortalDashboard() {
                     <Link
                       key={job.id}
                       to="/portal/jobs"
-                      className={cn(
-                        "list-item-native flex items-center justify-between p-4 group",
-                        getPriorityClass(job.priority)
-                      )}
+                      className="list-item-native flex items-center justify-between p-4 group"
                     >
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-muted/50 backdrop-blur-sm ring-1 ring-border/50 flex items-center justify-center group-hover:ring-primary/30 transition-all">

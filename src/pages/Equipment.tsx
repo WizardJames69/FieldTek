@@ -290,7 +290,7 @@ export default function Equipment() {
             {/* Phase 5: Enhanced empty state with radial glow */}
             <div className="relative w-12 h-12 mx-auto mb-4">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-xl" />
-              <div className="relative flex items-center justify-center empty-state-glow">
+              <div className="relative flex items-center justify-center">
                 <Wrench className="h-12 w-12 text-muted-foreground" />
               </div>
             </div>

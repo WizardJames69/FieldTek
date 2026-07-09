@@ -121,7 +121,7 @@ export function JobDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-xl p-0 sheet-glass">
+      <SheetContent className="w-full sm:max-w-xl p-0">
         <ScrollArea className="h-full">
           {/* Phase 6: Glass header section */}
           <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-xl border-b border-border/30">
@@ -147,7 +147,7 @@ export function JobDetailSheet({
 
               {/* Status & Priority badges */}
               <div className="flex items-center gap-2 mt-4">
-                <Badge className={cn('flex items-center gap-1', status.color)} glow>
+                <Badge className={cn('flex items-center gap-1', status.color)}>
                   <StatusIcon className="h-3 w-3" />
                   {status.label}
                 </Badge>
@@ -164,7 +164,7 @@ export function JobDetailSheet({
                 <div className="flex gap-2">
                   {canStart && (
                     <Button
-                      className="flex-1 gap-2 btn-shimmer touch-native"
+                      className="flex-1 gap-2 touch-native"
                       onClick={() => onStatusChange(job.id, 'in_progress')}
                       disabled={isUpdating}
                       aria-busy={isUpdating}
@@ -179,7 +179,7 @@ export function JobDetailSheet({
                   )}
                   {canComplete && (
                     <Button
-                      className="flex-1 gap-2 btn-shimmer touch-native"
+                      className="flex-1 gap-2 touch-native"
                       onClick={() => onStatusChange(job.id, 'completed')}
                       disabled={isUpdating}
                       aria-busy={isUpdating}
@@ -262,7 +262,7 @@ export function JobDetailSheet({
               {job.clients && (
                 <div className="space-y-3">
                   <h4 className="font-semibold text-sm">{t('client')}</h4>
-                  <Card className="app-glass-container">
+                  <Card>
                     <CardContent className="p-4 space-y-2">
                       <p className="font-medium">{job.clients.name}</p>
                       {job.clients.email && role !== 'technician' && (

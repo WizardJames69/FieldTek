@@ -185,13 +185,13 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Demo Requests - Premium Glass Card */}
-      <Card variant="glass" className="shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between border-b border-border/20 pb-4">
           <div>
             <CardTitle className="text-lg">Recent Demo Requests</CardTitle>
             <CardDescription>Latest demo requests from potential customers</CardDescription>
           </div>
-          <Button variant="outline" onClick={() => navigate("/admin/demo-requests")} className="btn-shimmer">
+          <Button variant="outline" onClick={() => navigate("/admin/demo-requests")}>
             View All
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>

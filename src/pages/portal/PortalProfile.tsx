@@ -272,14 +272,14 @@ export default function PortalProfile() {
     <Layout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="page-header-glass rounded-xl p-4 md:p-6 bg-background/60 backdrop-blur-xl border border-border/30">
+        <div className="rounded-xl border bg-card p-4 md:p-6">
           <h1 className="text-2xl font-bold font-display text-foreground">My Profile</h1>
           <p className="text-muted-foreground">Manage your contact information and preferences</p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Profile Summary Card */}
-          <Card variant="glass" className="lg:col-span-1">
+          <Card className="lg:col-span-1">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
                 <div className="relative">
@@ -311,7 +311,7 @@ export default function PortalProfile() {
                     Change Password
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="glass-surface">
+                <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Change Password</DialogTitle>
                     <DialogDescription>
@@ -373,7 +373,7 @@ export default function PortalProfile() {
           </Card>
 
           {/* Contact Information Form */}
-          <Card variant="glass" className="lg:col-span-2">
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-display">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">

@@ -143,12 +143,11 @@ export function EquipmentDetailSheet({
             {equipment.warranty_expiry && (
               <Card
                 className={cn(
-                  "border-l-4",
                   isWarrantyExpired
-                    ? "border-l-destructive bg-destructive/5"
+                    ? "bg-destructive/5"
                     : isWarrantyExpiringSoon
-                    ? "border-l-orange-500 bg-orange-500/5"
-                    : "border-l-green-500 bg-green-500/5"
+                    ? "bg-orange-500/5"
+                    : "bg-green-500/5"
                 )}
               >
                 <CardContent className="p-4 flex items-center gap-3">

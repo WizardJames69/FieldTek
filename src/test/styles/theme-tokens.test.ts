@@ -35,9 +35,14 @@ describe("theme tokens (index.css)", () => {
     expect(rootBlock).not.toContain("220 13% 4%");
   });
 
-  it("glass-morphism is defined (sticky sheet headers must not be transparent)", () => {
-    // Referenced by MyJobs/JobChecklist/calendar sheet headers; when this rule
-    // was missing, scrolled content showed through the sticky sheet title.
-    expect(css).toMatch(/\.glass-morphism\s*{[^}]*background:[^}]*var\(--background\)/s);
+  it("sticky sheet headers carry a solid background (must not be transparent)", () => {
+    // The glass-morphism class these headers used was removed in the PR-APP-4
+    // register strip; the headers now use bg-card directly. When the surface
+    // rule was missing once before, scrolled content showed through the sticky
+    // sheet title.
+    const myJobs = readFileSync(resolve(__dirname, "../../pages/MyJobs.tsx"), "utf8");
+    const myCalendar = readFileSync(resolve(__dirname, "../../pages/MyCalendar.tsx"), "utf8");
+    expect(myJobs).toMatch(/sticky top-0 bg-card/);
+    expect(myCalendar).toMatch(/sticky top-0 bg-card/);
   });
 });

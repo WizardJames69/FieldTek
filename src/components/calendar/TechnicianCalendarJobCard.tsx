@@ -34,19 +34,21 @@ interface TechnicianCalendarJobCardProps {
   onQuickAction?: (jobId: string, action: 'start' | 'complete') => void;
 }
 
-const jobTypeColors: Record<string, { border: string; bg: string; glow?: string }> = {
-  service: { border: 'border-l-blue-500', bg: 'bg-blue-500/10 dark:bg-blue-500/15', glow: 'shadow-blue-500/10' },
-  install: { border: 'border-l-green-500', bg: 'bg-green-500/10 dark:bg-green-500/15', glow: 'shadow-green-500/10' },
-  installation: { border: 'border-l-green-500', bg: 'bg-green-500/10 dark:bg-green-500/15', glow: 'shadow-green-500/10' },
-  warranty: { border: 'border-l-purple-500', bg: 'bg-purple-500/10 dark:bg-purple-500/15', glow: 'shadow-purple-500/10' },
-  maintenance: { border: 'border-l-amber-500', bg: 'bg-amber-500/10 dark:bg-amber-500/15', glow: 'shadow-amber-500/10' },
-  repair: { border: 'border-l-blue-500', bg: 'bg-blue-500/10 dark:bg-blue-500/15', glow: 'shadow-blue-500/10' },
-  inspection: { border: 'border-l-indigo-500', bg: 'bg-indigo-500/10 dark:bg-indigo-500/15', glow: 'shadow-indigo-500/10' },
+// Job type is encoded as a quiet background tint (the full card also shows it
+// as a text badge).
+const jobTypeColors: Record<string, { bg: string }> = {
+  service: { bg: 'bg-blue-500/10 dark:bg-blue-500/15' },
+  install: { bg: 'bg-green-500/10 dark:bg-green-500/15' },
+  installation: { bg: 'bg-green-500/10 dark:bg-green-500/15' },
+  warranty: { bg: 'bg-purple-500/10 dark:bg-purple-500/15' },
+  maintenance: { bg: 'bg-amber-500/10 dark:bg-amber-500/15' },
+  repair: { bg: 'bg-blue-500/10 dark:bg-blue-500/15' },
+  inspection: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/15' },
 };
 
-const priorityConfig: Record<string, { variant: 'destructive' | 'warning' | 'secondary' | 'default'; glow?: boolean }> = {
-  urgent: { variant: 'destructive', glow: true },
-  high: { variant: 'warning', glow: true },
+const priorityConfig: Record<string, { variant: 'destructive' | 'warning' | 'secondary' | 'default' }> = {
+  urgent: { variant: 'destructive' },
+  high: { variant: 'warning' },
   medium: { variant: 'secondary' },
   low: { variant: 'default' },
 };
@@ -68,8 +70,8 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
   const [isHovered, setIsHovered] = useState(false);
 
   // Memoize computed values
-  const jobTypeStyle = useMemo(() => 
-    jobTypeColors[job.job_type?.toLowerCase() || ''] || { border: 'border-l-muted-foreground', bg: '', glow: '' },
+  const jobTypeStyle = useMemo(() =>
+    jobTypeColors[job.job_type?.toLowerCase() || ''] || { bg: '' },
     [job.job_type]
   );
   
@@ -103,11 +105,9 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={cn(
-          'group relative p-2.5 rounded-xl border-l-4 cursor-pointer transition-all text-xs backdrop-blur-sm',
+          'group relative p-2.5 rounded-xl border cursor-pointer transition-all text-xs',
           'hover:shadow-lg hover:-translate-y-0.5',
-          jobTypeStyle.border,
-          jobTypeStyle.bg,
-          isHovered && jobTypeStyle.glow && `shadow-lg ${jobTypeStyle.glow}`
+          jobTypeStyle.bg
         )}
       >
         <div className="flex items-center gap-2">
@@ -118,7 +118,6 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
           {job.priority && (job.priority === 'urgent' || job.priority === 'high') && (
             <Badge
               variant={priorityStyle.variant}
-              glow={priorityStyle.glow}
               className="text-[10px] px-1.5 py-0 h-5 shrink-0"
             >
               {job.priority}
@@ -140,7 +139,7 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
               <Button
                 size="icon"
                 variant="secondary"
-                className="h-7 w-7 rounded-lg shadow-lg btn-shimmer"
+                className="h-7 w-7 rounded-lg shadow-md"
                 onClick={handleStartClick}
               >
                 <Play className="h-3.5 w-3.5" />
@@ -167,26 +166,20 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
       onClick={onClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={cn(
-        'group relative p-4 border-l-4 cursor-pointer',
-        jobTypeStyle.border,
-        jobTypeStyle.bg,
-        isHovered && jobTypeStyle.glow && `shadow-xl ${jobTypeStyle.glow}`
-      )}
+      className={cn('group relative p-4 cursor-pointer', jobTypeStyle.bg)}
     >
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-background/60 backdrop-blur-sm flex items-center justify-center ring-1 ring-border/40">
+            <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center ring-1 ring-border/40">
               {statusIcons[job.status || 'scheduled']}
             </div>
             <h4 className="font-semibold text-sm leading-tight">{job.title}</h4>
           </div>
           <div className="flex items-center gap-1.5">
             {job.priority && (
-              <Badge 
-                variant={priorityStyle.variant} 
-                glow={priorityStyle.glow}
+              <Badge
+                variant={priorityStyle.variant}
                 className="text-xs shrink-0 font-semibold capitalize"
               >
                 {job.priority}
@@ -237,7 +230,7 @@ export const TechnicianCalendarJobCard = memo(function TechnicianCalendarJobCard
             <Button
               size="sm"
               variant="secondary"
-              className="h-8 gap-1.5 rounded-lg shadow-lg btn-shimmer font-semibold"
+              className="h-8 gap-1.5 rounded-lg shadow-md font-semibold"
               onClick={handleStartClick}
             >
               <Play className="h-3.5 w-3.5" />

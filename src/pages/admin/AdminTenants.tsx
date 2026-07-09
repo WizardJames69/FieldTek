@@ -189,7 +189,7 @@ export default function AdminTenants() {
 
       {/* Premium Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card variant="elevated" className="metric-card-glow">
+        <Card variant="elevated">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-muted/50 rounded-xl ring-1 ring-border/30">
@@ -202,7 +202,7 @@ export default function AdminTenants() {
             </div>
           </CardContent>
         </Card>
-        <Card variant="elevated" className="metric-card-glow shadow-[0_0_20px_-5px_hsl(var(--success)/0.3)]">
+        <Card variant="elevated" className="shadow-[0_0_20px_-5px_hsl(var(--success)/0.3)]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-success/10 rounded-xl ring-1 ring-success/20">
@@ -215,7 +215,7 @@ export default function AdminTenants() {
             </div>
           </CardContent>
         </Card>
-        <Card variant="elevated" className="metric-card-glow shadow-[0_0_20px_-5px_hsl(var(--warning)/0.3)]">
+        <Card variant="elevated" className="shadow-[0_0_20px_-5px_hsl(var(--warning)/0.3)]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-warning/10 rounded-xl ring-1 ring-warning/20">
@@ -228,7 +228,7 @@ export default function AdminTenants() {
             </div>
           </CardContent>
         </Card>
-        <Card variant="elevated" className="metric-card-glow shadow-[0_0_20px_-5px_hsl(var(--destructive)/0.3)]">
+        <Card variant="elevated" className="shadow-[0_0_20px_-5px_hsl(var(--destructive)/0.3)]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-destructive/10 rounded-xl ring-1 ring-destructive/20">
@@ -244,7 +244,7 @@ export default function AdminTenants() {
       </div>
 
       {/* Premium Table */}
-      <Card variant="glass" className="shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader className="border-b border-border/20">
           <div className="flex flex-col sm:flex-row gap-4 justify-between">
             <div className="relative flex-1 max-w-sm">
@@ -368,7 +368,7 @@ export default function AdminTenants() {
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
-                          <AlertDialogContent className="glass-morphism">
+                          <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Tenant</AlertDialogTitle>
                               <AlertDialogDescription>

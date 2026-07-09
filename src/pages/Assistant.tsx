@@ -714,7 +714,7 @@ export default function Assistant() {
         <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
           {/* Context Panel - Hidden on mobile, shown as collapsible on tablet+ */}
           <div className="hidden lg:block w-72 shrink-0 space-y-4">
-            <Card className="p-4 context-panel-glass">
+            <Card className="p-4">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
                 <Briefcase className="h-4 w-4" />
                 Job Context
@@ -794,7 +794,7 @@ export default function Assistant() {
             </Card>
 
             {equipment && (
-              <Card className="p-4 context-panel-glass">
+              <Card className="p-4">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
                   <Wrench className="h-4 w-4" />
                   Equipment
@@ -829,7 +829,7 @@ export default function Assistant() {
             )}
 
             {documents.length > 0 && (
-              <Card className="p-4 context-panel-glass">
+              <Card className="p-4">
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   Available Docs
@@ -851,7 +851,7 @@ export default function Assistant() {
           </div>
 
           {/* Chat Area */}
-          <Card className="flex-1 flex flex-col min-w-0 app-glass-container">
+          <Card className="flex-1 flex flex-col min-w-0">
             <ScrollArea className="flex-1 p-4" ref={scrollRef}>
               {messages.length === 0 ? (
                 <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center text-center p-8">
