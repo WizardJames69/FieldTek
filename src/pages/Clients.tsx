@@ -302,7 +302,7 @@ export default function Clients() {
             <Upload className="h-4 w-4" />
             <span className="hidden sm:inline">Import CSV</span>
           </Button>
-          <Button onClick={() => { setSelectedClient(null); setIsFormOpen(true); }} className="gap-2 btn-shimmer touch-native" data-testid="clients-create-button">
+          <Button onClick={() => { setSelectedClient(null); setIsFormOpen(true); }} className="gap-2 touch-native" data-testid="clients-create-button">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add {t('client')}</span>
           </Button>
@@ -371,12 +371,12 @@ export default function Clients() {
             testId="clients-error-state"
           />
         ) : filteredClients.length === 0 ? (
-          <Card className="border-dashed app-glass-container" data-testid="clients-empty-state">
+          <Card className="border-dashed" data-testid="clients-empty-state">
             <CardContent className="p-12 text-center">
               {/* Phase 5: Enhanced empty state with radial glow */}
               <div className="relative w-16 h-16 mx-auto mb-4">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-xl" />
-                <div className="relative w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center empty-state-glow">
+                <div className="relative w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
                   <Users className="h-8 w-8 text-muted-foreground" />
                 </div>
               </div>
@@ -395,26 +395,17 @@ export default function Clients() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4" data-testid="clients-list">
             {filteredClients.map((client) => {
-              // Phase 6: Equipment/job count indicator glow
-              const hasActivity = (client.job_count || 0) > 0 || (client.equipment_count || 0) > 0;
-              
               return (
               <Card
                 key={client.id}
+                variant="interactive"
                 className={cn(
-                  "card-interactive card-premium group cursor-pointer touch-native relative overflow-hidden",
-                  hasActivity && "border-primary/10",
+                  "group touch-native relative overflow-hidden",
                   selection.isSelected(client.id) && "ring-2 ring-primary/50"
                 )}
                 onClick={() => handleViewClient(client)}
                 data-testid="client-card"
               >
-                {/* Subtle activity indicator */}
-                {hasActivity && (
-                  <div className="absolute top-0 right-0 w-16 h-16 opacity-50 pointer-events-none">
-                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-bl from-primary/10 to-transparent" />
-                  </div>
-                )}
                 <CardContent className="p-5 relative">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">

@@ -45,20 +45,11 @@ export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) 
   return (
     <>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-      <header 
-        className="page-header-glass h-14 md:h-16 border-b border-border/30 bg-background/60 backdrop-blur-xl sticky top-0 z-10 relative overflow-hidden"
+      <header
+        className="h-14 md:h-16 border-b bg-background/90 backdrop-blur-md sticky top-0 z-10"
         role="banner"
       >
-        {/* Subtle gradient accent line at bottom */}
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[1px]"
-          style={{ 
-            background: 'linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.3) 50%, transparent 100%)' 
-          }}
-          aria-hidden="true"
-        />
-        
-        <div className="h-full px-4 md:px-6 flex items-center justify-between gap-3 md:gap-4 relative z-10">
+        <div className="h-full px-4 md:px-6 flex items-center justify-between gap-3 md:gap-4">
           {/* Mobile Menu Button */}
           <Button
             variant="ghost"
@@ -93,10 +84,10 @@ export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) 
               <Search className="h-5 w-5" aria-hidden="true" />
             </Button>
             
-            {/* Search Trigger - Full on desktop with glass styling */}
+            {/* Search Trigger - Full on desktop */}
             <Button
               variant="outline"
-              className="hidden md:flex w-64 justify-start text-muted-foreground gap-2 bg-background/50 backdrop-blur-sm border-border/50 hover:bg-background/80 hover:border-primary/30 transition-all duration-200"
+              className="hidden md:flex w-64 justify-start text-muted-foreground gap-2"
               onClick={() => setSearchOpen(true)}
               aria-label="Search jobs, clients, invoices, equipment. Keyboard shortcut: Command K"
               aria-keyshortcuts="Control+K Meta+K"
@@ -112,12 +103,12 @@ export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) 
             {isAdmin && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" className="gap-2 h-9 btn-shimmer touch-native" aria-label="Quick actions menu">
+                  <Button size="sm" className="gap-2 h-9 touch-native" aria-label="Quick actions menu">
                     <Plus className="h-4 w-4" aria-hidden="true" />
                     <span className="hidden sm:inline">New</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 glass-surface">
+                <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="touch-native" onClick={() => navigate('/jobs?action=new')}>New {t('job')}</DropdownMenuItem>

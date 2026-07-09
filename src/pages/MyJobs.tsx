@@ -266,15 +266,15 @@ export default function MyJobs() {
         )}
       </div>
 
-      {/* Job Detail Sheet with premium glass styling */}
+      {/* Job Detail Sheet */}
       <Sheet open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto sheet-glass">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {selectedJob && (
             <>
-              <SheetHeader className="sticky top-0 glass-morphism -mx-6 px-6 pt-4 pb-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
+              <SheetHeader className="sticky top-0 bg-card -mx-6 px-6 pt-4 pb-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
                 {/* Explicit back control. The default sheet close (X) is absolutely
                     positioned inside the scroll area, so it scrolls out of view and
-                    sits behind this sticky glass header — technicians felt stuck in
+                    sits behind this sticky header — technicians felt stuck in
                     the job detail on iPhone PWA. This button lives in the always-
                     visible sticky header and returns to the My Jobs list. */}
                 <button
@@ -304,7 +304,7 @@ export default function MyJobs() {
                 {selectedJob.client && (
                   <div className="space-y-4">
                     <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-widest">Client Details</h4>
-                    <div className="p-5 rounded-2xl glass-morphism border border-border/40">
+                    <div className="p-5 rounded-2xl bg-card border border-border/40">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-1 ring-primary/20">
                           <span className="text-sm font-bold text-primary">
@@ -402,7 +402,7 @@ export default function MyJobs() {
 
                 {/* Sentinel AI Link */}
                 <div className="section-divider" />
-                <Button variant="outline" className="w-full btn-shimmer touch-native h-14 font-semibold text-base" asChild>
+                <Button variant="outline" className="w-full touch-native h-14 font-semibold text-base" asChild>
                   <Link to={`/assistant?job=${selectedJob.id}`}>
                     <MessageSquare className="h-5 w-5 mr-2" />
                     Ask Sentinel AI

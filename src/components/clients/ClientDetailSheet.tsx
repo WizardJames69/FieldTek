@@ -164,19 +164,19 @@ export function ClientDetailSheet({ open, onOpenChange, client, onEdit }: Client
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-          <div className="app-glass-container rounded-lg p-3 text-center">
+          <div className="rounded-lg p-3 text-center">
             <p className="text-2xl font-bold">{jobStats.total}</p>
             <p className="text-xs text-muted-foreground">Total {t('jobs')}</p>
           </div>
-          <div className="app-glass-container rounded-lg p-3 text-center bg-success/10">
+          <div className="rounded-lg p-3 text-center bg-success/10">
             <p className="text-2xl font-bold text-success">{jobStats.completed}</p>
             <p className="text-xs text-muted-foreground">Completed</p>
           </div>
-          <div className="app-glass-container rounded-lg p-3 text-center bg-warning/10">
+          <div className="rounded-lg p-3 text-center bg-warning/10">
             <p className="text-2xl font-bold text-warning">{jobStats.inProgress}</p>
             <p className="text-xs text-muted-foreground">In Progress</p>
           </div>
-          <div className="app-glass-container rounded-lg p-3 text-center bg-info/10">
+          <div className="rounded-lg p-3 text-center bg-info/10">
             <p className="text-2xl font-bold text-info">{equipment.length}</p>
             <p className="text-xs text-muted-foreground">{t('equipment')}</p>
           </div>

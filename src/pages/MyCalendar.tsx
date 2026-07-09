@@ -458,9 +458,9 @@ export default function MyCalendar() {
         {/* Calendar Legend - Enhanced */}
         <CalendarLegend />
 
-        {/* Calendar - Premium glass container */}
+        {/* Calendar container */}
         <div 
-          className="flex flex-col h-[calc(100dvh-220px)] md:h-[calc(100dvh-280px)] rounded-2xl border border-border/50 overflow-hidden glass-morphism shadow-xl shadow-black/5"
+          className="flex flex-col h-[calc(100dvh-220px)] md:h-[calc(100dvh-280px)] rounded-2xl border border-border/50 overflow-hidden bg-card shadow-xl shadow-black/5"
           {...mobileSwipeProps}
         >
           {/* Header - Premium styling */}
@@ -514,13 +514,13 @@ export default function MyCalendar() {
 
       {/* Job Detail Sheet - Premium styling */}
       <Sheet open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto sheet-glass">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {selectedJob && (
             <>
-              <SheetHeader className="sticky top-0 glass-morphism -mx-6 px-6 pt-4 pb-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
+              <SheetHeader className="sticky top-0 bg-card -mx-6 px-6 pt-4 pb-5 border-b border-border/30 z-10 shadow-lg shadow-black/5">
                 {/* Explicit back control matching MyJobs: the default sheet close (X)
                     is absolutely positioned inside the scroll area, so it scrolls out
-                    of view behind this sticky glass header — on mobile the full-width
+                    of view behind this sticky header — on mobile the full-width
                     sheet reads as a separate page with no way back. */}
                 <SheetClose asChild>
                   <button
@@ -549,34 +549,32 @@ export default function MyCalendar() {
 
                 {/* Job Details - Premium card grid */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl glass-morphism border border-border/30">
+                  <div className="p-4 rounded-xl bg-card border border-border/30">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Status</p>
                     <Badge
                       variant={selectedJob.status === 'in_progress' ? 'info' : selectedJob.status === 'completed' ? 'success' : 'secondary'}
-                      glow={selectedJob.status === 'in_progress'}
                       className="text-sm font-semibold"
                     >
                       {selectedJob.status?.replace('_', ' ')}
                     </Badge>
                   </div>
-                  <div className="p-4 rounded-xl glass-morphism border border-border/30">
+                  <div className="p-4 rounded-xl bg-card border border-border/30">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Priority</p>
                     <Badge
                       variant={selectedJob.priority === 'urgent' ? 'destructive' : selectedJob.priority === 'high' ? 'warning' : 'secondary'}
-                      glow={selectedJob.priority === 'urgent'}
                       className="text-sm font-semibold capitalize"
                     >
                       {selectedJob.priority}
                     </Badge>
                   </div>
                   {selectedJob.job_type && (
-                    <div className="p-4 rounded-xl glass-morphism border border-border/30">
+                    <div className="p-4 rounded-xl bg-card border border-border/30">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Job Type</p>
                       <Badge variant="outline" className="text-sm font-semibold capitalize">{selectedJob.job_type}</Badge>
                     </div>
                   )}
                   {selectedJob.estimated_duration && (
-                    <div className="p-4 rounded-xl glass-morphism border border-border/30">
+                    <div className="p-4 rounded-xl bg-card border border-border/30">
                       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Duration</p>
                       <p className="text-sm font-bold">{selectedJob.estimated_duration} min</p>
                     </div>
@@ -589,7 +587,7 @@ export default function MyCalendar() {
                 {selectedJob.client && (
                   <div className="space-y-4">
                     <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-widest">Client Details</h4>
-                    <div className="p-5 rounded-2xl glass-morphism border border-border/40">
+                    <div className="p-5 rounded-2xl bg-card border border-border/40">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ring-1 ring-primary/20">
                           <span className="text-sm font-bold text-primary">

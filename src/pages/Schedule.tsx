@@ -305,8 +305,8 @@ export default function Schedule() {
   return (
     <MainLayout title={t('schedule')}>
       <div className="h-[calc(100vh-8rem)] flex flex-col space-y-4">
-        {/* Header - Premium Glass toolbar */}
-        <div className="page-header-glass flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:p-5">
+        {/* Header toolbar */}
+        <div className="rounded-xl border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 md:p-5">
           <div>
             <h1 className="text-xl md:text-2xl font-bold">{t('schedule')}</h1>
             <p className="text-sm text-muted-foreground hidden sm:block mt-0.5">
@@ -348,7 +348,7 @@ export default function Schedule() {
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80 p-0 sheet-glass">
+              <SheetContent side="right" className="w-80 p-0">
                 <SheetHeader className="p-4 border-b border-border/30 bg-background/80 backdrop-blur-xl">
                   <SheetTitle>Unassigned {t('jobs')}</SheetTitle>
                 </SheetHeader>
@@ -358,7 +358,7 @@ export default function Schedule() {
               </SheetContent>
             </Sheet>
 
-            <Button onClick={handleCreateJob} size="sm" className="btn-3d btn-shimmer touch-native">
+            <Button onClick={handleCreateJob} size="sm" className="touch-native">
               <Plus className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">New {t('job')}</span>
               <span className="sm:hidden">New</span>

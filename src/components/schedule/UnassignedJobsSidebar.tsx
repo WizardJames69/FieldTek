@@ -105,7 +105,7 @@ export function UnassignedJobsSidebar({ jobs, onJobDragStart }: UnassignedJobsSi
   const highCount = unassignedJobs.filter(j => j.priority === 'high').length;
 
   return (
-    <Card variant="glass" className="h-full flex flex-col shadow-lg">
+    <Card className="h-full flex flex-col shadow-lg">
       <Collapsible open={isOpen} onOpenChange={setIsOpen} className="flex flex-col h-full">
         <CollapsibleTrigger asChild>
           <CardHeader className="pb-3 cursor-pointer hover:bg-muted/40 transition-all duration-200 rounded-t-xl">
@@ -117,10 +117,9 @@ export function UnassignedJobsSidebar({ jobs, onJobDragStart }: UnassignedJobsSi
                 <CardTitle className="text-sm font-semibold">
                   Unassigned Jobs
                 </CardTitle>
-                <Badge 
-                  variant="secondary" 
-                  className="text-xs font-semibold bg-muted/80 backdrop-blur-sm"
-                  glow={unassignedJobs.length > 0}
+                <Badge
+                  variant="secondary"
+                  className="text-xs font-semibold"
                 >
                   {unassignedJobs.length}
                 </Badge>
@@ -133,20 +132,12 @@ export function UnassignedJobsSidebar({ jobs, onJobDragStart }: UnassignedJobsSi
             {(urgentCount > 0 || highCount > 0) && (
               <div className="flex gap-2 mt-2.5">
                 {urgentCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    glow 
-                    className="text-xs shadow-[0_0_10px_-3px_hsl(var(--destructive)/0.5)]"
-                  >
+                  <Badge variant="destructive" className="text-xs">
                     {urgentCount} Urgent
                   </Badge>
                 )}
                 {highCount > 0 && (
-                  <Badge 
-                    variant="warning" 
-                    glow 
-                    className="text-xs shadow-[0_0_10px_-3px_hsl(var(--warning)/0.5)]"
-                  >
+                  <Badge variant="warning" className="text-xs">
                     {highCount} High
                   </Badge>
                 )}
@@ -195,12 +186,9 @@ export function UnassignedJobsSidebar({ jobs, onJobDragStart }: UnassignedJobsSi
                       onDragStart={(e) => handleDragStart(e, job.id)}
                       onDragEnd={handleDragEnd}
                       className={cn(
-                        "p-3.5 rounded-xl bg-card/80 backdrop-blur-sm cursor-grab active:cursor-grabbing",
-                        "border border-border/50 ring-1 ring-transparent",
-                        "hover:shadow-lg hover:border-primary/40 hover:ring-primary/20 hover:bg-card transition-all duration-200",
-                        "group touch-native",
-                        job.priority === 'urgent' && "border-l-4 border-l-destructive priority-glow-urgent",
-                        job.priority === 'high' && "border-l-4 border-l-warning"
+                        "p-3.5 rounded-xl bg-card border cursor-grab active:cursor-grabbing",
+                        "hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200",
+                        "group touch-native"
                       )}
                     >
                       <div className="flex items-start gap-2">

@@ -1,60 +1,30 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-describe("App Glass Styling", () => {
-  it("app-glass-container class exists in document", () => {
-    // This test validates that our CSS utilities are properly loaded
-    const styleSheets = document.styleSheets;
-    expect(styleSheets).toBeDefined();
+// Source-level guards for the PR-APP-4 register strip: overlay primitives must
+// carry their own SOLID background. The glass classes they previously relied on
+// (dialog-glass / sheet-glass, deleted with the strip) supplied the background
+// via !important — removing them without a bg-background fallback shipped
+// transparent dialogs once before.
+const read = (p: string) => readFileSync(resolve(__dirname, p), "utf8");
+
+describe("overlay primitives are solid (register strip)", () => {
+  it("DialogContent declares bg-background", () => {
+    const src = read("../../components/ui/dialog.tsx");
+    expect(src).toMatch(/border bg-background p-6/);
+    expect(src).not.toContain("dialog-glass");
   });
 
-  it("stat-card-3d provides expected transform properties", () => {
-    const element = document.createElement("div");
-    element.className = "stat-card-3d";
-    document.body.appendChild(element);
-    
-    const styles = window.getComputedStyle(element);
-    expect(styles.transition).toBeDefined();
-    
-    document.body.removeChild(element);
+  it("SheetContent declares bg-background", () => {
+    const src = read("../../components/ui/sheet.tsx");
+    expect(src).toMatch(/bg-background/);
+    expect(src).not.toContain("sheet-glass");
   });
 
-  it("sheet-glass class can be applied", () => {
-    const element = document.createElement("div");
-    element.className = "sheet-glass";
-    document.body.appendChild(element);
-    
-    expect(element.classList.contains("sheet-glass")).toBe(true);
-    
-    document.body.removeChild(element);
-  });
-
-  it("dialog-glass class can be applied", () => {
-    const element = document.createElement("div");
-    element.className = "dialog-glass";
-    document.body.appendChild(element);
-    
-    expect(element.classList.contains("dialog-glass")).toBe(true);
-    
-    document.body.removeChild(element);
-  });
-
-  it("chat-bubble-user class can be applied", () => {
-    const element = document.createElement("div");
-    element.className = "chat-bubble-user";
-    document.body.appendChild(element);
-    
-    expect(element.classList.contains("chat-bubble-user")).toBe(true);
-    
-    document.body.removeChild(element);
-  });
-
-  it("chat-bubble-assistant class can be applied", () => {
-    const element = document.createElement("div");
-    element.className = "chat-bubble-assistant";
-    document.body.appendChild(element);
-    
-    expect(element.classList.contains("chat-bubble-assistant")).toBe(true);
-    
-    document.body.removeChild(element);
+  it("chat bubbles keep their styling classes", () => {
+    const css = read("../../index.css");
+    expect(css).toMatch(/\.chat-bubble-user\s*{/);
+    expect(css).toMatch(/\.chat-bubble-assistant\s*{/);
   });
 });

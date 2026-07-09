@@ -44,7 +44,7 @@ export function TechnicianSidebar({
   };
 
   return (
-    <Card variant="glass" className="h-full shadow-lg">
+    <Card className="h-full shadow-lg">
       <CardHeader className="pb-3 border-b border-border/20">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
@@ -118,9 +118,8 @@ export function TechnicianSidebar({
               </div>
               
               {/* Job count badge */}
-              <Badge 
+              <Badge
                 variant={getBadgeVariant(tech.jobCount)}
-                glow={tech.jobCount === 0}
                 className="text-xs font-semibold"
               >
                 {tech.jobCount}

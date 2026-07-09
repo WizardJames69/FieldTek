@@ -158,7 +158,7 @@ function ErrorFallbackUI({ error, errorId, capturedError, onRetry, onGoHome }: E
 
   return (
     <div className="min-h-[400px] flex items-center justify-center p-6">
-      <Card className="max-w-lg w-full dialog-glass">
+      <Card className="max-w-lg w-full">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
             <AlertTriangle className="h-6 w-6 text-destructive" />

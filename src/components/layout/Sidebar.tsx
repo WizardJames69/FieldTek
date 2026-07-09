@@ -260,33 +260,10 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col h-full bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transition-all duration-300 sidebar-enhanced relative overflow-hidden',
+        'hidden md:flex flex-col h-full bg-sidebar border-r border-sidebar-border transition-all duration-300 relative overflow-hidden',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
-      {/* Enhanced floating orb background with dual orbs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10" aria-hidden="true">
-        <div 
-          className="absolute -bottom-24 -left-24 w-56 h-56 rounded-full blur-[80px] floating-orb opacity-60"
-          style={{ background: 'radial-gradient(circle, hsl(var(--sidebar-primary) / 0.12), transparent 70%)' }}
-        />
-        <div 
-          className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-[60px] floating-orb opacity-40"
-          style={{ 
-            background: 'radial-gradient(circle, hsl(var(--sidebar-primary) / 0.08), transparent 70%)',
-            animationDelay: '10s'
-          }}
-        />
-      </div>
-      
-      {/* Inner glow edge accent */}
-      <div 
-        className="absolute right-0 top-0 bottom-0 w-[1px] pointer-events-none"
-        style={{ 
-          background: 'linear-gradient(180deg, transparent 0%, hsl(var(--sidebar-primary) / 0.15) 30%, hsl(var(--sidebar-primary) / 0.15) 70%, transparent 100%)' 
-        }}
-        aria-hidden="true"
-      />
       {/* Header */}
       <div className={cn('flex items-center h-16 px-4 border-b border-sidebar-border', collapsed && 'justify-center px-2')}>
         <div className="flex items-center gap-2 min-w-0">
@@ -372,16 +349,7 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom Navigation */}
-      <div className="p-3 border-t border-sidebar-border/50 space-y-1 relative">
-        {/* Top edge glow */}
-        <div 
-          className="absolute top-0 left-4 right-4 h-[1px]"
-          style={{ 
-            background: 'linear-gradient(90deg, transparent 0%, hsl(var(--sidebar-primary) / 0.2) 50%, transparent 100%)' 
-          }}
-          aria-hidden="true"
-        />
-        
+      <div className="p-3 border-t border-sidebar-border space-y-1 relative">
         {(showTenantLoading ? [] : filteredBottomNav).map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
@@ -448,10 +416,10 @@ export function Sidebar() {
         </Button>
       </div>
 
-      {/* Collapse Toggle with glow on hover */}
+      {/* Collapse Toggle */}
       <button
         onClick={() => { const next = !collapsed; setCollapsed(next); try { localStorage.setItem('sidebar-collapsed', String(next)); } catch { /* ignore storage errors */ } }}
-        className="absolute -right-3 top-20 w-6 h-6 bg-sidebar border border-sidebar-border/50 rounded-full flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent hover:border-sidebar-primary/30 hover:shadow-[0_0_8px_hsl(var(--sidebar-primary)/0.3)] transition-all duration-200"
+        className="absolute -right-3 top-20 w-6 h-6 bg-sidebar border border-sidebar-border rounded-full flex items-center justify-center text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors duration-200"
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
         {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}

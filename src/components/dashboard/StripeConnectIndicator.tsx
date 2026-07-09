@@ -60,10 +60,7 @@ export function StripeConnectIndicator() {
   if (isConnected) return null;
 
   return (
-    <Card className={cn(
-      "border-l-4",
-      isPending ? "border-l-warning bg-warning/5" : "border-l-muted bg-muted/30"
-    )}>
+    <Card className={cn(isPending ? "bg-warning/5" : "bg-muted/30")}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">

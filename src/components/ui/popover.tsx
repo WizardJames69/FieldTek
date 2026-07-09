@@ -17,12 +17,8 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        // Phase 5: Enhanced floating UI with glass effect
         "z-50 w-72 rounded-lg p-4 text-popover-foreground outline-none",
-        "backdrop-blur-xl border bg-popover/95 dark:bg-popover/90",
-        "shadow-lg shadow-black/5 dark:shadow-black/20",
-        // Inner glow for premium feel
-        "[box-shadow:0_4px_6px_-1px_hsl(0_0%_0%/0.1),0_2px_4px_-2px_hsl(0_0%_0%/0.1),inset_0_1px_0_0_hsl(0_0%_100%/0.05)]",
+        "border bg-popover shadow-lg",
         // Animations
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

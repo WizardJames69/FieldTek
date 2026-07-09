@@ -142,14 +142,14 @@ export default function PortalEquipment() {
     <PortalAuthGuard>
     <PortalLayout>
       <div className="space-y-6">
-        <div className="page-header-glass rounded-xl p-4 md:p-6 bg-background/60 backdrop-blur-xl border border-border/30">
+        <div className="rounded-xl border bg-card p-4 md:p-6">
           <h1 className="text-2xl font-bold font-display">My Equipment</h1>
           <p className="text-muted-foreground">View all equipment registered to your account</p>
         </div>
 
         {/* Summary Cards with 3D effect */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card variant="elevated" glow="primary" className="metric-card-glow">
+          <Card variant="elevated">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -163,7 +163,7 @@ export default function PortalEquipment() {
             </CardContent>
           </Card>
 
-          <Card variant="elevated" glow="success" className="metric-card-glow">
+          <Card variant="elevated">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -177,7 +177,7 @@ export default function PortalEquipment() {
             </CardContent>
           </Card>
 
-          <Card variant="elevated" glow="warning" className="metric-card-glow">
+          <Card variant="elevated">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -200,7 +200,7 @@ export default function PortalEquipment() {
             ))}
           </div>
         ) : equipment?.length === 0 ? (
-          <Card variant="glass">
+          <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 empty-state-native">
               <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
                 <Wrench className="h-8 w-8 text-muted-foreground" />
@@ -216,7 +216,7 @@ export default function PortalEquipment() {
               
               return (
                 <Collapsible key={item.id} open={isExpanded} onOpenChange={() => toggleEquipment(item.id)}>
-                  <Card variant="interactive" glow="primary" className="overflow-hidden">
+                  <Card variant="interactive" className="overflow-hidden">
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">

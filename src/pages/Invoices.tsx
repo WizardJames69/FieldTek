@@ -316,9 +316,9 @@ export default function Invoices() {
           </Button>
         </div>
 
-        {/* Stats - Phase 5: Enhanced stat cards with glass effect */}
+        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-          <Card className="stat-card-glass overflow-hidden">
+          <Card className="overflow-hidden">
             <CardContent className="p-4 relative">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <DollarSign className="h-4 w-4" />
@@ -327,7 +327,7 @@ export default function Invoices() {
               <p className="text-2xl font-bold">${stats.total.toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card className="stat-card-glass overflow-hidden border-green-500/20">
+          <Card className="overflow-hidden border-green-500/20">
             <CardContent className="p-4 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
               <div className="flex items-center gap-2 text-green-600 mb-1 relative">
@@ -337,7 +337,7 @@ export default function Invoices() {
               <p className="text-2xl font-bold text-green-600 relative">${stats.paid.toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card className="stat-card-glass overflow-hidden border-orange-500/20">
+          <Card className="overflow-hidden border-orange-500/20">
             <CardContent className="p-4 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
               <div className="flex items-center gap-2 text-orange-600 mb-1 relative">
@@ -347,7 +347,7 @@ export default function Invoices() {
               <p className="text-2xl font-bold text-orange-600 relative">${stats.outstanding.toFixed(2)}</p>
             </CardContent>
           </Card>
-          <Card className="stat-card-glass overflow-hidden border-destructive/20">
+          <Card className="overflow-hidden border-destructive/20">
             <CardContent className="p-4 relative">
               <div className="absolute inset-0 bg-gradient-to-br from-destructive/5 to-transparent pointer-events-none" />
               <div className="flex items-center gap-2 text-destructive mb-1 relative">
@@ -435,7 +435,7 @@ export default function Invoices() {
             {/* Phase 5: Enhanced empty state with radial glow */}
             <div className="relative w-12 h-12 mx-auto mb-4">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-xl" />
-              <div className="relative flex items-center justify-center empty-state-glow">
+              <div className="relative flex items-center justify-center">
                 <Receipt className="h-12 w-12 text-muted-foreground" />
               </div>
             </div>

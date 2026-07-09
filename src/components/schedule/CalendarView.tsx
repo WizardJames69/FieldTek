@@ -398,10 +398,10 @@ export function CalendarView({
 
   return (
     <div 
-      className="flex flex-col h-full glass-morphism rounded-xl shadow-lg ring-1 ring-border/50"
+      className="flex flex-col h-full bg-card rounded-xl shadow-lg ring-1 ring-border/50"
       {...mobileSwipeProps}
     >
-      {/* Premium glass toolbar header */}
+      {/* Toolbar header */}
       <div className="flex items-center justify-between p-3 md:p-4 border-b border-border/30 bg-gradient-to-r from-background/80 via-background/60 to-background/80 backdrop-blur-xl rounded-t-xl">
         <div className="flex items-center gap-1.5 md:gap-2">
           <Button 

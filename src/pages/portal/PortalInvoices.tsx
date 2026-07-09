@@ -162,7 +162,7 @@ export default function PortalInvoices() {
     <PortalAuthGuard>
     <PortalLayout>
       <div className="space-y-6">
-        <div className="page-header-glass rounded-xl p-4 md:p-6 bg-background/60 backdrop-blur-xl border border-border/30">
+        <div className="rounded-xl border bg-card p-4 md:p-6">
           <h1 className="text-2xl font-bold font-display">Invoices</h1>
           <p className="text-muted-foreground">View and manage your invoices</p>
           {!PAYMENT_COLLECTION_ENABLED && (
@@ -174,7 +174,7 @@ export default function PortalInvoices() {
 
         {/* Summary Cards with 3D effect */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card variant="elevated" glow="primary" className="metric-card-glow">
+          <Card variant="elevated">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -188,7 +188,7 @@ export default function PortalInvoices() {
             </CardContent>
           </Card>
 
-          <Card variant="elevated" glow="warning" className="metric-card-glow">
+          <Card variant="elevated">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -202,7 +202,7 @@ export default function PortalInvoices() {
             </CardContent>
           </Card>
 
-          <Card variant="elevated" glow="success" className="metric-card-glow">
+          <Card variant="elevated">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -218,7 +218,7 @@ export default function PortalInvoices() {
         </div>
 
         {/* Invoices Table */}
-        <Card variant="glass">
+        <Card>
           <CardHeader>
             <CardTitle className="font-display">Invoice History</CardTitle>
           </CardHeader>
@@ -280,7 +280,7 @@ export default function PortalInvoices() {
                         {canPayInvoice(invoice.status) && (
                           <Button
                             size="sm"
-                            className="btn-shimmer touch-native flex-1"
+                            className="touch-native flex-1"
                             onClick={() => handlePayInvoice(invoice.id)}
                             disabled={payingInvoiceId === invoice.id}
                           >
@@ -346,7 +346,7 @@ export default function PortalInvoices() {
                               {canPayInvoice(invoice.status) && (
                                 <Button
                                   size="sm"
-                                  className="btn-shimmer touch-native"
+                                  className="touch-native"
                                   onClick={() => handlePayInvoice(invoice.id)}
                                   disabled={payingInvoiceId === invoice.id}
                                 >

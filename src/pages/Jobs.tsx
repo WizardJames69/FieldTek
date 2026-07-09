@@ -512,7 +512,7 @@ export default function Jobs() {
             <Upload className="h-4 w-4" />
             <span className="hidden sm:inline">Import CSV</span>
           </Button>
-          <Button data-testid="jobs-create-button" onClick={() => { setSelectedJob(null); setIsFormOpen(true); }} className="gap-2 btn-shimmer touch-native">
+          <Button data-testid="jobs-create-button" onClick={() => { setSelectedJob(null); setIsFormOpen(true); }} className="gap-2 touch-native">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">New {t('job')}</span>
           </Button>
@@ -597,7 +597,7 @@ export default function Jobs() {
             ))}
           </div>
         ) : loadError ? (
-          <Card className="border-dashed app-glass-container" data-testid="jobs-error-state">
+          <Card className="border-dashed" data-testid="jobs-error-state">
             <CardContent className="p-12">
               <QueryErrorState
                 variant="inline"
@@ -607,12 +607,12 @@ export default function Jobs() {
             </CardContent>
           </Card>
         ) : filteredJobs.length === 0 ? (
-          <Card className="border-dashed app-glass-container" data-testid="jobs-empty-state">
+          <Card className="border-dashed" data-testid="jobs-empty-state">
             <CardContent className="p-12 text-center">
               {/* Phase 5: Enhanced empty state with radial glow */}
               <div className="relative w-16 h-16 mx-auto mb-4">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-xl" />
-                <div className="relative w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center empty-state-glow">
+                <div className="relative w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center">
                   <Calendar className="h-8 w-8 text-muted-foreground" />
                 </div>
               </div>
@@ -631,13 +631,6 @@ export default function Jobs() {
         ) : (
           <div className="space-y-3" data-testid="jobs-list">
             {filteredJobs.map((job) => {
-              // Phase 6: Priority-based glow effects
-              const priorityGlow = job.priority === 'urgent'
-                ? 'priority-glow-urgent'
-                : job.priority === 'high'
-                  ? 'shadow-[inset_0_0_0_1px_hsl(var(--warning)/0.2)]'
-                  : '';
-
               // Clicking the card body opens the same detail drawer as the
               // "View Details" menu item. Nested controls (checkbox, status
               // action, menu trigger) stop propagation so they keep acting only
@@ -660,21 +653,12 @@ export default function Jobs() {
                     openDetails();
                   }
                 }}
+                variant="interactive"
                 className={cn(
-                "card-interactive card-premium group touch-native relative overflow-hidden cursor-pointer",
-                priorityGlow,
+                "group touch-native relative overflow-hidden",
                 selection.isSelected(job.id) && "ring-2 ring-primary/50"
               )}>
-                {/* Priority accent bar */}
-                {(job.priority === 'urgent' || job.priority === 'high') && (
-                  <div 
-                    className={cn(
-                      "absolute left-0 top-0 bottom-0 w-1",
-                      job.priority === 'urgent' ? 'bg-destructive' : 'bg-warning'
-                    )}
-                  />
-                )}
-                <CardContent className="p-4 sm:p-6 pl-5">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     {/* Selection checkbox + Job info */}
                     <div className="flex items-start gap-3 flex-1 min-w-0">

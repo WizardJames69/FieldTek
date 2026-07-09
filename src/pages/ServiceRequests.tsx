@@ -94,7 +94,7 @@ export default function ServiceRequests() {
             {/* Phase 5: Enhanced empty state with radial glow */}
             <div className="relative w-12 h-12 mb-4">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/20 to-transparent blur-xl" />
-              <div className="relative flex items-center justify-center empty-state-glow">
+              <div className="relative flex items-center justify-center">
                 <Inbox className="h-12 w-12 text-muted-foreground/50" />
               </div>
             </div>

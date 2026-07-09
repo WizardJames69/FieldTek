@@ -11,20 +11,8 @@ const tabsListVariants = cva(
   {
     variants: {
       variant: {
-        default: [
-          "h-10 rounded-xl bg-muted/60 backdrop-blur-sm",
-          "border border-border/50",
-        ],
-        glass: [
-          "h-11 rounded-xl",
-          "bg-background/40 backdrop-blur-xl",
-          "border border-border/30",
-          "shadow-[0_2px_10px_-3px_hsl(0_0%_0%/0.1),inset_0_1px_0_0_hsl(0_0%_100%/0.1)]",
-        ],
-        pills: [
-          "h-10 rounded-full bg-muted/50 backdrop-blur-sm",
-          "border border-border/40",
-        ],
+        default: "h-10 rounded-xl bg-muted border",
+        pills: "h-10 rounded-full bg-muted border",
       },
     },
     defaultVariants: {
@@ -62,23 +50,13 @@ const tabsTriggerVariants = cva(
       variant: {
         default: [
           "rounded-lg px-3 py-1.5",
-          "data-[state=active]:bg-background/95 data-[state=active]:backdrop-blur-sm",
-          "data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-          "data-[state=active]:ring-1 data-[state=active]:ring-primary/30",
-          "data-[state=inactive]:hover:bg-background/50 data-[state=inactive]:hover:text-foreground/80",
-        ],
-        glass: [
-          "rounded-lg px-4 py-2",
-          "data-[state=active]:bg-background/90 data-[state=active]:backdrop-blur-sm",
-          "data-[state=active]:text-foreground",
-          "data-[state=active]:shadow-[0_2px_8px_hsl(var(--primary)/0.1),inset_0_0_0_1px_hsl(var(--primary)/0.15)]",
-          "data-[state=inactive]:hover:bg-background/40 data-[state=inactive]:hover:text-foreground/80",
+          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+          "data-[state=inactive]:hover:text-foreground/80",
         ],
         pills: [
           "rounded-full px-4 py-1.5",
-          "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground",
-          "data-[state=active]:shadow-[0_2px_8px_hsl(var(--primary)/0.3)]",
-          "data-[state=inactive]:hover:bg-background/60 data-[state=inactive]:hover:text-foreground/80",
+          "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm",
+          "data-[state=inactive]:hover:text-foreground/80",
         ],
       },
     },

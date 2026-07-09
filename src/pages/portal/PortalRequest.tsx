@@ -194,14 +194,14 @@ export default function PortalRequest() {
     <PortalAuthGuard>
     <PortalLayout>
       <div className="space-y-6">
-        <div className="page-header-glass rounded-xl p-4 md:p-6 bg-background/60 backdrop-blur-xl border border-border/30">
+        <div className="rounded-xl border bg-card p-4 md:p-6">
           <h1 className="text-2xl font-bold font-display">Service Request</h1>
           <p className="text-muted-foreground">Submit a new service request or view your existing requests</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Submit New Request */}
-          <Card variant="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="font-display">New Request</CardTitle>
               <CardDescription>
@@ -342,7 +342,7 @@ export default function PortalRequest() {
 
                     <Button
                       type="submit"
-                      className="w-full btn-shimmer touch-native"
+                      className="w-full touch-native"
                       disabled={submitMutation.isPending || !turnstileToken}
                       data-testid="portal-request-submit"
                     >
@@ -360,7 +360,7 @@ export default function PortalRequest() {
           </Card>
 
           {/* Recent Requests */}
-          <Card variant="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="font-display">Recent Requests</CardTitle>
               <CardDescription>

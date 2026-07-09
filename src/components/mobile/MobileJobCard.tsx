@@ -25,64 +25,32 @@ interface MobileJobCardProps {
   onSelect: (job: Job) => void;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'success' | 'warning' | 'info' | 'destructive'; glow?: boolean }> = {
-  pending: { label: 'Pending', variant: 'warning', glow: true },
+const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'success' | 'warning' | 'info' | 'destructive' }> = {
+  pending: { label: 'Pending', variant: 'warning' },
   scheduled: { label: 'Scheduled', variant: 'info' },
-  in_progress: { label: 'In progress', variant: 'info', glow: true },
+  in_progress: { label: 'In progress', variant: 'info' },
   completed: { label: 'Completed', variant: 'success' },
   cancelled: { label: 'Cancelled', variant: 'secondary' },
 };
 
-const PRIORITY_CLASSES: Record<string, string> = {
-  low: 'border-l-muted-foreground/50',
-  medium: 'border-l-warning',
-  high: 'border-l-orange-500',
-  urgent: 'border-l-destructive',
-};
-
 export const MobileJobCard = memo(function MobileJobCard({ job, onSelect }: MobileJobCardProps) {
   const statusConfig = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
-  const priorityClass = PRIORITY_CLASSES[job.priority || 'medium'] || PRIORITY_CLASSES.medium;
 
   const handleClick = useCallback(() => {
     onSelect(job);
   }, [onSelect, job]);
-
-  // Memoize the computed styles for priority glow
-  const cardStyles = useMemo(() => {
-    const baseStyle: React.CSSProperties = {};
-    if (job.priority === 'urgent') {
-      baseStyle.boxShadow = '0 4px 24px -4px hsl(0 84% 60% / 0.15), 0 0 0 1px hsl(0 84% 60% / 0.1), inset 0 0 30px -15px hsl(0 84% 60% / 0.1)';
-    } else if (job.priority === 'high') {
-      baseStyle.boxShadow = '0 4px 20px -4px hsl(25 95% 53% / 0.12), 0 0 0 1px hsl(25 95% 53% / 0.08)';
-    }
-    return baseStyle;
-  }, [job.priority]);
 
   const isUrgent = job.priority === 'urgent';
 
   return (
     <Card
       variant="interactive"
-      glow={isUrgent ? 'destructive' : job.priority === 'high' ? 'warning' : 'none'}
       className={cn(
-        "border-l-4 cursor-pointer group relative overflow-hidden",
-        priorityClass,
-        isUrgent && "ring-1 ring-destructive/20"
+        "cursor-pointer group relative overflow-hidden",
+        isUrgent && "ring-1 ring-destructive/30"
       )}
       onClick={handleClick}
-      style={cardStyles}
     >
-      {/* Urgent indicator pulse */}
-      {isUrgent && (
-        <div className="absolute top-3 right-3">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-destructive"></span>
-          </span>
-        </div>
-      )}
-      
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
@@ -90,13 +58,12 @@ export const MobileJobCard = memo(function MobileJobCard({ job, onSelect }: Mobi
             <div className="flex items-center gap-2 mb-2.5">
               <Badge
                 variant={statusConfig.variant}
-                glow={statusConfig.glow}
                 className="text-xs font-semibold"
               >
                 {statusConfig.label ?? job.status.replace('_', ' ')}
               </Badge>
               {job.job_type && (
-                <span className="text-xs text-muted-foreground font-medium bg-muted/60 px-2.5 py-0.5 rounded-full backdrop-blur-sm ring-1 ring-border/30">
+                <span className="text-xs text-muted-foreground font-medium bg-muted px-2.5 py-0.5 rounded-full">
                   {job.job_type}
                 </span>
               )}

@@ -21,19 +21,20 @@ interface JobCardProps {
   onDragStart?: (e: React.DragEvent, jobId: string) => void;
 }
 
-const priorityConfig: Record<string, { badge: 'secondary' | 'warning' | 'destructive'; glow?: boolean }> = {
+const priorityConfig: Record<string, { badge: 'secondary' | 'warning' | 'destructive' }> = {
   low: { badge: 'secondary' },
   medium: { badge: 'secondary' },
-  high: { badge: 'warning', glow: true },
-  urgent: { badge: 'destructive', glow: true },
+  high: { badge: 'warning' },
+  urgent: { badge: 'destructive' },
 };
 
-const statusBorderColors: Record<string, string> = {
-  pending: "border-l-muted-foreground",
-  scheduled: "border-l-primary",
-  in_progress: "border-l-info",
-  completed: "border-l-success",
-  cancelled: "border-l-destructive",
+// Status is conveyed by a small leading dot (matches the calendar legend colors).
+const statusDotColors: Record<string, string> = {
+  pending: "bg-muted-foreground",
+  scheduled: "bg-primary",
+  in_progress: "bg-info",
+  completed: "bg-success",
+  cancelled: "bg-destructive",
 };
 
 export const JobCard = memo(function JobCard({ 
@@ -51,7 +52,7 @@ export const JobCard = memo(function JobCard({
   }, [onDragStart, job.id]);
 
   const priority = priorityConfig[job.priority || 'medium'] || priorityConfig.medium;
-  const statusBorder = statusBorderColors[job.status || "pending"];
+  const statusDot = statusDotColors[job.status || "pending"];
 
   if (compact) {
     return (
@@ -59,13 +60,14 @@ export const JobCard = memo(function JobCard({
         draggable={draggable}
         onDragStart={handleDragStart}
         className={cn(
-          "p-2.5 rounded-xl bg-card/95 backdrop-blur-sm border-l-4 cursor-move",
-          "hover:shadow-md hover:bg-card transition-all duration-200 touch-native",
-          "ring-1 ring-border/30 hover:ring-primary/20",
-          statusBorder
+          "p-2.5 rounded-xl bg-card border cursor-move",
+          "hover:shadow-md transition-shadow duration-200 touch-native"
         )}
       >
-        <p className="font-medium truncate text-xs">{job.title}</p>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={cn("h-2 w-2 rounded-full shrink-0", statusDot)} aria-hidden="true" />
+          <p className="font-medium truncate text-xs">{job.title}</p>
+        </div>
         {job.scheduled_time && (
           <p className="text-muted-foreground mt-1 text-xs font-medium">
             {job.scheduled_time.slice(0, 5)}
@@ -80,20 +82,18 @@ export const JobCard = memo(function JobCard({
       variant="interactive"
       draggable={draggable}
       onDragStart={handleDragStart}
-      className={cn(
-        "p-3.5 cursor-move border-l-4",
-        statusBorder,
-        job.priority === 'urgent' && "priority-glow-urgent"
-      )}
+      className="p-3.5 cursor-move"
     >
       <div className="space-y-2.5">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
-          <h4 className="font-semibold text-sm leading-tight">{job.title}</h4>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={cn("h-2 w-2 rounded-full shrink-0", statusDot)} aria-hidden="true" />
+            <h4 className="font-semibold text-sm leading-tight">{job.title}</h4>
+          </div>
           {job.priority && job.priority !== 'low' && (
-            <Badge 
+            <Badge
               variant={priority.badge}
-              glow={priority.glow}
               className="text-xs shrink-0 capitalize"
             >
               {job.priority}

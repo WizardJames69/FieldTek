@@ -37,8 +37,6 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTerminology } from '@/hooks/useTerminology';
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
-import { Card3D } from '@/components/landing/Card3D';
-import { FloatingOrbs } from '@/components/landing/FloatingOrbs';
 import { TechnicianTutorialGate } from '@/components/onboarding/TechnicianTutorialGate';
 
 export default function Dashboard() {
@@ -406,11 +404,8 @@ export default function Dashboard() {
   return (
     <MainLayout title="Dashboard" subtitle={`Welcome back! Here's what's happening at ${branding.companyName}`}>
       <div className="relative" data-testid="dashboard-page">
-        {/* Subtle floating orbs background */}
-        <FloatingOrbs variant="primary" count={1} intensity="subtle" />
-        
-        <div 
-          className="space-y-4 md:space-y-6 animate-fade-up relative z-10"
+        <div
+          className="space-y-4 md:space-y-6 animate-fade-up"
           {...handlers}
           style={containerStyle}
       >
@@ -437,57 +432,26 @@ export default function Dashboard() {
           />
         ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4" data-testid="dashboard-stats-grid">
-          {statItems.map((stat, index) => {
+          {statItems.map((stat) => {
             const Icon = stat.icon;
-            // Create gradient backgrounds based on stat type
-            const gradientStyles: Record<string, string> = {
-              'text-info': 'from-info/5 to-transparent',
-              'text-warning': 'from-warning/5 to-transparent',
-              'text-success': 'from-success/5 to-transparent',
-              'text-destructive': 'from-destructive/5 to-transparent',
-            };
-            const glowStyles: Record<string, string> = {
-              'text-info': 'shadow-info/10',
-              'text-warning': 'shadow-warning/10',
-              'text-success': 'shadow-success/10',
-              'text-destructive': 'shadow-destructive/10',
-            };
             return (
-              <Card3D key={stat.label} intensity={0.3} glowOnHover>
-                <Card 
-                  className={cn(
-                    "card-interactive overflow-hidden relative stat-card-3d",
-                    "bg-gradient-to-br",
-                    gradientStyles[stat.color],
-                    "hover:shadow-lg",
-                    glowStyles[stat.color]
-                  )}
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  {/* Subtle inner glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
-                  <CardContent className="p-4 md:p-6 relative">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-xs md:text-sm text-muted-foreground truncate">{stat.label}</p>
-                        {statsLoading ? (
-                          <Skeleton className="h-7 md:h-9 w-12 md:w-16 mt-1" />
-                        ) : (
-                          <p className="text-2xl md:text-3xl font-bold mt-1">{stat.value}</p>
-                        )}
-                      </div>
-                      <div className={cn(
-                        'p-2 md:p-3 rounded-xl shrink-0 transition-all duration-200',
-                        'bg-background/80 backdrop-blur-sm shadow-sm',
-                        'ring-1 ring-border/50',
-                        stat.color
-                      )}>
-                        <Icon className="h-4 w-4 md:h-5 md:w-5" />
-                      </div>
+              <Card key={stat.label}>
+                <CardContent className="p-4 md:p-6">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs md:text-sm text-muted-foreground truncate">{stat.label}</p>
+                      {statsLoading ? (
+                        <Skeleton className="h-7 md:h-9 w-12 md:w-16 mt-1" />
+                      ) : (
+                        <p className="text-2xl md:text-3xl font-bold mt-1">{stat.value}</p>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              </Card3D>
+                    <div className={cn('p-2 md:p-3 rounded-xl shrink-0 bg-muted', stat.color)}>
+                      <Icon className="h-4 w-4 md:h-5 md:w-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             );
           })}
         </div>
@@ -495,7 +459,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Today's Jobs */}
-          <Card className="lg:col-span-2 app-glass-container" data-testid="dashboard-todays-jobs">
+          <Card className="lg:col-span-2" data-testid="dashboard-todays-jobs">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-muted-foreground" />
@@ -568,7 +532,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Service Requests */}
-          <Card className="app-glass-container" data-testid="dashboard-service-requests">
+          <Card data-testid="dashboard-service-requests">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Users className="h-5 w-5 text-muted-foreground" />

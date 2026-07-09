@@ -22,7 +22,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { FloatingOrbs } from '@/components/landing/FloatingOrbs';
 
 interface PortalLayoutProps {
   children: ReactNode;
@@ -65,17 +64,13 @@ export function PortalLayout({ children }: PortalLayoutProps) {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <div className="min-h-dvh bg-background relative">
-      {/* Subtle floating orbs in background */}
-      <FloatingOrbs intensity="subtle" />
-      
-      {/* Header with Premium Glassmorphism */}
-      <header className="sticky top-0 z-50 glass-navbar shadow-sm safe-area-top">
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/90 backdrop-blur-md shadow-sm safe-area-top">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo/Company Name with hover glow */}
-            <div className="flex items-center gap-3 group">
-              <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-md transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_0_20px_-5px_hsl(var(--primary)/0.5)]">
+            {/* Logo/Company Name */}
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
                 <span className="text-primary-foreground font-bold text-sm">
                   {client?.tenant_name?.[0] || 'P'}
                 </span>
@@ -86,8 +81,8 @@ export function PortalLayout({ children }: PortalLayoutProps) {
               </div>
             </div>
 
-            {/* Navigation - Desktop with glass pills */}
-            <nav className="hidden md:flex items-center gap-1 bg-muted/40 backdrop-blur-md rounded-xl p-1.5 border border-border/30 shadow-sm">
+            {/* Navigation - Desktop */}
+            <nav className="hidden md:flex items-center gap-1 bg-muted rounded-xl p-1.5 border">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -95,10 +90,10 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 active:scale-[0.98] touch-native ${
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors duration-200 active:scale-[0.98] touch-native ${
                       isActive
-                        ? 'bg-primary text-primary-foreground shadow-[0_2px_10px_-3px_hsl(var(--primary)/0.4)]'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-background/70'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -120,7 +115,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
                   <span className="hidden sm:inline text-sm font-medium">{client?.name}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 backdrop-blur-xl bg-popover/95 border-border/50">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem className="flex items-center gap-2 cursor-default">
                   <User className="h-4 w-4" />
                   <div className="flex flex-col">
