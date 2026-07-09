@@ -43,11 +43,11 @@ const staggerItem = {
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
+    <section id="how-it-works" className="bg-[var(--landing-surface)] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16">
           <ScrollReveal>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] text-balance">
+            <h2 className="font-landing-display text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-[1.15] text-balance">
               Up and running in four steps
             </h2>
           </ScrollReveal>
@@ -64,12 +64,12 @@ export function HowItWorksSection() {
             <motion.div
               key={i}
               variants={staggerItem}
-              className="relative rounded-xl bg-[#111214] border border-white/[0.06] p-6 md:p-7"
+              className="relative rounded-xl bg-[var(--landing-surface-raised)] border border-white/[0.06] p-6 md:p-7"
             >
               <div className="text-base font-semibold text-orange-500 font-mono tabular-nums mb-2">
                 {step.number}
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
+              <h3 className="font-landing-display text-lg font-semibold text-white mb-2">{step.title}</h3>
               <p className="text-[15px] text-[#9CA3AF] leading-relaxed">{step.description}</p>
             </motion.div>
           ))}

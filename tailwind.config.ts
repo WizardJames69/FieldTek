@@ -17,6 +17,10 @@ export default {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
         display: ["Plus Jakarta Sans", "Inter", "system-ui", "sans-serif"],
+        // Landing-only display face. Kept separate from `display` (which is
+        // used app-wide across 27 files) so the marketing type voice does not
+        // leak into the product UI.
+        "landing-display": ["Archivo", "Inter", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

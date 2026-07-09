@@ -78,7 +78,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
           <div className="max-w-4xl mx-auto pt-24 pb-10 md:pt-32 md:pb-0 lg:pt-40 text-center md:text-left">
             <AnimatedGroup variants={heroVariants}>
               {/* H1 */}
-              <h1 className="text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-5 md:mb-6 text-balance">
+              <h1 className="font-landing-display text-[clamp(2.25rem,5vw+1rem,5rem)] md:text-7xl lg:text-[80px] font-semibold tracking-[-0.03em] text-white leading-[1.05] mb-5 md:mb-6 text-balance">
                 Guide Every Repair.
                 <br />
                 <span className="text-orange-500">Learn From Every Job.</span>
@@ -121,7 +121,7 @@ export const HeroSection = memo(function HeroSection({ onApply }: HeroSectionPro
       </ContainerScroll>
 
       {/* Bottom gradient: dark to dark transition */}
-      <div className="h-8 md:h-32 bg-gradient-to-b from-[#09090B] to-[#0C0D0F]" />
+      <div className="h-8 md:h-32 bg-gradient-to-b from-[var(--landing-bg)] to-[var(--landing-surface)]" />
     </section>
   );
 });

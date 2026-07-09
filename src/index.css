@@ -14,7 +14,20 @@
        roots), never set globally. */
     --background: 30 20% 98%;
     --foreground: 20 14% 12%;
-    
+
+    /* ── Landing surface ramp ────────────────────────────────────
+       The marketing/landing pages render dark in every theme. These
+       are the recurring near-black surfaces, promoted from 25+ inline
+       bg-[#...] literals across src/components/landing/* to one source
+       of truth. Deepest to most-elevated. Values are unchanged from the
+       originals and are intentionally not theme-reactive (landing is
+       always dark). SVG-internal illustration fills stay local. */
+    --landing-bg: #09090B;             /* page base + footer + hero fade */
+    --landing-surface: #0C0D0F;        /* alternating section background */
+    --landing-surface-raised: #111214; /* raised section bg + mockup frame */
+    --landing-panel: #111113;          /* inner mockup canvas + pillar card */
+    --landing-elevated: #141416;       /* cards inside mockups */
+
     --card: 0 0% 100%;
     --card-foreground: 20 14% 12%;
     
@@ -860,24 +873,6 @@
     animation: none;
     opacity: 0.3;
   }
-}
-
-/* Touch-device gentle glow for DisplayCards (uses filter to avoid transform conflicts) */
-@media (hover: none) and (pointer: coarse) {
-  .display-card-float {
-    animation: gentle-glow 4s ease-in-out infinite;
-  }
-  .display-card-float:nth-child(2) {
-    animation-delay: -1.3s;
-  }
-  .display-card-float:nth-child(3) {
-    animation-delay: -2.6s;
-  }
-}
-
-@keyframes gentle-glow {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.08); }
 }
 
 /* ============================================

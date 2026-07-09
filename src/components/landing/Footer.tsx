@@ -14,12 +14,12 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-[#09090B] py-12">
+    <footer className="bg-[var(--landing-bg)] py-12">
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-8">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="font-display font-bold text-xl mb-4">
+            <div className="font-landing-display font-bold text-xl mb-4">
               <span className="text-white">Field</span>
               <span className="text-orange-500">Tek</span>
             </div>
