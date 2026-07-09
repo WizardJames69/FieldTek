@@ -1,11 +1,10 @@
 import { CheckCircle2 } from "lucide-react";
-import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
 
 const bullets = [
   "Branded service request submission",
   "Real-time job status tracking for clients",
-  "Invoice viewing and online payment",
+  "Invoice viewing and history",
   "Automatic notifications at every stage",
 ];
 
@@ -95,8 +94,7 @@ export function ClientPortalSection() {
       <div className="mx-auto max-w-6xl px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-center">
           <div>
-            <AnimatedEyebrow label="CLIENT PORTAL" colorClass="text-orange-500" className="mb-3" />
-            <ScrollReveal delay={0.05}>
+            <ScrollReveal>
               <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-4">
                 Give your clients a front door
               </h2>

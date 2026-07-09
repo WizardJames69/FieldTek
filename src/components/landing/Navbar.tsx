@@ -79,11 +79,11 @@ export const Navbar = memo(function Navbar({ onApply }: NavbarProps) {
           </Button>
           {onApply ? (
             <Button variant="cool" size="sm" onClick={onApply}>
-              Get Early Access
+              Apply for Early Access
             </Button>
           ) : (
             <Button asChild variant="cool" size="sm">
-              <Link to="/register">Get Early Access</Link>
+              <Link to="/register">Apply for Early Access</Link>
             </Button>
           )}
         </div>
@@ -146,11 +146,11 @@ export const Navbar = memo(function Navbar({ onApply }: NavbarProps) {
                   </Button>
                   {onApply ? (
                     <Button variant="cool" className="w-full justify-center" onClick={() => { setMobileMenuOpen(false); onApply(); }}>
-                      Get Early Access
+                      Apply for Early Access
                     </Button>
                   ) : (
                     <Button asChild variant="cool" className="w-full justify-center">
-                      <Link to="/register" onClick={() => setMobileMenuOpen(false)}>Get Early Access</Link>
+                      <Link to="/register" onClick={() => setMobileMenuOpen(false)}>Apply for Early Access</Link>
                     </Button>
                   )}
                 </div>

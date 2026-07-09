@@ -19,12 +19,16 @@ const trades = [
   { id: "aviation", name: "Aviation Maintenance" },
 ];
 
+// Honest alpha signal bar: what stage the product is in and who it is for.
+// No invented logos or counts; the trades ticker stays as the "built for"
+// signal, framed by a truthful status line instead of a generic kicker.
 export function TrustBar() {
   return (
     <section className="bg-[#0C0D0F] py-10 md:py-12 border-y border-white/[0.06]">
       <div className="mx-auto max-w-5xl px-4">
-        <p className="text-sm uppercase tracking-widest text-[#6B7280] mb-8 text-center">
-          Purpose-built for field service
+        <p className="text-sm text-zinc-400 mb-8 text-center">
+          <span className="text-white font-medium">Design partner alpha.</span>{" "}
+          Founder-guided, limited seats. Built for the trades:
         </p>
 
         <div className="relative">

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { MotionConfig } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPostLoginDestination } from "@/lib/authRouting";
 import { Navbar } from "@/components/landing/Navbar";
@@ -16,26 +17,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { initAnalytics } from "@/lib/analytics";
 
 // Lazy load below-the-fold sections
-const AIIntelligenceSection = lazy(() =>
-  import("@/components/landing/AIIntelligenceSection").then((m) => ({ default: m.AIIntelligenceSection }))
+const SentinelSection = lazy(() =>
+  import("@/components/landing/SentinelSection").then((m) => ({ default: m.SentinelSection }))
 );
 const FeatureShowcase = lazy(() =>
   import("@/components/landing/FeatureShowcase").then((m) => ({ default: m.FeatureShowcase }))
 );
-const SocialProofSection = lazy(() =>
-  import("@/components/landing/SocialProofSection").then((m) => ({ default: m.SocialProofSection }))
+const EarlyAccessSection = lazy(() =>
+  import("@/components/landing/EarlyAccessSection").then((m) => ({ default: m.EarlyAccessSection }))
 );
 const HowItWorksSection = lazy(() =>
   import("@/components/landing/HowItWorksSection").then((m) => ({ default: m.HowItWorksSection }))
 );
 const ClientPortalSection = lazy(() =>
   import("@/components/landing/ClientPortalSection").then((m) => ({ default: m.ClientPortalSection }))
-);
-const IntelligenceLoopSection = lazy(() =>
-  import("@/components/landing/IntelligenceLoopSection").then((m) => ({ default: m.IntelligenceLoopSection }))
-);
-const SentinelReasoningSection = lazy(() =>
-  import("@/components/landing/SentinelReasoningSection").then((m) => ({ default: m.SentinelReasoningSection }))
 );
 const EvidenceSection = lazy(() =>
   import("@/components/landing/EvidenceSection").then((m) => ({ default: m.EvidenceSection }))
@@ -110,6 +105,11 @@ export default function Landing() {
   const openBetaModal = () => setBetaModalOpen(true);
 
   return (
+    // reducedMotion="user" makes every framer-motion animation on the landing
+    // (ScrollReveal, AnimatedGroup, stagger grids) respect the OS-level
+    // prefers-reduced-motion setting; the CSS kill-switch in index.css cannot
+    // reach framer's inline JS transforms.
+    <MotionConfig reducedMotion="user">
     <div className="landing-page min-h-screen overflow-x-hidden noise-overlay">
       <Helmet>
         <title>FieldTek | AI-Powered Field Service Platform | Guide Every Repair. Learn From Every Job.</title>
@@ -138,15 +138,9 @@ export default function Landing() {
         <ProblemSection />
         <FeaturesSection />
 
-        {/* AI Intelligence section */}
-        <Suspense fallback={<SectionSkeleton minHeight="min-h-[500px]" />}>
-          <AIIntelligenceSection />
-        </Suspense>
-
-        {/* Intelligence loop + Sentinel reasoning */}
-        <Suspense fallback={<SectionSkeleton minHeight="min-h-[500px]" />}>
-          <IntelligenceLoopSection />
-          <SentinelReasoningSection />
+        {/* The Sentinel story: demo-led, one section (was three) */}
+        <Suspense fallback={<SectionSkeleton minHeight="min-h-[600px]" />}>
+          <SentinelSection />
         </Suspense>
 
         {/* Feature deep-dives */}
@@ -155,7 +149,7 @@ export default function Landing() {
           <EvidenceSection />
           <ClientPortalSection />
           <HowItWorksSection />
-          <SocialProofSection onApply={openBetaModal} />
+          <EarlyAccessSection onApply={openBetaModal} />
         </Suspense>
 
       </main>
@@ -165,5 +159,6 @@ export default function Landing() {
       <WaitlistModal open={waitlistOpen} onOpenChange={setWaitlistOpen} />
       <BetaTesterModal open={betaModalOpen} onOpenChange={setBetaModalOpen} />
     </div>
+    </MotionConfig>
   );
 }

@@ -85,7 +85,8 @@ export function HeroProductShot() {
                   {jobs.length}
                 </span>
               </div>
-              <span className="text-xs text-zinc-500 hover:text-zinc-400 cursor-pointer">View All</span>
+              {/* Decorative label in a non-interactive mockup; no pointer cursor. */}
+              <span className="text-xs text-zinc-500">View All</span>
             </div>
             <div className="space-y-2">
               {jobs.map((job, i) => (

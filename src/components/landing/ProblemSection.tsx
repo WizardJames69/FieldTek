@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { AlertTriangle, FileX, UserMinus, RotateCcw } from "lucide-react";
-import { AnimatedEyebrow } from "./AnimatedEyebrow";
 import { ScrollReveal } from "./ScrollReveal";
 
 const problems = [
@@ -48,8 +47,7 @@ export function ProblemSection() {
     <section className="bg-[#0C0D0F] py-6 md:py-8 lg:py-10">
       <div className="mx-auto max-w-6xl px-4">
         <div className="text-center max-w-3xl mx-auto mb-8 md:mb-16">
-          <AnimatedEyebrow label="The Problem" center />
-          <ScrollReveal delay={0.05}>
+          <ScrollReveal>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-[-0.02em] text-white leading-[1.15] text-balance">
               Field service runs on paper, memory, and hope
             </h2>
@@ -67,10 +65,10 @@ export function ProblemSection() {
             <motion.div
               key={i}
               variants={staggerItem}
-              className="border-l-[3px] border-orange-500 pl-4 md:pl-6 max-md:rounded-r-xl max-md:bg-white/[0.02] max-md:py-4 max-md:pr-4"
+              className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-5 md:p-6"
             >
               <div className="flex items-center gap-3 mb-3">
-                <problem.icon className="h-5 w-5 text-zinc-400" />
+                <problem.icon className="h-5 w-5 text-orange-500" aria-hidden="true" />
                 <h3 className="text-lg font-semibold text-white">{problem.title}</h3>
               </div>
               <p className="text-sm text-zinc-400 leading-relaxed">{problem.description}</p>

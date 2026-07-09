@@ -24,7 +24,7 @@ export function Footer() {
               <span className="text-orange-500">Tek</span>
             </div>
             <p className="text-sm text-zinc-500 leading-relaxed">
-              The AI-native operating system for modern service teams.
+              Field service software that answers from your own manuals, with citations.
             </p>
           </div>
 
