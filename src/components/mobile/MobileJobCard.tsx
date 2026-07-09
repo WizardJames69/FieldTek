@@ -25,12 +25,12 @@ interface MobileJobCardProps {
   onSelect: (job: Job) => void;
 }
 
-const STATUS_CONFIG: Record<string, { variant: 'default' | 'secondary' | 'success' | 'warning' | 'info' | 'destructive'; glow?: boolean }> = {
-  pending: { variant: 'warning', glow: true },
-  scheduled: { variant: 'info' },
-  in_progress: { variant: 'info', glow: true },
-  completed: { variant: 'success' },
-  cancelled: { variant: 'secondary' },
+const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'success' | 'warning' | 'info' | 'destructive'; glow?: boolean }> = {
+  pending: { label: 'Pending', variant: 'warning', glow: true },
+  scheduled: { label: 'Scheduled', variant: 'info' },
+  in_progress: { label: 'In progress', variant: 'info', glow: true },
+  completed: { label: 'Completed', variant: 'success' },
+  cancelled: { label: 'Cancelled', variant: 'secondary' },
 };
 
 const PRIORITY_CLASSES: Record<string, string> = {
@@ -88,12 +88,12 @@ export const MobileJobCard = memo(function MobileJobCard({ job, onSelect }: Mobi
           <div className="flex-1 min-w-0">
             {/* Header with status badge */}
             <div className="flex items-center gap-2 mb-2.5">
-              <Badge 
-                variant={statusConfig.variant} 
+              <Badge
+                variant={statusConfig.variant}
                 glow={statusConfig.glow}
                 className="text-xs font-semibold"
               >
-                {job.status.replace('_', ' ')}
+                {statusConfig.label ?? job.status.replace('_', ' ')}
               </Badge>
               {job.job_type && (
                 <span className="text-xs text-muted-foreground font-medium bg-muted/60 px-2.5 py-0.5 rounded-full backdrop-blur-sm ring-1 ring-border/30">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { Mail, ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,10 @@ export default function ForgotPassword() {
 
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  // Portal customers arrive via /portal/login; send them back there, not to
+  // the tenant sign-in they have never seen.
+  const signInPath = searchParams.get('context') === 'portal' ? '/portal/login' : '/auth';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +97,7 @@ export default function ForgotPassword() {
           <div className="pt-2 space-y-3">
             <Button
               className="w-full h-11 rounded-[10px] bg-transparent border border-white/[0.1] text-white hover:bg-white/5"
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate(signInPath)}
             >
               Back to sign in
             </Button>
@@ -157,7 +161,7 @@ export default function ForgotPassword() {
         <div className="text-center">
           <button
             className="flex items-center gap-2 mx-auto text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-            onClick={() => navigate('/auth')}
+            onClick={() => navigate(signInPath)}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to sign in

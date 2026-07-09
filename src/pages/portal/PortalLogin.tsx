@@ -174,7 +174,7 @@ export default function PortalLogin() {
             <Button
               variant="link"
               className="text-sm p-0 h-auto text-accent"
-              onClick={() => navigate('/forgot-password')}
+              onClick={() => navigate('/forgot-password?context=portal')}
             >
               Forgot your password?
             </Button>

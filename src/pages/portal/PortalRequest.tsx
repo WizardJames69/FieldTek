@@ -61,6 +61,7 @@ export default function PortalRequest() {
   const [searchParams] = useSearchParams();
   const [submitted, setSubmitted] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileFailed, setTurnstileFailed] = useState(false);
   const turnstileRef = useRef<TurnstileInstance>(null);
 
   // Extract equipment details from URL params
@@ -298,25 +299,45 @@ export default function PortalRequest() {
                       )}
                     />
 
-                    {/* Turnstile CAPTCHA */}
-                    <div className="flex justify-center">
+                    {/* Turnstile CAPTCHA. The server verifies the token, so submit
+                        stays disabled without one, but a failed widget must never
+                        dead-end the form: offer an inline retry instead of a toast
+                        telling the customer to refresh. */}
+                    <div className="flex flex-col items-center gap-2">
                       <Turnstile
                         ref={turnstileRef}
                         siteKey={TURNSTILE_SITE_KEY}
-                        onSuccess={(token) => setTurnstileToken(token)}
+                        onSuccess={(token) => {
+                          setTurnstileToken(token);
+                          setTurnstileFailed(false);
+                        }}
                         onError={() => {
                           setTurnstileToken(null);
-                          toast({
-                            title: 'CAPTCHA Error',
-                            description: 'Failed to load CAPTCHA. Please refresh the page.',
-                            variant: 'destructive',
-                          });
+                          setTurnstileFailed(true);
                         }}
                         onExpire={() => setTurnstileToken(null)}
                         options={{
                           theme: 'auto',
                         }}
                       />
+                      {turnstileFailed && (
+                        <div className="w-full rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            The security check could not load. Check your connection and try again.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setTurnstileFailed(false);
+                              turnstileRef.current?.reset();
+                            }}
+                          >
+                            Try again
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     <Button

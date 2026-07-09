@@ -46,7 +46,7 @@ import { useTenant, useUserRole } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Client } from '@/types/database';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTerminology } from '@/hooks/useTerminology';
 import { useSelection } from '@/hooks/useSelection';
 import { SelectCheckbox, SelectAllCheckbox } from '@/components/bulk/SelectCheckbox';
@@ -61,6 +61,7 @@ interface ClientWithStats extends Client {
 
 export default function Clients() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
   const { isAdmin } = useUserRole();
@@ -95,6 +96,29 @@ export default function Clients() {
       fetchClients();
     }
   }, [tenant]);
+
+  // Deep links: the header "New" menu and Cmd+K palette navigate here with
+  // ?action=new; global search results navigate with ?open=<id>.
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setSelectedClient(null);
+      setIsFormOpen(true);
+      setSearchParams((params) => { params.delete('action'); return params; }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const openId = searchParams.get('open');
+    if (!openId || loading) return;
+    const client = clients.find((c) => c.id === openId);
+    if (client) {
+      setSelectedClient(client);
+      setIsDetailOpen(true);
+    } else {
+      toast({ title: 'Not found', description: 'That record is no longer available.', variant: 'destructive' });
+    }
+    setSearchParams((params) => { params.delete('open'); return params; }, { replace: true });
+  }, [searchParams, loading, clients, setSearchParams, toast]);
 
   const fetchClients = async () => {
     setLoading(true);

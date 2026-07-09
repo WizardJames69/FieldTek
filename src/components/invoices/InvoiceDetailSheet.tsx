@@ -369,7 +369,7 @@ export function InvoiceDetailSheet({
                 {canSendReminder && (
                   <Button
                     size="sm"
-                    variant="destructive"
+                    variant="outline"
                     onClick={sendPaymentReminder}
                     disabled={sendingReminder}
                   >

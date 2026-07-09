@@ -56,7 +56,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog open={open} onOpenChange={onOpenChange} shouldFilter={false}>
       <CommandInput
         placeholder={`Search ${t('jobs').toLowerCase()}, ${t('clients').toLowerCase()}, invoices, ${t('equipment').toLowerCase()}...`}
         value={query}

@@ -50,7 +50,7 @@ export default function ServiceRequests() {
   return (
     <MainLayout
       title="Service Requests"
-      subtitle={`Submitted by customers — review and convert them into ${t('jobs').toLowerCase()}`}
+      subtitle={`Submitted by customers. Review and convert them into ${t('jobs').toLowerCase()}`}
     >
       <div className="space-y-4 md:space-y-6 animate-fade-up">
         {/* Phase 6: Enhanced Status Tabs with pill styling */}
@@ -73,6 +73,10 @@ export default function ServiceRequests() {
             <TabsTrigger value="converted" className="relative">
               Converted
               <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-success/20 text-success">{statusCounts.converted}</span>
+            </TabsTrigger>
+            <TabsTrigger value="rejected" className="relative">
+              Rejected
+              <span className="ml-1.5 px-1.5 py-0.5 text-xs rounded-full bg-background/80">{statusCounts.rejected}</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>

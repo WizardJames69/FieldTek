@@ -353,9 +353,6 @@ export default function Dashboard() {
                   Sign out
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground/60 font-mono">
-                auth: {authLoading ? 'loading' : 'ready'} • tenant: {tenantLoading ? 'loading' : (tenant?.id ? 'ready' : 'missing')}
-              </p>
             </div>
           )}
         </div>
@@ -535,7 +532,7 @@ export default function Dashboard() {
                     <div
                       key={job.id}
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate('/jobs')}
+                      onClick={() => navigate(`/jobs?open=${job.id}`)}
                     >
                       <div className="flex items-center gap-4">
                         <div className="text-sm font-medium text-muted-foreground w-16">
@@ -608,7 +605,7 @@ export default function Dashboard() {
                     <div 
                       key={req.id} 
                       className="p-3 rounded-lg border border-border hover:border-accent/50 transition-colors cursor-pointer"
-                      onClick={() => navigate('/service-requests')}
+                      onClick={() => navigate('/requests')}
                     >
                       <div className="flex items-start justify-between">
                         <p className="font-medium text-sm">{req.title}</p>
@@ -621,7 +618,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                   ))}
-                  <Button variant="outline" className="w-full mt-2" onClick={() => navigate('/service-requests')}>
+                  <Button variant="outline" className="w-full mt-2" onClick={() => navigate('/requests')}>
                     View all requests
                   </Button>
                 </div>

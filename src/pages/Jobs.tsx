@@ -56,7 +56,7 @@ import { useTenant, useUserRole } from '@/contexts/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { ScheduledJob, JobStatus, JobPriority, Client, Profile } from '@/types/database';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -92,6 +92,7 @@ interface JobWithRelations extends Omit<ScheduledJob, 'client' | 'assigned_user'
 
 export default function Jobs() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { tenant, loading: tenantLoading } = useTenant();
   const { isAdmin } = useUserRole();
@@ -155,6 +156,29 @@ export default function Jobs() {
       fetchTeamMembers();
     }
   }, [tenant]);
+
+  // Deep links: the header "New" menu and Cmd+K palette navigate here with
+  // ?action=new; global search results navigate with ?open=<id>.
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setSelectedJob(null);
+      setIsFormOpen(true);
+      setSearchParams((params) => { params.delete('action'); return params; }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const openId = searchParams.get('open');
+    if (!openId || loading) return;
+    const job = jobs.find((j) => j.id === openId);
+    if (job) {
+      setViewingJob(job);
+      setDetailOpen(true);
+    } else {
+      toast({ title: 'Not found', description: 'That record is no longer available.', variant: 'destructive' });
+    }
+    setSearchParams((params) => { params.delete('open'); return params; }, { replace: true });
+  }, [searchParams, loading, jobs, setSearchParams, toast]);
 
   const fetchJobs = async () => {
     setLoading(true);

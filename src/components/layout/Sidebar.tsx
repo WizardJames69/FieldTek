@@ -52,7 +52,7 @@ const baseMainNavItems: NavItem[] = [
   { icon: CalendarDays, label: 'My Calendar', href: '/my-calendar', roles: ['technician'], terminologyKey: 'myCalendar' },
   { icon: Users, label: 'Clients', href: '/clients', roles: ['owner', 'admin', 'dispatcher'], terminologyKey: 'clients' },
   { icon: Wrench, label: 'Equipment', href: '/equipment', roles: ['owner', 'admin', 'dispatcher', 'technician'], feature: 'equipment_tracking', terminologyKey: 'equipment' },
-  { icon: Receipt, label: 'Invoices', href: '/invoices', roles: ['owner', 'admin'], feature: 'invoicing_full' },
+  { icon: Receipt, label: 'Invoices', href: '/invoices', roles: ['owner', 'admin', 'dispatcher'], feature: 'invoicing_full' },
   { icon: ClipboardList, label: 'Requests', href: '/requests', roles: ['owner', 'admin', 'dispatcher'], terminologyKey: 'serviceRequests' },
   { icon: FileText, label: 'Documents', href: '/documents', roles: ['owner', 'admin', 'dispatcher', 'technician'] },
   { icon: MessageSquare, label: 'Sentinel AI', href: '/assistant', roles: ['owner', 'admin', 'dispatcher', 'technician'], feature: 'ai_assistant' },
@@ -398,8 +398,6 @@ export function Sidebar() {
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
-            {/* Online status indicator */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-success border-2 border-sidebar" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">

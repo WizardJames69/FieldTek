@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { toast } from "sonner";
@@ -486,6 +487,7 @@ export function APISettings() {
   const { tenant } = useTenant();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
+  const [revokeTarget, setRevokeTarget] = useState<{ id: string; name: string } | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [userId, setUserId] = useState<string>("");
 
@@ -512,8 +514,7 @@ export function APISettings() {
     fetchKeys();
   }, [tenant?.id]);
 
-  async function revokeKey(id: string, name: string) {
-    if (!confirm(`Revoke key "${name}"? This cannot be undone.`)) return;
+  async function revokeKey(id: string) {
     const { error } = await supabase
       .from("tenant_api_keys")
       .update({ revoked_at: new Date().toISOString() })
@@ -524,6 +525,7 @@ export function APISettings() {
       toast.success("Key revoked");
       fetchKeys();
     }
+    setRevokeTarget(null);
   }
 
   return (
@@ -608,7 +610,8 @@ export function APISettings() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => revokeKey(k.id, k.name)}
+                            onClick={() => setRevokeTarget({ id: k.id, name: k.name })}
+                            aria-label={`Revoke key ${k.name}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -622,12 +625,33 @@ export function APISettings() {
           </CardContent>
         </Card>
 
+        {/* Revoke confirmation */}
+        <AlertDialog open={!!revokeTarget} onOpenChange={(open) => { if (!open) setRevokeTarget(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Revoke key "{revokeTarget?.name}"?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Any integration using this key will stop working on its next request. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => revokeTarget && revokeKey(revokeTarget.id)}
+              >
+                Revoke key
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* Security note */}
         <div className="flex items-start gap-2 rounded-md bg-muted/40 border p-3 text-xs text-muted-foreground">
           <Shield className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary/70" />
           <p>
             API keys are stored as one-way hashes. The full key is shown only once at creation.
-            Revoke a key immediately if it's compromised — revocation takes effect on the next request.
+            Revoke a key immediately if it's compromised. Revocation takes effect on the next request.
           </p>
         </div>
 
