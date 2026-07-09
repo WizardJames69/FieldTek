@@ -5,6 +5,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -45,6 +46,7 @@ export default function Team() {
   const { role, isAdmin, isOwner } = useUserRole();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('active');
@@ -53,6 +55,7 @@ export default function Team() {
     if (!tenant?.id) return;
 
     setLoading(true);
+    setLoadError(false);
     try {
       const { data: tenantUsers, error: tuError } = await supabase
         .from('tenant_users')
@@ -81,6 +84,7 @@ export default function Team() {
       setMembers(merged);
     } catch (error) {
       console.error('Error fetching team members:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -255,6 +259,8 @@ export default function Team() {
                   <Skeleton key={i} className="h-40" />
                 ))}
               </div>
+            ) : loadError ? (
+              <QueryErrorState title="Couldn't load your team" onRetry={fetchTeamMembers} retrying={loading} testId="team-error-state" />
             ) : filteredMembers.length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="p-8 text-center">
@@ -297,6 +303,8 @@ export default function Team() {
                   <Skeleton key={i} className="h-40" />
                 ))}
               </div>
+            ) : loadError ? (
+              <QueryErrorState title="Couldn't load your team" onRetry={fetchTeamMembers} retrying={loading} testId="team-error-state" />
             ) : filteredMembers.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center">

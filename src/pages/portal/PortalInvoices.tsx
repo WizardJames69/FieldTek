@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import {
   Table,
   TableBody,
@@ -25,12 +26,12 @@ export default function PortalInvoices() {
   const { client, loading: authLoading, clientLoading, user } = usePortalAuth();
   const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
 
-  const { data: invoices, isLoading } = useQuery({
+  const { data: invoices, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['portal-invoices', client?.id, client?.tenant_id],
     queryFn: async () => {
       if (!client?.id || !client?.tenant_id) return [];
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('invoices')
         .select(`
           id,
@@ -49,6 +50,7 @@ export default function PortalInvoices() {
         .eq('tenant_id', client.tenant_id)
         .order('created_at', { ascending: false });
 
+      if (error) throw error;
       return data || [];
     },
     enabled: !!client?.id && !!client?.tenant_id,
@@ -227,6 +229,14 @@ export default function PortalInvoices() {
                   <Skeleton key={i} className="h-12 w-full" />
                 ))}
               </div>
+            ) : isError ? (
+              <QueryErrorState
+                variant="inline"
+                title="Couldn't load your invoices"
+                onRetry={() => refetch()}
+                retrying={isFetching}
+                testId="portal-invoices-error"
+              />
             ) : invoices?.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 empty-state-native">
                 <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">

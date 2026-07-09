@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { DocumentCard } from '@/components/documents/DocumentCard';
 import { DocumentFilters } from '@/components/documents/DocumentFilters';
 import { DocumentUploadDialog } from '@/components/documents/DocumentUploadDialog';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { UpgradeNudge } from '@/components/billing/UpgradeNudge';
 
 export default function Documents() {
@@ -40,7 +41,7 @@ export default function Documents() {
     return `${(bytes / 1024).toFixed(0)} KB`;
   };
 
-  const { data: documents, isLoading } = useQuery({
+  const { data: documents, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['documents', tenant?.id],
     queryFn: async () => {
       if (!tenant?.id) return [];
@@ -189,6 +190,8 @@ export default function Documents() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
+        ) : isError ? (
+          <QueryErrorState title="Couldn't load documents" onRetry={() => refetch()} retrying={isFetching} testId="documents-error-state" />
         ) : filteredDocuments?.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />

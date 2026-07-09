@@ -17,6 +17,7 @@ import { PortalLayout } from '@/components/portal/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { GlowDivider } from '@/components/landing/GlowDivider';
@@ -71,12 +72,12 @@ export default function PortalDashboard() {
     enabled: !!client?.id,
   });
 
-  const { data: recentJobs, isLoading: jobsLoading } = useQuery({
+  const { data: recentJobs, isLoading: jobsLoading, isError: jobsError, refetch: refetchJobs, isFetching: jobsFetching } = useQuery({
     queryKey: ['portal-recent-jobs', client?.id, client?.tenant_id],
     queryFn: async () => {
       if (!client?.id || !client?.tenant_id) return [];
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('scheduled_jobs')
         .select('id, title, status, scheduled_date, job_type, priority')
         .eq('client_id', client.id)
@@ -84,6 +85,7 @@ export default function PortalDashboard() {
         .order('scheduled_date', { ascending: false })
         .limit(5);
 
+      if (error) throw error;
       return data || [];
     },
     enabled: !!client?.id && !!client?.tenant_id,
@@ -262,6 +264,14 @@ export default function PortalDashboard() {
                     <Skeleton key={i} className="h-16 w-full rounded-xl" />
                   ))}
                 </div>
+              ) : jobsError ? (
+                <QueryErrorState
+                  variant="inline"
+                  title="Couldn't load recent jobs"
+                  onRetry={() => refetchJobs()}
+                  retrying={jobsFetching}
+                  testId="portal-dashboard-jobs-error"
+                />
               ) : recentJobs?.length === 0 ? (
                 <div className="empty-state-native">
                   <Inbox className="h-12 w-12 text-muted-foreground/50 mb-4" />

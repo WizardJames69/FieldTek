@@ -9,9 +9,10 @@ import { InvoiceFormDialog } from "@/components/invoices/InvoiceFormDialog";
 import { InvoiceDetailSheet } from "@/components/invoices/InvoiceDetailSheet";
 import { InvoiceAgingReport } from "@/components/invoices/InvoiceAgingReport";
 import { Button } from "@/components/ui/button";
+import { QueryErrorState } from "@/components/ui/QueryErrorState";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   Select,
   SelectContent,
@@ -73,12 +74,14 @@ interface Invoice {
   scheduled_jobs?: { id: string; title: string } | null;
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: Clock },
-  sent: { label: "Sent", color: "bg-blue-500/20 text-blue-700", icon: Send },
-  paid: { label: "Paid", color: "bg-green-500/20 text-green-700", icon: CheckCircle },
-  overdue: { label: "Overdue", color: "bg-destructive/20 text-destructive", icon: AlertTriangle },
-  cancelled: { label: "Cancelled", color: "bg-muted text-muted-foreground", icon: Clock },
+// Colours + label now come from the shared <StatusBadge>; this map only
+// carries the per-status icon that is specific to the invoice table.
+const statusIcons: Record<string, any> = {
+  draft: Clock,
+  sent: Send,
+  paid: CheckCircle,
+  overdue: AlertTriangle,
+  cancelled: Clock,
 };
 
 export default function Invoices() {
@@ -90,6 +93,7 @@ export default function Invoices() {
 
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -115,6 +119,7 @@ export default function Invoices() {
     if (!tenant?.id) return;
 
     setLoading(true);
+    setLoadError(false);
     try {
       const { data, error } = await supabase
         .from("invoices")
@@ -151,6 +156,7 @@ export default function Invoices() {
       setInvoices(processedInvoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
+      setLoadError(true);
       toast.error("Failed to load invoices");
     } finally {
       setLoading(false);
@@ -422,6 +428,8 @@ export default function Invoices() {
           <div className="flex items-center justify-center h-[40vh]">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
+        ) : loadError ? (
+          <QueryErrorState title="Couldn't load invoices" onRetry={fetchInvoices} retrying={loading} testId="invoices-error-state" />
         ) : filteredInvoices.length === 0 ? (
           <Card className="p-12 text-center border-dashed" data-testid="invoices-empty-state">
             {/* Phase 5: Enhanced empty state with radial glow */}
@@ -461,8 +469,7 @@ export default function Invoices() {
               <TableBody>
                 {filteredInvoices.map((inv) => {
                   const effectiveStatus = inv.due_date && new Date(inv.due_date) < new Date() && inv.status === "sent" ? "overdue" : (inv.status || "draft");
-                  const status = statusConfig[effectiveStatus];
-                  const StatusIcon = status.icon;
+                  const StatusIcon = statusIcons[effectiveStatus] ?? Clock;
 
                   return (
                     <TableRow
@@ -495,10 +502,7 @@ export default function Invoices() {
                         ${(inv.total || 0).toFixed(2)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={cn("flex items-center gap-1 w-fit", status.color)}>
-                          <StatusIcon className="h-3 w-3" />
-                          {status.label}
-                        </Badge>
+                        <StatusBadge status={effectiveStatus} icon={<StatusIcon className="h-3 w-3" />} />
                       </TableCell>
                     </TableRow>
                   );

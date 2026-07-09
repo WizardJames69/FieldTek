@@ -10,7 +10,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useGlobalSearch } from '@/hooks/useGlobalSearch';
 import { useUserRole } from '@/contexts/TenantContext';
 import { useTerminology } from '@/hooks/useTerminology';
@@ -18,17 +18,6 @@ interface GlobalSearchProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-const statusColors: Record<string, string> = {
-  scheduled: 'bg-blue-500/10 text-blue-500',
-  in_progress: 'bg-yellow-500/10 text-yellow-500',
-  completed: 'bg-green-500/10 text-green-500',
-  cancelled: 'bg-muted text-muted-foreground',
-  draft: 'bg-muted text-muted-foreground',
-  sent: 'bg-blue-500/10 text-blue-500',
-  paid: 'bg-green-500/10 text-green-500',
-  overdue: 'bg-destructive/10 text-destructive',
-};
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const [query, setQuery] = useState('');
@@ -130,11 +119,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <p className="text-xs text-muted-foreground">{job.subtitle}</p>
                     </div>
                   </div>
-                  {job.status && (
-                    <Badge variant="secondary" className={statusColors[job.status] || ''}>
-                      {job.status.replace('_', ' ')}
-                    </Badge>
-                  )}
+                  {job.status && <StatusBadge status={job.status} />}
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -180,11 +165,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                       <p className="text-xs text-muted-foreground">{invoice.subtitle}</p>
                     </div>
                   </div>
-                  {invoice.status && (
-                    <Badge variant="secondary" className={statusColors[invoice.status] || ''}>
-                      {invoice.status}
-                    </Badge>
-                  )}
+                  {invoice.status && <StatusBadge status={invoice.status} />}
                 </CommandItem>
               ))}
             </CommandGroup>

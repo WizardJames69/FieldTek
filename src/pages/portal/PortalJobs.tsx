@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePortalAuth } from '@/contexts/PortalAuthContext';
 import { PortalLayout } from '@/components/portal/PortalLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { QueryErrorState } from '@/components/ui/QueryErrorState';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -40,12 +41,12 @@ export default function PortalJobs() {
   const { client, loading: authLoading, clientLoading, user } = usePortalAuth();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
-  const { data: jobs, isLoading } = useQuery({
+  const { data: jobs, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['portal-jobs', client?.id, client?.tenant_id],
     queryFn: async () => {
       if (!client?.id || !client?.tenant_id) return [];
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('scheduled_jobs')
         .select(`
           id,
@@ -67,6 +68,7 @@ export default function PortalJobs() {
         .eq('tenant_id', client.tenant_id)
         .order('scheduled_date', { ascending: false });
 
+      if (error) throw error;
       return (data || []) as unknown as Job[];
     },
     enabled: !!client?.id && !!client?.tenant_id,
@@ -177,6 +179,17 @@ export default function PortalJobs() {
             <Skeleton key={i} className="h-40 w-full" />
           ))}
         </div>
+      );
+    }
+
+    if (isError) {
+      return (
+        <QueryErrorState
+          title="Couldn't load your jobs"
+          onRetry={() => refetch()}
+          retrying={isFetching}
+          testId="portal-jobs-error"
+        />
       );
     }
 
