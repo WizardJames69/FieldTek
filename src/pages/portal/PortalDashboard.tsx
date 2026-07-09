@@ -109,14 +109,14 @@ export default function PortalDashboard() {
         <div className="rounded-xl border bg-card p-6 md:p-8">
           {isWrongUserType ? (
             <>
-              <h1 className="text-3xl md:text-4xl font-bold">Wrong Portal</h1>
+              <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">Wrong Portal</h1>
               <p className="text-muted-foreground mt-2">
                 This account is not a customer account. Please use the <Link to="/auth" className="text-primary underline">main login</Link> instead.
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-3xl md:text-4xl font-bold">
+              <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
                 Welcome back, {client?.name?.split(' ')[0] || 'there'}
               </h1>
               <p className="text-muted-foreground mt-2">

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 // One quiet elevation system: static cards sit flat, emphasized cards carry a
 // slightly stronger shadow, and only interactive cards move on hover.
 const cardVariants = cva(
-  "rounded-xl border bg-card text-card-foreground shadow-sm",
+  "rounded-xl border bg-card text-card-foreground shadow-card",
   {
     variants: {
       variant: {

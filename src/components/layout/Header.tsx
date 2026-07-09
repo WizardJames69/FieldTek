@@ -64,7 +64,7 @@ export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) 
 
           {/* Title Section */}
           <div className="min-w-0 flex-1">
-            <h1 className="font-display font-semibold text-lg md:text-xl text-foreground truncate">{title}</h1>
+            <h1 className="font-display font-bold text-xl md:text-2xl tracking-tight text-foreground truncate">{title}</h1>
             {subtitle && (
               <p className="text-xs md:text-sm text-muted-foreground truncate hidden sm:block">{subtitle}</p>
             )}

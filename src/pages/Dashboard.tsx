@@ -38,6 +38,16 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useTerminology } from '@/hooks/useTerminology';
 import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin';
 import { TechnicianTutorialGate } from '@/components/onboarding/TechnicianTutorialGate';
+import { useCountUp } from '@/hooks/useCountUp';
+
+function StatValue({ value }: { value: number }) {
+  const display = useCountUp(value);
+  return (
+    <p className="font-display text-2xl md:text-3xl font-bold tracking-tight tabular-nums mt-1">
+      {display}
+    </p>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -386,10 +396,10 @@ export default function Dashboard() {
   };
 
   const statItems = [
-    { label: `Total ${t('jobs')}`, value: stats?.total ?? 0, icon: Clipboard, color: 'text-info' },
-    { label: 'In Progress', value: stats?.inProgress ?? 0, icon: Clock, color: 'text-warning' },
-    { label: 'Completed', value: stats?.completed ?? 0, icon: CheckCircle2, color: 'text-success' },
-    { label: 'Urgent', value: stats?.urgent ?? 0, icon: AlertTriangle, color: 'text-destructive' },
+    { label: `Total ${t('jobs')}`, value: stats?.total ?? 0, icon: Clipboard, color: 'text-info', chip: 'bg-info/10' },
+    { label: 'In Progress', value: stats?.inProgress ?? 0, icon: Clock, color: 'text-warning', chip: 'bg-warning/10' },
+    { label: 'Completed', value: stats?.completed ?? 0, icon: CheckCircle2, color: 'text-success', chip: 'bg-success/10' },
+    { label: 'Urgent', value: stats?.urgent ?? 0, icon: AlertTriangle, color: 'text-destructive', chip: 'bg-destructive/10' },
   ];
 
   // Technician-specific dashboard
@@ -443,10 +453,10 @@ export default function Dashboard() {
                       {statsLoading ? (
                         <Skeleton className="h-7 md:h-9 w-12 md:w-16 mt-1" />
                       ) : (
-                        <p className="text-2xl md:text-3xl font-bold mt-1">{stat.value}</p>
+                        <StatValue value={stat.value} />
                       )}
                     </div>
-                    <div className={cn('p-2 md:p-3 rounded-xl shrink-0 bg-muted', stat.color)}>
+                    <div className={cn('p-2 md:p-3 rounded-xl shrink-0', stat.chip, stat.color)}>
                       <Icon className="h-4 w-4 md:h-5 md:w-5" />
                     </div>
                   </div>

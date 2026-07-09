@@ -50,7 +50,7 @@ const tabsTriggerVariants = cva(
       variant: {
         default: [
           "rounded-lg px-3 py-1.5",
-          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+          "data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm",
           "data-[state=inactive]:hover:text-foreground/80",
         ],
         pills: [
