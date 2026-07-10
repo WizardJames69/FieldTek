@@ -8,19 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Send, Bot, User, Loader2, Briefcase, Wrench, FileText, X, BookOpen, Volume2, AlertTriangle, RotateCcw, Sparkles, Scale, ChevronsUpDown, Search, Zap } from "lucide-react";
+import { Send, User, Loader2, Briefcase, FileText, BookOpen, Volume2, AlertTriangle, RotateCcw, Sparkles, Scale, Settings2, Zap, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ImageAttachment } from "@/components/assistant/ImageAttachment";
@@ -33,6 +25,12 @@ import { DegradedAnswerBanner } from "@/components/assistant/DegradedAnswerBanne
 import { DiagnosticWizard, getDiagnosticPath, formatDiagnosticData } from "@/components/assistant/DiagnosticWizard";
 import { shouldAutoOpenDiagnosticWizard, type IndustryType } from "@/config/industryAssistantConfig";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
+import {
+  AssistantContextPanels,
+  type JobContext,
+  type EquipmentContext,
+  type DocumentContext,
+} from "@/components/assistant/AssistantContextPanels";
 
 // Message content can be text or multimodal (text + images)
 type TextContent = { type: "text"; text: string };
@@ -94,39 +92,10 @@ function parseDocumentSources(content: string): { sources: string[]; cleanConten
   return { sources, cleanContent };
 }
 
-interface JobContext {
-  id: string;
-  title: string;
-  job_type: string | null;
-  current_stage: string | null;
-  priority: string | null;
-  description: string | null;
-  address: string | null;
-  equipment_id: string | null;
-  client_id: string | null;
-}
-
-interface EquipmentContext {
-  id: string;
-  equipment_type: string;
-  brand: string | null;
-  model: string | null;
-  serial_number: string | null;
-  install_date: string | null;
-  warranty_expiry: string | null;
-  location_notes: string | null;
-}
-
 interface ClientContext {
   id: string;
   name: string;
   notes: string | null;
-}
-
-interface DocumentContext {
-  id: string;
-  name: string;
-  category: string | null;
 }
 
 export default function Assistant() {
@@ -144,8 +113,11 @@ export default function Assistant() {
   const [client, setClient] = useState<ClientContext | null>(null);
   const [documents, setDocuments] = useState<DocumentContext[]>([]);
   const [attachedImages, setAttachedImages] = useState<string[]>([]);
-  const [jobSearchOpen, setJobSearchOpen] = useState(false);
   const [jobSearchQuery, setJobSearchQuery] = useState("");
+  const [contextSheetOpen, setContextSheetOpen] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(() => {
+    return localStorage.getItem("assistant-context-rail") === "collapsed";
+  });
   const [autoPlayTTS, setAutoPlayTTS] = useState(() => {
     return localStorage.getItem("assistant-autoplay-tts") === "true";
   });
@@ -589,6 +561,13 @@ export default function Assistant() {
     localStorage.setItem("assistant-code-reference", String(checked));
   };
 
+  const toggleRail = () => {
+    setRailCollapsed((prev) => {
+      localStorage.setItem("assistant-context-rail", prev ? "expanded" : "collapsed");
+      return !prev;
+    });
+  };
+
   // Auto-play TTS when new assistant message is completed
   useEffect(() => {
     if (!autoPlayTTS || isLoading) return;
@@ -629,64 +608,79 @@ export default function Assistant() {
     );
   }
 
+  const hasContext = !!selectedJob || !!equipment || documents.length > 0;
+
   return (
     <MainLayout title="Sentinel AI">
       <div className="h-[calc(100vh-7rem)] md:h-[calc(100vh-8rem)] flex flex-col">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 md:mb-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Sentinel AI
-            </h1>
-            <p className="text-sm text-muted-foreground hidden sm:block">
-              Your field safety assistant — troubleshooting, procedures, and technical guidance
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {rateLimitInfo && (
-              <div data-testid="rate-limit-display" className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Zap className="h-4 w-4" />
-                <span className={cn(
-                  rateLimitInfo.used >= rateLimitInfo.limit && "text-destructive font-medium"
-                )}>
-                  {rateLimitInfo.used}/{rateLimitInfo.limit} queries today
-                </span>
-              </div>
-            )}
-            {messages.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearConversation}
-                className="gap-1.5"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                New Chat
+        <div className="flex items-center justify-end gap-2 sm:gap-3 mb-3">
+          {rateLimitInfo && (
+            <div data-testid="rate-limit-display" className="flex items-center gap-1.5 text-sm text-muted-foreground mr-auto">
+              <Zap className="h-4 w-4" />
+              <span className={cn(
+                rateLimitInfo.used >= rateLimitInfo.limit && "text-destructive font-medium"
+              )}>
+                {rateLimitInfo.used}/{rateLimitInfo.limit} queries today
+              </span>
+            </div>
+          )}
+          {messages.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearConversation}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              New Chat
+            </Button>
+          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5" aria-label="Assistant preferences">
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Preferences</span>
               </Button>
-            )}
-            <div className="flex items-center gap-2">
-              <Scale className="h-4 w-4 text-muted-foreground" />
-              <Switch
-                id="code-reference"
-                checked={codeReferenceEnabled}
-                onCheckedChange={handleCodeReferenceToggle}
-              />
-              <Label htmlFor="code-reference" className="text-sm cursor-pointer">
-                Building Codes
-              </Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Volume2 className="h-4 w-4 text-muted-foreground" />
-              <Switch
-                id="auto-play-tts"
-                checked={autoPlayTTS}
-                onCheckedChange={handleAutoPlayToggle}
-              />
-              <Label htmlFor="auto-play-tts" className="text-sm cursor-pointer">
-                Auto-read
-              </Label>
-            </div>
-          </div>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <Scale className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <Label htmlFor="code-reference" className="text-sm cursor-pointer">
+                      Building Codes
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Reference published US and Canadian building codes
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="code-reference"
+                  checked={codeReferenceEnabled}
+                  onCheckedChange={handleCodeReferenceToggle}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <Volume2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <Label htmlFor="auto-play-tts" className="text-sm cursor-pointer">
+                      Auto-read
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Read new answers aloud automatically
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  id="auto-play-tts"
+                  checked={autoPlayTTS}
+                  onCheckedChange={handleAutoPlayToggle}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Rate limit warning banner */}
@@ -702,202 +696,115 @@ export default function Assistant() {
           </Alert>
         )}
 
-        {/* Context indicator bar */}
-        <ContextIndicator
-          jobTitle={selectedJob?.title}
-          equipmentType={equipment?.equipment_type}
-          documentCount={documents.length}
-          onClearContext={selectedJob ? clearJobContext : undefined}
-          className="mb-3"
-        />
-
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
-          {/* Context Panel - Hidden on mobile, shown as collapsible on tablet+ */}
-          <div className="hidden lg:block w-72 shrink-0 space-y-4">
-            <Card className="p-4">
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Briefcase className="h-4 w-4" />
-                Job Context
-              </h3>
-              <Popover open={jobSearchOpen} onOpenChange={setJobSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={jobSearchOpen}
-                    className="w-full justify-between font-normal"
-                  >
-                    {selectedJob ? selectedJob.title : "Search for a job..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-popover" align="start">
-                  <Command>
-                    <CommandInput
-                      placeholder="Search jobs..."
-                      value={jobSearchQuery}
-                      onValueChange={setJobSearchQuery}
-                    />
-                    <CommandList>
-                      <CommandEmpty>No jobs found.</CommandEmpty>
-                      <CommandGroup>
-                        {jobs.map((job) => (
-                          <CommandItem
-                            key={job.id}
-                            value={job.title}
-                            onSelect={() => {
-                              handleJobSelect(job.id);
-                              setJobSearchOpen(false);
-                              setJobSearchQuery("");
-                            }}
-                          >
-                            <Search className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="truncate">{job.title}</span>
-                            {job.job_type && (
-                              <Badge variant="secondary" className="ml-auto text-[10px] px-1.5">
-                                {job.job_type}
-                              </Badge>
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-
-              {selectedJob && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="secondary">{selectedJob.job_type || "General"}</Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={clearJobContext}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  {selectedJob.current_stage && (
-                    <p className="text-xs text-muted-foreground">
-                      Stage: {selectedJob.current_stage}
-                    </p>
-                  )}
-                  {selectedJob.address && (
-                    <p className="text-xs text-muted-foreground truncate">
-                      {selectedJob.address}
-                    </p>
-                  )}
-                </div>
+        <div className="flex-1 flex gap-4 min-h-0">
+          {/* Desktop context rail — collapsible; mobile uses the Context sheet */}
+          <div className={cn("hidden lg:flex shrink-0 flex-col min-h-0", railCollapsed ? "w-10" : "w-64")}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleRail}
+              aria-label={railCollapsed ? "Expand context panel" : "Collapse context panel"}
+              className={cn(
+                "mb-2 text-muted-foreground hover:text-foreground",
+                railCollapsed ? "w-10 px-0 justify-center" : "self-start gap-1.5 px-2"
               )}
-            </Card>
-
-            {equipment && (
-              <Card className="p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <Wrench className="h-4 w-4" />
-                  Equipment
-                </h3>
-                <div className="space-y-1 text-sm">
-                  <p className="font-medium">{equipment.equipment_type}</p>
-                  {equipment.brand && (
-                    <p className="text-muted-foreground">
-                      {equipment.brand} {equipment.model}
-                    </p>
-                  )}
-                  {equipment.serial_number && (
-                    <p className="text-xs text-muted-foreground">
-                      S/N: {equipment.serial_number}
-                    </p>
-                  )}
-                  {equipment.warranty_expiry && (
-                    <Badge 
-                      variant="outline" 
-                      className={cn(
-                        "text-xs mt-2",
-                        new Date(equipment.warranty_expiry) < new Date()
-                          ? "border-destructive text-destructive"
-                          : "border-emerald-500 text-emerald-600"
-                      )}
-                    >
-                      Warranty: {new Date(equipment.warranty_expiry) < new Date() ? "Expired" : "Active"}
-                    </Badge>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {documents.length > 0 && (
-              <Card className="p-4">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Available Docs
-                </h3>
-                <div className="space-y-1">
-                  {documents.slice(0, 5).map((doc) => (
-                    <p key={doc.id} className="text-xs text-muted-foreground truncate">
-                      {doc.name}
-                    </p>
-                  ))}
-                  {documents.length > 5 && (
-                    <p className="text-xs text-muted-foreground">
-                      +{documents.length - 5} more
-                    </p>
-                  )}
-                </div>
-              </Card>
+            >
+              {railCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <>
+                  <PanelLeftClose className="h-4 w-4" />
+                  <span className="text-xs">Hide context</span>
+                </>
+              )}
+            </Button>
+            {!railCollapsed && (
+              <div className="min-h-0 overflow-y-auto custom-scrollbar pr-0.5">
+                <AssistantContextPanels
+                  jobs={jobs}
+                  selectedJob={selectedJob}
+                  jobSearchQuery={jobSearchQuery}
+                  onJobSearchQueryChange={setJobSearchQuery}
+                  onJobSelect={handleJobSelect}
+                  onClearJob={clearJobContext}
+                  equipment={equipment}
+                  documents={documents}
+                />
+              </div>
             )}
           </div>
 
           {/* Chat Area */}
-          <Card className="flex-1 flex flex-col min-w-0">
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          <Card className="flex-1 flex flex-col min-w-0 overflow-hidden">
+            {/* Identity + context strip */}
+            <div className="flex items-center gap-2.5 px-3 md:px-4 py-2 border-b bg-muted/30">
+              <div className="h-7 w-7 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+              </div>
+              {hasContext ? (
+                <ContextIndicator
+                  jobTitle={selectedJob?.title}
+                  equipmentType={equipment?.equipment_type}
+                  documentCount={documents.length}
+                  onClearContext={selectedJob ? clearJobContext : undefined}
+                  className="flex-1 min-w-0 bg-transparent px-0 py-0"
+                />
+              ) : (
+                <p className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
+                  Answers grounded in your uploaded documentation
+                </p>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContextSheetOpen(true)}
+                className="lg:hidden h-8 gap-1.5 shrink-0"
+              >
+                <Briefcase className="h-3.5 w-3.5" />
+                Context
+                {selectedJob && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+              </Button>
+            </div>
+            <ScrollArea className="flex-1 px-3 md:px-4" ref={scrollRef}>
               {messages.length === 0 ? (
-                <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center text-center p-8">
-                  <Bot className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">How can I help you today?</h3>
-                  
-                  {/* Documentation Info Banner */}
-                  {documents.length === 0 && !codeReferenceEnabled && (
-                    <Alert className="mb-4 max-w-lg text-left bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400">
-                      <BookOpen className="h-4 w-4" />
-                      <AlertTitle>Tip: Upload Equipment Manuals</AlertTitle>
-                      <AlertDescription>
-                        Upload manufacturer manuals, spec sheets, and warranty documents in the Documents section to get equipment-specific guidance.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {documents.length > 0 && (
-                    <Alert className="mb-4 max-w-lg text-left bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
-                      <BookOpen className="h-4 w-4" />
-                      <AlertTitle>{documents.length} Document{documents.length !== 1 ? 's' : ''} Available</AlertTitle>
-                      <AlertDescription>
-                        I can reference your uploaded documentation. All technical guidance I provide will be cited from these sources.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center text-center px-6 py-10">
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center mb-4">
+                    <Sparkles className="h-7 w-7 text-primary" />
+                  </div>
+                  <h3 className="font-display text-xl md:text-2xl font-bold tracking-tight mb-2">How can I help you today?</h3>
 
-                  {codeReferenceEnabled && (
-                    <Alert className="mb-4 max-w-lg text-left bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400">
-                      <Scale className="h-4 w-4" />
-                      <AlertTitle>Code Reference Mode Active</AlertTitle>
-                      <AlertDescription>
-                        I can reference published US and Canadian building codes (NEC, CEC, IPC, NPC, IMC, etc.). All code references will cite specific sections. Always verify with your local AHJ.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  <p className="text-muted-foreground max-w-md">
+                  <p className="text-sm md:text-base text-muted-foreground max-w-md">
                     {codeReferenceEnabled
                       ? "Ask about code compliance, requirements, or regulations for electrical, plumbing, and HVAC work."
                       : documents.length === 0
                         ? "Upload equipment manuals to unlock full technical guidance. You can still ask general troubleshooting questions or share photos for analysis."
-                        : "Ask me about troubleshooting, procedures, or technical questions. I'll reference your uploaded documentation."
+                        : "Ask about troubleshooting, procedures, or technical questions. Answers are cited from your uploaded documentation."
                     }
                   </p>
-                  <div className="flex flex-wrap gap-2 mt-4 justify-center">
+
+                  {/* Grounding status */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+                    {documents.length > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-3 py-1 text-xs font-medium">
+                        <FileText className="h-3.5 w-3.5" />
+                        {documents.length} Document{documents.length !== 1 ? 's' : ''} Available
+                      </span>
+                    )}
+                    {codeReferenceEnabled && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 px-3 py-1 text-xs font-medium">
+                        <Scale className="h-3.5 w-3.5" />
+                        Code Reference Mode Active
+                      </span>
+                    )}
+                    {documents.length === 0 && !codeReferenceEnabled && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted text-muted-foreground px-3 py-1 text-xs font-medium">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        No documentation uploaded yet
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mt-5 justify-center max-w-xl">
                     {codeReferenceEnabled ? (
                       [
                         "What are the GFCI requirements for kitchen outlets?",
@@ -909,6 +816,7 @@ export default function Assistant() {
                           key={suggestion}
                           variant="outline"
                           size="sm"
+                          className="rounded-full whitespace-normal h-auto py-2 max-w-full"
                           onClick={() => setInput(suggestion)}
                         >
                           {suggestion}
@@ -924,6 +832,7 @@ export default function Assistant() {
                           key={suggestion}
                           variant="outline"
                           size="sm"
+                          className="rounded-full whitespace-normal h-auto py-2 max-w-full"
                           onClick={() => setInput(suggestion)}
                         >
                           {suggestion}
@@ -933,6 +842,7 @@ export default function Assistant() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="rounded-full whitespace-normal h-auto py-2 max-w-full"
                         onClick={() => navigate("/documents")}
                       >
                         Upload Documentation
@@ -941,14 +851,14 @@ export default function Assistant() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="mx-auto max-w-3xl space-y-5 py-4">
                   {messages.map((msg, i) => {
                     const textContent = getTextContent(msg.content);
                     const imageUrls = getImageUrls(msg.content);
                     const isLastAssistantMessage = msg.role === "assistant" && i === messages.length - 1;
-                    
+
                     return (
-                      <div key={i} data-testid={`chat-message-${msg.role}`}>
+                      <div key={i} data-testid={`chat-message-${msg.role}`} className="message-in">
                         <div
                           className={cn(
                             "flex gap-3",
@@ -956,8 +866,8 @@ export default function Assistant() {
                           )}
                         >
                           {msg.role === "assistant" && (
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                              <Bot className="h-4 w-4 text-primary" />
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
+                              <Sparkles className="h-4 w-4 text-primary" />
                             </div>
                           )}
                           {msg.role === "assistant" ? (
@@ -966,9 +876,9 @@ export default function Assistant() {
                               const structuredSources = msg.metadata?.sources;
                               return (
                                 <div className="max-w-[80%] space-y-2">
-                                  <div className="chat-bubble-assistant rounded-lg px-4 py-2">
+                                  <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-2.5">
                                     <div className="flex items-start justify-between gap-2">
-                                      <p className="whitespace-pre-wrap text-sm flex-1">{cleanContent || textContent}</p>
+                                      <p className="whitespace-pre-wrap text-sm leading-relaxed flex-1">{cleanContent || textContent}</p>
                                       <div className="flex items-center gap-1 shrink-0">
                                         <TextToSpeech text={cleanContent || textContent} />
                                         {selectedJob?.id && (
@@ -990,15 +900,15 @@ export default function Assistant() {
                                   ) : null}
                                   {msg.metadata?.confidence && (
                                     <div data-testid="confidence-badge" className={cn(
-                                      "flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-md w-fit font-medium",
-                                      msg.metadata.confidence === 'high' && "text-green-700 bg-green-50 dark:text-green-400 dark:bg-green-950/30",
-                                      msg.metadata.confidence === 'medium' && "text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/30",
-                                      msg.metadata.confidence === 'low' && "text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-950/30",
+                                      "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full w-fit font-medium",
+                                      msg.metadata.confidence === 'high' && "bg-green-500/15 text-green-700 dark:text-green-300",
+                                      msg.metadata.confidence === 'medium' && "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+                                      msg.metadata.confidence === 'low' && "bg-red-500/15 text-red-700 dark:text-red-300",
                                     )}>
                                       <span className={cn(
                                         "h-1.5 w-1.5 rounded-full",
                                         msg.metadata.confidence === 'high' && "bg-green-500",
-                                        msg.metadata.confidence === 'medium' && "bg-yellow-500",
+                                        msg.metadata.confidence === 'medium' && "bg-amber-500",
                                         msg.metadata.confidence === 'low' && "bg-red-500",
                                       )} />
                                       {msg.metadata.confidence === 'high' && "High confidence"}
@@ -1025,8 +935,8 @@ export default function Assistant() {
                                 </div>
                               )}
                               {textContent && (
-                                <div className="rounded-lg px-4 py-2 chat-bubble-user text-primary-foreground">
-                                  <p className="whitespace-pre-wrap text-sm">{textContent}</p>
+                                <div className="rounded-2xl rounded-br-md px-4 py-2.5 chat-bubble-user text-primary-foreground">
+                                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{textContent}</p>
                                 </div>
                               )}
                             </div>
@@ -1052,12 +962,14 @@ export default function Assistant() {
                     );
                   })}
                   {isLoading && messages[messages.length - 1]?.role === "user" && (
-                    <div data-testid="assistant-loading" className="flex gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Bot className="h-4 w-4 text-primary" />
+                    <div data-testid="assistant-loading" className="flex gap-3 message-in">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center">
+                        <Sparkles className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="chat-bubble-assistant rounded-lg px-4 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                      <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-3.5 flex items-center gap-1">
+                        <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground/70" />
+                        <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
+                        <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
                       </div>
                     </div>
                   )}
@@ -1065,58 +977,78 @@ export default function Assistant() {
               )}
             </ScrollArea>
 
-            <div className="p-4 border-t space-y-3">
+            <div className="p-3 md:p-4 border-t">
               {/* Diagnostic Wizard */}
               {showDiagnosticWizard && (
-                <DiagnosticWizard
-                  symptomText={pendingDiagnosticText}
-                  onComplete={handleDiagnosticComplete}
-                  onCancel={handleDiagnosticCancel}
-                  industry={tenant?.industry as IndustryType | undefined}
-                />
+                <div className="mx-auto max-w-3xl mb-3">
+                  <DiagnosticWizard
+                    symptomText={pendingDiagnosticText}
+                    onComplete={handleDiagnosticComplete}
+                    onCancel={handleDiagnosticCancel}
+                    industry={tenant?.industry as IndustryType | undefined}
+                  />
+                </div>
               )}
 
-              {/* Image and voice attachment UI */}
-              <div className="flex items-center gap-2">
-                <ImageAttachment
-                  images={attachedImages}
-                  onImagesChange={setAttachedImages}
-                  maxImages={4}
-                  disabled={isLoading}
-                />
-                <VoiceInput
-                  onTranscript={(text) => setInput((prev) => prev ? `${prev} ${text}` : text)}
-                  disabled={isLoading}
-                />
-              </div>
-              
-              <div className="flex gap-2">
-                <Input
-                  data-testid="chat-input"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask about troubleshooting, or use voice/camera..."
-                  disabled={isLoading}
-                  className="flex-1 h-12"
-                />
-                <Button
-                  data-testid="send-message-button"
-                  size="icon"
-                  className="h-12 w-12"
-                  onClick={() => handleSend()}
-                  disabled={isLoading || (!input.trim() && attachedImages.length === 0)}
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
-                </Button>
+              {/* Integrated composer: attachments, input, voice, send */}
+              <div className="mx-auto max-w-3xl">
+                <div className="flex flex-wrap items-center gap-1 rounded-2xl border bg-card shadow-card px-1.5 py-1.5 transition-shadow focus-within:border-ring/40 focus-within:ring-2 focus-within:ring-ring/20">
+                  <ImageAttachment
+                    images={attachedImages}
+                    onImagesChange={setAttachedImages}
+                    maxImages={4}
+                    disabled={isLoading}
+                  />
+                  <Input
+                    data-testid="chat-input"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask about troubleshooting, or use voice/camera..."
+                    disabled={isLoading}
+                    className="flex-1 min-w-[140px] h-10 border-0 bg-transparent shadow-none px-2 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                  <VoiceInput
+                    onTranscript={(text) => setInput((prev) => prev ? `${prev} ${text}` : text)}
+                    disabled={isLoading}
+                  />
+                  <Button
+                    data-testid="send-message-button"
+                    size="icon"
+                    className="h-10 w-10 rounded-xl shrink-0"
+                    onClick={() => handleSend()}
+                    disabled={isLoading || (!input.trim() && attachedImages.length === 0)}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
         </div>
+
+        {/* Mobile/tablet context sheet — same panels as the desktop rail */}
+        <Sheet open={contextSheetOpen} onOpenChange={setContextSheetOpen}>
+          <SheetContent side="right" className="w-[85vw] sm:max-w-sm overflow-y-auto">
+            <SheetHeader className="mb-3 text-left">
+              <SheetTitle className="font-display text-lg">Context</SheetTitle>
+            </SheetHeader>
+            <AssistantContextPanels
+              jobs={jobs}
+              selectedJob={selectedJob}
+              jobSearchQuery={jobSearchQuery}
+              onJobSearchQueryChange={setJobSearchQuery}
+              onJobSelect={handleJobSelect}
+              onClearJob={clearJobContext}
+              equipment={equipment}
+              documents={documents}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
     </MainLayout>
   );

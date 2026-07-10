@@ -30,7 +30,7 @@ export function SuggestedQuestions({
           size="sm"
           onClick={() => onSelect(suggestion)}
           disabled={disabled}
-          className="text-sm h-10 px-3 bg-muted/30 hover:bg-muted/50 border-muted-foreground/20"
+          className="text-sm h-9 px-4 rounded-full bg-muted/30 hover:bg-muted/60 border-muted-foreground/20"
         >
           {suggestion}
         </Button>

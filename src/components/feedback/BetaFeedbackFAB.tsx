@@ -46,10 +46,17 @@ export function BetaFeedbackFAB() {
           <Button
             onClick={() => setOpen(true)}
             size="lg"
-            className="h-14 gap-2 rounded-full shadow-lg hover:shadow-xl transition-shadow"
+            aria-label="Send beta feedback"
+            title="Beta Feedback"
+            className={cn(
+              "rounded-full shadow-lg hover:shadow-xl transition-shadow",
+              // Compact icon-only on /assistant so the FAB never covers the
+              // chat composer's controls.
+              hasBottomInput ? "h-12 w-12 p-0" : "h-14 gap-2"
+            )}
           >
             <MessageSquarePlus className="h-5 w-5" />
-            <span className="hidden sm:inline">Beta Feedback</span>
+            {!hasBottomInput && <span className="hidden sm:inline">Beta Feedback</span>}
           </Button>
         </motion.div>
       </AnimatePresence>

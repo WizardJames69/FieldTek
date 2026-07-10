@@ -110,11 +110,14 @@ export function ImageAttachment({
 
   const canAddMore = images.length < maxImages && !disabled;
 
+  // Rendered as a fragment so the pieces slot directly into the composer's
+  // flex-wrap row: previews take a full line above (basis-full), the two
+  // icon buttons sit inline next to the input.
   return (
-    <div className="space-y-2">
+    <>
       {/* Image previews */}
       {images.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="basis-full flex flex-wrap items-center gap-2 px-1.5 pt-1 pb-1.5">
           {images.map((img, idx) => (
             <div key={idx} className="relative group">
               <img
@@ -127,11 +130,15 @@ export function ImageAttachment({
                 onClick={() => removeImage(idx)}
                 className="absolute -top-1.5 -right-1.5 h-5 w-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 disabled={disabled}
+                aria-label={`Remove attached image ${idx + 1}`}
               >
                 <X className="h-3 w-3" />
               </button>
             </div>
           ))}
+          <span className="text-xs text-muted-foreground ml-1">
+            {images.length}/{maxImages}
+          </span>
         </div>
       )}
 
@@ -156,35 +163,30 @@ export function ImageAttachment({
       />
 
       {/* Action buttons */}
-      <div className="flex gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => cameraInputRef.current?.click()}
-          disabled={!canAddMore || isProcessing}
-          title="Take photo"
-        >
-          <Camera className="h-4 w-4" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={!canAddMore || isProcessing}
-          title="Upload image"
-        >
-          <ImageIcon className="h-4 w-4" />
-        </Button>
-        {images.length > 0 && (
-          <span className="text-xs text-muted-foreground self-center ml-1">
-            {images.length}/{maxImages}
-          </span>
-        )}
-      </div>
-    </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-10 w-10 rounded-xl text-muted-foreground hover:text-foreground shrink-0"
+        onClick={() => cameraInputRef.current?.click()}
+        disabled={!canAddMore || isProcessing}
+        title="Take photo"
+        aria-label="Take photo"
+      >
+        <Camera className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-10 w-10 rounded-xl text-muted-foreground hover:text-foreground shrink-0"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={!canAddMore || isProcessing}
+        title="Upload image"
+        aria-label="Upload image"
+      >
+        <ImageIcon className="h-4 w-4" />
+      </Button>
+    </>
   );
 }

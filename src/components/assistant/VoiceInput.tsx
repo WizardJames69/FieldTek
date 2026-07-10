@@ -93,18 +93,20 @@ export function VoiceInput({ onTranscript, disabled = false, maxDurationMs }: Vo
   const isRecording = scribe.isConnected;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 shrink-0">
       <Button
         type="button"
         variant={isRecording ? "destructive" : "ghost"}
         size="icon"
         className={cn(
-          "h-12 w-12 transition-all",
+          "h-10 w-10 rounded-xl transition-all",
+          !isRecording && "text-muted-foreground hover:text-foreground",
           isRecording && "animate-pulse"
         )}
         onClick={handleToggle}
         disabled={disabled || isConnecting}
         title={isRecording ? "Stop recording" : "Start voice input"}
+        aria-label={isRecording ? "Stop recording" : "Start voice input"}
       >
         {isConnecting ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -114,10 +116,10 @@ export function VoiceInput({ onTranscript, disabled = false, maxDurationMs }: Vo
           <Mic className="h-4 w-4" />
         )}
       </Button>
-      
+
       {/* Show live partial transcript */}
       {currentTranscript && (
-        <span className="text-sm text-muted-foreground italic truncate max-w-[200px]">
+        <span className="text-sm text-muted-foreground italic truncate max-w-[140px]">
           {currentTranscript}...
         </span>
       )}
