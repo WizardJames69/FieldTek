@@ -893,7 +893,7 @@ html.landing-html-bg body,
 .dark .chat-bubble-assistant {
   background: hsl(var(--card));
   border-color: hsl(var(--border));
-  box-shadow: 0 4px 12px -2px hsl(0 0% 0% / 0.15);
+  box-shadow: var(--shadow-card);
 }
 
 /* Chat message entrance + typing indicator */
