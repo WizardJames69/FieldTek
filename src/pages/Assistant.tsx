@@ -25,7 +25,7 @@ import { DegradedAnswerBanner } from "@/components/assistant/DegradedAnswerBanne
 import { DiagnosticWizard, getDiagnosticPath, formatDiagnosticData } from "@/components/assistant/DiagnosticWizard";
 import { shouldAutoOpenDiagnosticWizard, type IndustryType } from "@/config/industryAssistantConfig";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
-import { SentinelMark } from "@/components/assistant/SentinelMark";
+import { SentinelMark } from "@/components/ui/SentinelMark";
 import {
   AssistantContextPanels,
   type JobContext,
@@ -763,7 +763,7 @@ export default function Assistant() {
                 <div className="min-w-0 mr-auto">
                   <p className="font-display text-sm font-bold leading-tight text-foreground">Sentinel</p>
                   <p className="text-[11px] text-muted-foreground leading-tight truncate">
-                    Field diagnostic assistant
+                    Grounded field intelligence
                   </p>
                 </div>
                 <Button
@@ -885,7 +885,7 @@ export default function Assistant() {
                         >
                           {msg.role === "assistant" && (
                             <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                              <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.1} />
+                              <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.4} />
                             </div>
                           )}
                           {msg.role === "assistant" ? (
@@ -982,12 +982,15 @@ export default function Assistant() {
                   {isLoading && messages[messages.length - 1]?.role === "user" && (
                     <div data-testid="assistant-loading" className="flex gap-3 message-in">
                       <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center">
-                        <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.1} />
+                        <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.4} />
                       </div>
-                      <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-3.5 flex items-center gap-1">
-                        <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground/70" />
-                        <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
-                        <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
+                      {/* Grounding indicator: the mark's ground bars, settling top to
+                          bottom while Sentinel retrieves evidence. */}
+                      <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-3 flex flex-col items-start justify-center gap-[3px]">
+                        <span className="sr-only">Sentinel is checking your documentation</span>
+                        <span className="typing-dot h-[2.5px] w-3.5 rounded-full bg-muted-foreground/70" />
+                        <span className="typing-dot h-[2.5px] w-2.5 rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
+                        <span className="typing-dot h-[2.5px] w-1.5 rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
                       </div>
                     </div>
                   )}
@@ -1010,8 +1013,7 @@ export default function Assistant() {
 
               {/* Integrated composer: attachments, input, voice, send */}
               <div className="mx-auto max-w-3xl">
-                <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                  <SentinelMark className="h-3 w-3 text-primary" strokeWidth={2.2} />
+                <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
                   Ask Sentinel
                 </p>
                 <div className="flex flex-wrap items-center gap-1 rounded-2xl border bg-card shadow-card px-1.5 py-1.5 transition-shadow focus-within:border-ring/40 focus-within:ring-2 focus-within:ring-ring/20">
