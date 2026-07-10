@@ -74,8 +74,8 @@ export function AssistantContextPanels({
   const [jobSearchOpen, setJobSearchOpen] = useState(false);
 
   return (
-    <div className="space-y-3">
-      <Card className="p-4">
+    <Card className="divide-y overflow-hidden">
+      <div className="p-4">
         <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 text-foreground/80">
           <Briefcase className="h-4 w-4 text-muted-foreground" />
           Job Context
@@ -155,10 +155,10 @@ export function AssistantContextPanels({
             )}
           </div>
         )}
-      </Card>
+      </div>
 
       {equipment && (
-        <Card className="p-4">
+        <div className="p-4">
           <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-foreground/80">
             <Wrench className="h-4 w-4 text-muted-foreground" />
             Equipment
@@ -189,11 +189,11 @@ export function AssistantContextPanels({
               </Badge>
             )}
           </div>
-        </Card>
+        </div>
       )}
 
       {documents.length > 0 && (
-        <Card className="p-4">
+        <div className="p-4">
           <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-foreground/80">
             <FileText className="h-4 w-4 text-muted-foreground" />
             Available Docs
@@ -210,8 +210,8 @@ export function AssistantContextPanels({
               </p>
             )}
           </div>
-        </Card>
+        </div>
       )}
-    </div>
+    </Card>
   );
 }

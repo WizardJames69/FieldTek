@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Send, User, Loader2, Briefcase, FileText, BookOpen, Volume2, AlertTriangle, RotateCcw, Sparkles, Scale, Settings2, Zap, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Send, User, Loader2, Briefcase, FileText, BookOpen, Volume2, AlertTriangle, RotateCcw, Scale, Settings2, Zap, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ImageAttachment } from "@/components/assistant/ImageAttachment";
@@ -25,6 +25,7 @@ import { DegradedAnswerBanner } from "@/components/assistant/DegradedAnswerBanne
 import { DiagnosticWizard, getDiagnosticPath, formatDiagnosticData } from "@/components/assistant/DiagnosticWizard";
 import { shouldAutoOpenDiagnosticWizard, type IndustryType } from "@/config/industryAssistantConfig";
 import { SaveToJobNotes } from "@/components/assistant/SaveToJobNotes";
+import { SentinelMark } from "@/components/assistant/SentinelMark";
 import {
   AssistantContextPanels,
   type JobContext,
@@ -610,6 +611,23 @@ export default function Assistant() {
 
   const hasContext = !!selectedJob || !!equipment || documents.length > 0;
 
+  // Empty-state prompt hierarchy: one featured question plus secondary chips.
+  const promptSet = codeReferenceEnabled
+    ? {
+        featured: "What are the GFCI requirements for kitchen outlets?",
+        secondary: [
+          "What's the minimum drain pipe size for a bathroom group?",
+          "What clearances does a gas furnace need?",
+          "What wire gauge is required for a 20A circuit?",
+        ],
+      }
+    : documents.length > 0
+      ? {
+          featured: "What does my documentation say about startup procedures?",
+          secondary: ["What maintenance is documented?", "What specs are in my manuals?"],
+        }
+      : null;
+
   return (
     <MainLayout title="Sentinel AI">
       <div className="h-[calc(100vh-7rem)] md:h-[calc(100vh-8rem)] flex flex-col">
@@ -736,113 +754,113 @@ export default function Assistant() {
 
           {/* Chat Area */}
           <Card className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            {/* Identity + context strip */}
-            <div className="flex items-center gap-2.5 px-3 md:px-4 py-2 border-b bg-muted/30">
-              <div className="h-7 w-7 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+            {/* Sentinel identity bar */}
+            <div className="border-b bg-muted/30">
+              <div className="flex items-center gap-2.5 px-3 md:px-4 py-2">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
+                  <SentinelMark className="h-[18px] w-[18px] text-primary" />
+                </div>
+                <div className="min-w-0 mr-auto">
+                  <p className="font-display text-sm font-bold leading-tight text-foreground">Sentinel</p>
+                  <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                    Field diagnostic assistant
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setContextSheetOpen(true)}
+                  className="lg:hidden h-8 gap-1.5 shrink-0"
+                >
+                  <Briefcase className="h-3.5 w-3.5" />
+                  Context
+                  {selectedJob && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                </Button>
               </div>
-              {hasContext ? (
-                <ContextIndicator
-                  jobTitle={selectedJob?.title}
-                  equipmentType={equipment?.equipment_type}
-                  documentCount={documents.length}
-                  onClearContext={selectedJob ? clearJobContext : undefined}
-                  className="flex-1 min-w-0 bg-transparent px-0 py-0"
-                />
-              ) : (
-                <p className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
-                  Answers grounded in your uploaded documentation
-                </p>
+              {hasContext && (
+                <div className="px-3 md:px-4 pb-2">
+                  <ContextIndicator
+                    jobTitle={selectedJob?.title}
+                    equipmentType={equipment?.equipment_type}
+                    documentCount={documents.length}
+                    onClearContext={selectedJob ? clearJobContext : undefined}
+                    className="bg-transparent px-0 py-0"
+                  />
+                </div>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setContextSheetOpen(true)}
-                className="lg:hidden h-8 gap-1.5 shrink-0"
-              >
-                <Briefcase className="h-3.5 w-3.5" />
-                Context
-                {selectedJob && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
-              </Button>
             </div>
             <ScrollArea className="flex-1 px-3 md:px-4" ref={scrollRef}>
               {messages.length === 0 ? (
-                <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center text-center px-6 py-10">
-                  <div className="h-14 w-14 rounded-2xl bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center mb-4">
-                    <Sparkles className="h-7 w-7 text-primary" />
-                  </div>
-                  <h3 className="font-display text-xl md:text-2xl font-bold tracking-tight mb-2">How can I help you today?</h3>
+                <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center px-4 py-8">
+                  <div className="w-full max-w-md">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-10 w-10 rounded-xl bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
+                        <SentinelMark className="h-5 w-5 text-primary" />
+                      </div>
+                      <h3 className="font-display text-lg md:text-xl font-bold tracking-tight">
+                        How can I help you today?
+                      </h3>
+                    </div>
 
-                  <p className="text-sm md:text-base text-muted-foreground max-w-md">
-                    {codeReferenceEnabled
-                      ? "Ask about code compliance, requirements, or regulations for electrical, plumbing, and HVAC work."
-                      : documents.length === 0
-                        ? "Upload equipment manuals to unlock full technical guidance. You can still ask general troubleshooting questions or share photos for analysis."
-                        : "Ask about troubleshooting, procedures, or technical questions. Answers are cited from your uploaded documentation."
-                    }
-                  </p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {codeReferenceEnabled
+                        ? "Ask about code compliance, requirements, or regulations for electrical, plumbing, and HVAC work."
+                        : documents.length === 0
+                          ? "Upload equipment manuals to unlock cited, equipment-specific answers. You can still ask general troubleshooting questions or share photos from the field."
+                          : "Ask about symptoms, procedures, specifications, or previous work. Sentinel checks the documentation available to your team before answering."
+                      }
+                    </p>
 
-                  {/* Grounding status */}
-                  <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-                    {documents.length > 0 && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-3 py-1 text-xs font-medium">
-                        <FileText className="h-3.5 w-3.5" />
-                        {documents.length} Document{documents.length !== 1 ? 's' : ''} Available
-                      </span>
-                    )}
-                    {codeReferenceEnabled && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 px-3 py-1 text-xs font-medium">
-                        <Scale className="h-3.5 w-3.5" />
-                        Code Reference Mode Active
-                      </span>
-                    )}
-                    {documents.length === 0 && !codeReferenceEnabled && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-muted text-muted-foreground px-3 py-1 text-xs font-medium">
-                        <BookOpen className="h-3.5 w-3.5" />
-                        No documentation uploaded yet
-                      </span>
-                    )}
-                  </div>
+                    {/* Grounding status */}
+                    <div className="flex flex-wrap items-center gap-2 mb-5">
+                      {documents.length > 0 && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-3 py-1 text-xs font-medium">
+                          <FileText className="h-3.5 w-3.5" />
+                          {documents.length} Document{documents.length !== 1 ? 's' : ''} Available
+                        </span>
+                      )}
+                      {codeReferenceEnabled && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-300 px-3 py-1 text-xs font-medium">
+                          <Scale className="h-3.5 w-3.5" />
+                          Code Reference Mode Active
+                        </span>
+                      )}
+                      {documents.length === 0 && !codeReferenceEnabled && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted text-muted-foreground px-3 py-1 text-xs font-medium">
+                          <BookOpen className="h-3.5 w-3.5" />
+                          No documentation uploaded yet
+                        </span>
+                      )}
+                    </div>
 
-                  <div className="flex flex-wrap gap-2 mt-5 justify-center max-w-xl">
-                    {codeReferenceEnabled ? (
-                      [
-                        "What are the GFCI requirements for kitchen outlets?",
-                        "What's the minimum drain pipe size for a bathroom group?",
-                        "What clearances does a gas furnace need?",
-                        "What wire gauge is required for a 20A circuit?",
-                      ].map((suggestion) => (
+                    {promptSet ? (
+                      <div>
                         <Button
-                          key={suggestion}
                           variant="outline"
-                          size="sm"
-                          className="rounded-full whitespace-normal h-auto py-2 max-w-full"
-                          onClick={() => setInput(suggestion)}
+                          className="w-full justify-start text-left h-auto whitespace-normal rounded-xl bg-card shadow-card px-4 py-3 text-sm font-medium mb-2"
+                          onClick={() => setInput(promptSet.featured)}
                         >
-                          {suggestion}
+                          {promptSet.featured}
                         </Button>
-                      ))
-                    ) : documents.length > 0 ? (
-                      [
-                        "What does my documentation say about startup procedures?",
-                        "What maintenance is documented?",
-                        "What specs are in my manuals?",
-                      ].map((suggestion) => (
-                        <Button
-                          key={suggestion}
-                          variant="outline"
-                          size="sm"
-                          className="rounded-full whitespace-normal h-auto py-2 max-w-full"
-                          onClick={() => setInput(suggestion)}
-                        >
-                          {suggestion}
-                        </Button>
-                      ))
+                        <div className="flex flex-wrap gap-2">
+                          {promptSet.secondary.map((suggestion) => (
+                            <Button
+                              key={suggestion}
+                              variant="outline"
+                              size="sm"
+                              className="rounded-full whitespace-normal h-auto py-2 max-w-full text-muted-foreground hover:text-foreground"
+                              onClick={() => setInput(suggestion)}
+                            >
+                              {suggestion}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
                     ) : (
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-full whitespace-normal h-auto py-2 max-w-full"
+                        className="rounded-full"
                         onClick={() => navigate("/documents")}
                       >
                         Upload Documentation
@@ -867,7 +885,7 @@ export default function Assistant() {
                         >
                           {msg.role === "assistant" && (
                             <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                              <Sparkles className="h-4 w-4 text-primary" />
+                              <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.1} />
                             </div>
                           )}
                           {msg.role === "assistant" ? (
@@ -964,7 +982,7 @@ export default function Assistant() {
                   {isLoading && messages[messages.length - 1]?.role === "user" && (
                     <div data-testid="assistant-loading" className="flex gap-3 message-in">
                       <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center">
-                        <Sparkles className="h-4 w-4 text-primary" />
+                        <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.1} />
                       </div>
                       <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-3.5 flex items-center gap-1">
                         <span className="typing-dot h-1.5 w-1.5 rounded-full bg-muted-foreground/70" />
@@ -977,7 +995,7 @@ export default function Assistant() {
               )}
             </ScrollArea>
 
-            <div className="p-3 md:p-4 border-t">
+            <div className="p-3 md:p-4 border-t bg-muted/20">
               {/* Diagnostic Wizard */}
               {showDiagnosticWizard && (
                 <div className="mx-auto max-w-3xl mb-3">
@@ -992,6 +1010,10 @@ export default function Assistant() {
 
               {/* Integrated composer: attachments, input, voice, send */}
               <div className="mx-auto max-w-3xl">
+                <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                  <SentinelMark className="h-3 w-3 text-primary" strokeWidth={2.2} />
+                  Ask Sentinel
+                </p>
                 <div className="flex flex-wrap items-center gap-1 rounded-2xl border bg-card shadow-card px-1.5 py-1.5 transition-shadow focus-within:border-ring/40 focus-within:ring-2 focus-within:ring-ring/20">
                   <ImageAttachment
                     images={attachedImages}
@@ -999,6 +1021,7 @@ export default function Assistant() {
                     maxImages={4}
                     disabled={isLoading}
                   />
+                  <span className="hidden sm:block h-5 w-px bg-border mx-0.5" aria-hidden="true" />
                   <Input
                     data-testid="chat-input"
                     value={input}
@@ -1015,7 +1038,7 @@ export default function Assistant() {
                   <Button
                     data-testid="send-message-button"
                     size="icon"
-                    className="h-10 w-10 rounded-xl shrink-0"
+                    className="h-10 w-10 rounded-xl shrink-0 shadow-sm"
                     onClick={() => handleSend()}
                     disabled={isLoading || (!input.trim() && attachedImages.length === 0)}
                   >
