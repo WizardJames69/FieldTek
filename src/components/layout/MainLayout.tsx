@@ -173,7 +173,7 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
           />
           <div
             className={cn(
-              'flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar',
+              'flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar page-enter',
               // Clear the fixed technician bottom nav on mobile so content isn't hidden behind it.
               showTechBottomNav && 'max-md:pb-24'
             )}

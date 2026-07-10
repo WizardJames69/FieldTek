@@ -12,7 +12,7 @@
        with the dark --foreground below. The dark marketing/landing backdrop is
        scoped to those pages (see .landing-page / the hard-coded bg-[#0...]
        roots), never set globally. */
-    --background: 30 20% 98%;
+    --background: 30 14% 96%;
     --foreground: 20 14% 12%;
 
     /* ── Landing surface ramp ────────────────────────────────────
@@ -100,7 +100,7 @@
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-card: 0 1px 2px 0 rgb(28 25 23 / 0.04), 0 2px 8px -2px rgb(28 25 23 / 0.06);
     --shadow-glow: 0 0 20px -5px hsl(24 95% 53% / 0.4);
   }
 
@@ -579,7 +579,7 @@
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -588,7 +588,7 @@
 }
 
 .page-enter {
-  animation: page-enter 0.3s ease-out;
+  animation: page-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
