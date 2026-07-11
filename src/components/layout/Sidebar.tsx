@@ -55,7 +55,7 @@ const baseMainNavItems: NavItem[] = [
   { icon: Receipt, label: 'Invoices', href: '/invoices', roles: ['owner', 'admin', 'dispatcher'], feature: 'invoicing_full' },
   { icon: ClipboardList, label: 'Requests', href: '/requests', roles: ['owner', 'admin', 'dispatcher'], terminologyKey: 'serviceRequests' },
   { icon: FileText, label: 'Documents', href: '/documents', roles: ['owner', 'admin', 'dispatcher', 'technician'] },
-  { icon: MessageSquare, label: 'Sentinel AI', href: '/assistant', roles: ['owner', 'admin', 'dispatcher', 'technician'], feature: 'ai_assistant' },
+  { icon: MessageSquare, label: 'Sentinel', href: '/assistant', roles: ['owner', 'admin', 'dispatcher', 'technician'], feature: 'ai_assistant' },
 ];
 
 const baseBottomNavItems: NavItem[] = [

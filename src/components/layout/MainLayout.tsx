@@ -41,8 +41,10 @@ import { DiagnosticsDialog } from '@/components/support/DiagnosticsPanel';
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
+  /** Optional brand mark rendered to the left of the header title (see Header). */
+  titleMark?: React.ReactNode;
   actions?: React.ReactNode;
 }
 
@@ -65,7 +67,7 @@ const mainNavItems: NavItem[] = [
   { icon: Receipt, label: 'Invoices', href: '/invoices', roles: ['owner', 'admin'], feature: 'invoicing_full' },
   { icon: ClipboardList, label: 'Requests', href: '/requests', roles: ['owner', 'admin', 'dispatcher'] },
   { icon: FileText, label: 'Documents', href: '/documents', roles: ['owner', 'admin', 'dispatcher', 'technician'] },
-  { icon: MessageSquare, label: 'Sentinel AI', href: '/assistant', roles: ['owner', 'admin', 'dispatcher', 'technician'], feature: 'ai_assistant' },
+  { icon: MessageSquare, label: 'Sentinel', href: '/assistant', roles: ['owner', 'admin', 'dispatcher', 'technician'], feature: 'ai_assistant' },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -75,7 +77,7 @@ const bottomNavItems: NavItem[] = [
   { icon: Settings, label: 'Settings', href: '/settings', roles: ['owner', 'admin'] },
 ];
 
-export function MainLayout({ children, title, subtitle, actions }: MainLayoutProps) {
+export function MainLayout({ children, title, subtitle, titleMark, actions }: MainLayoutProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
   const { signOut, user } = useAuth();
@@ -165,10 +167,11 @@ export function MainLayout({ children, title, subtitle, actions }: MainLayoutPro
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden layered-bg">
-          <Header 
-            title={title} 
-            subtitle={subtitle} 
-            actions={actions} 
+          <Header
+            title={title}
+            subtitle={subtitle}
+            titleMark={titleMark}
+            actions={actions}
             onMenuToggle={() => setMobileNavOpen(true)}
           />
           <div

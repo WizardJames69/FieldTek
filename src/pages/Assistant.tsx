@@ -33,6 +33,21 @@ import {
   type DocumentContext,
 } from "@/components/assistant/AssistantContextPanels";
 
+// Sentinel product masthead for the global page header. The visible wordmark
+// is "Sentinel" (the descriptor carries the rest); the sr-only suffix keeps the
+// heading's accessible name "Sentinel AI" for screen readers and the E2E
+// contract (AssistantPage.waitForPage).
+const sentinelMasthead = {
+  title: (
+    <>
+      Sentinel
+      <span className="sr-only"> AI</span>
+    </>
+  ),
+  subtitle: "Grounded field intelligence",
+  titleMark: <SentinelMark accent className="h-8 w-8 md:h-9 md:w-9 text-primary" />,
+};
+
 // Message content can be text or multimodal (text + images)
 type TextContent = { type: "text"; text: string };
 type ImageContent = { type: "image_url"; image_url: { url: string } };
@@ -601,7 +616,7 @@ export default function Assistant() {
 
   if (authLoading || tenantLoading) {
     return (
-      <MainLayout title="Sentinel AI">
+      <MainLayout {...sentinelMasthead}>
         <div className="flex items-center justify-center h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -629,7 +644,7 @@ export default function Assistant() {
       : null;
 
   return (
-    <MainLayout title="Sentinel AI">
+    <MainLayout {...sentinelMasthead}>
       <div className="h-[calc(100vh-7rem)] md:h-[calc(100vh-8rem)] flex flex-col">
         <div className="flex items-center justify-end gap-2 sm:gap-3 mb-3">
           {rateLimitInfo && (
@@ -754,29 +769,18 @@ export default function Assistant() {
 
           {/* Chat Area */}
           <Card className="flex-1 flex flex-col min-w-0 overflow-hidden">
-            {/* Sentinel identity bar */}
-            <div className="border-b bg-muted/30">
-              <div className="flex items-center gap-3 px-3 md:px-4 py-3">
-                <SentinelMark accent className="h-7 w-7 text-primary" />
-                <div className="min-w-0 mr-auto">
-                  <p className="font-display text-base font-bold leading-tight text-foreground">Sentinel</p>
-                  <p className="text-xs text-muted-foreground leading-tight truncate">
-                    Grounded field intelligence
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setContextSheetOpen(true)}
-                  className="lg:hidden h-8 gap-1.5 shrink-0"
-                >
-                  <Briefcase className="h-3.5 w-3.5" />
-                  Context
-                  {selectedJob && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
-                </Button>
-              </div>
-              {hasContext && (
-                <div className="px-3 md:px-4 pb-2">
+            {/* Context strip: the Sentinel identity lives in the page masthead
+                now, so this row is pure utility (active context + the mobile
+                context sheet trigger). Hidden on desktop when there is nothing
+                to show. */}
+            <div
+              className={cn(
+                "border-b bg-muted/30 px-3 md:px-4 py-2 flex items-center justify-between gap-3",
+                !hasContext && "lg:hidden"
+              )}
+            >
+              <div className="min-w-0 flex-1">
+                {hasContext && (
                   <ContextIndicator
                     jobTitle={selectedJob?.title}
                     equipmentType={equipment?.equipment_type}
@@ -784,14 +788,31 @@ export default function Assistant() {
                     onClearContext={selectedJob ? clearJobContext : undefined}
                     className="bg-transparent px-0 py-0"
                   />
-                </div>
-              )}
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContextSheetOpen(true)}
+                className="lg:hidden h-8 gap-1.5 shrink-0"
+              >
+                <Briefcase className="h-3.5 w-3.5" />
+                Context
+                {selectedJob && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+              </Button>
             </div>
             <ScrollArea className="flex-1 px-3 md:px-4" ref={scrollRef}>
               {messages.length === 0 ? (
                 <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center px-4 py-8">
                   <div className="w-full max-w-md">
-                    <SentinelMark accent className="h-14 w-14 text-primary mb-5" />
+                    {/* Brand lockup: the empty state opens on Sentinel itself,
+                        then hands off to the conversational prompt below. */}
+                    <div className="flex items-center gap-3.5 mb-5">
+                      <SentinelMark accent className="h-14 w-14 text-primary" />
+                      <p className="font-display text-3xl md:text-4xl font-bold tracking-tight text-foreground">
+                        Sentinel
+                      </p>
+                    </div>
                     <h3 className="font-display text-lg md:text-xl font-bold tracking-tight mb-2">
                       How can I help you today?
                     </h3>
