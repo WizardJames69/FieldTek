@@ -25,11 +25,18 @@ import { useImpersonation } from '@/contexts/ImpersonationContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { shouldRedirectToAdminConsole } from '@/lib/adminRedirect';
-import { format, startOfDay, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay, startOfWeek, subWeeks } from 'date-fns';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { PostCheckoutNudge } from '@/components/dashboard/PostCheckoutNudge';
 import { UsageInsightsWidget } from '@/components/dashboard/UsageInsightsWidget';
 import { StripeConnectIndicator } from '@/components/dashboard/StripeConnectIndicator';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
+import {
+  JobsTrendChart,
+  aggregateCompletedByWeek,
+  hasEnoughTrendData,
+} from '@/components/dashboard/JobsTrendChart';
 import { WhatsNewDialog } from '@/components/dashboard/WhatsNewDialog';
 import { useOnboardingProgressSync } from '@/hooks/useOnboardingProgressSync';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -76,6 +83,8 @@ export default function Dashboard() {
     await queryClient.invalidateQueries({ queryKey: ['dashboard-stats', tenant?.id] });
     await queryClient.invalidateQueries({ queryKey: ['dashboard-todays-jobs', tenant?.id] });
     await queryClient.invalidateQueries({ queryKey: ['dashboard-service-requests', tenant?.id] });
+    await queryClient.invalidateQueries({ queryKey: ['dashboard-activity', tenant?.id] });
+    await queryClient.invalidateQueries({ queryKey: ['dashboard-jobs-trend', tenant?.id] });
   }, [queryClient, tenant?.id]);
 
   const { isRefreshing, pullProgress, handlers, containerStyle } = usePullToRefresh({
@@ -165,6 +174,32 @@ export default function Dashboard() {
     },
     enabled: !!tenant?.id,
   });
+
+  // Completed-jobs trend: one bounded read-only select, bucketed client-side
+  // into the last 8 weeks. The chart only renders with >= 2 non-zero weeks
+  // (hasEnoughTrendData) so sparse workspaces never see a fake chart; on
+  // error it simply stays hidden (supplemental content, never fake-empty).
+  const { data: trendWeeks } = useQuery({
+    queryKey: ['dashboard-jobs-trend', tenant?.id],
+    staleTime: 60_000,
+    enabled: !!tenant?.id,
+    queryFn: async () => {
+      if (!tenant?.id) return [];
+
+      const since = startOfWeek(subWeeks(new Date(), 7), { weekStartsOn: 1 }).toISOString();
+      const { data, error } = await supabase
+        .from('scheduled_jobs')
+        .select('updated_at')
+        .eq('tenant_id', tenant.id)
+        .eq('status', 'completed')
+        .gte('updated_at', since)
+        .limit(1000);
+
+      if (error) throw error;
+      return aggregateCompletedByWeek((data ?? []).map((row) => row.updated_at), new Date());
+    },
+  });
+  const showTrend = !!trendWeeks && hasEnoughTrendData(trendWeeks);
 
   // Fetch technician names for job assignments - scoped to current tenant
   const { data: profiles } = useQuery({
@@ -382,6 +417,15 @@ export default function Dashboard() {
     return styles[priority] || styles.medium;
   };
 
+  const getInitials = (name: string) =>
+    name
+      .split(' ')
+      .filter(Boolean)
+      .map((word) => word[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -425,10 +469,7 @@ export default function Dashboard() {
         
         {/* Onboarding Checklist */}
         <OnboardingChecklist />
-        
-        {/* Usage Insights Widget */}
-        <UsageInsightsWidget />
-        
+
         {/* Stripe Connect Status Indicator */}
         <StripeConnectIndicator />
         
@@ -467,6 +508,9 @@ export default function Dashboard() {
         </div>
         )}
 
+        {/* Quick create shortcuts */}
+        <QuickActions />
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Today's Jobs */}
           <Card className="lg:col-span-2" data-testid="dashboard-todays-jobs">
@@ -502,29 +546,35 @@ export default function Dashboard() {
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => navigate(`/jobs?open=${job.id}`)}
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="text-sm font-medium text-muted-foreground w-16">
-                          {job.scheduled_time || '--:--'}
-                        </div>
-                        <div>
-                          <p className="font-medium">{job.title}</p>
-                          <p className="text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="inline-flex items-center justify-center rounded-md bg-muted px-2 py-1 text-xs font-medium tabular-nums w-14 shrink-0">
+                          {job.scheduled_time ? job.scheduled_time.slice(0, 5) : '--:--'}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{job.title}</p>
+                          <p className="text-sm text-muted-foreground truncate">
                             {(job.clients as any)?.name || 'No client'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {job.priority && (
                           <Badge className={getPriorityBadge(job.priority)}>{job.priority}</Badge>
                         )}
                         {job.status && (
                           <StatusBadge status={job.status} />
                         )}
-                        <span className="text-sm text-muted-foreground hidden sm:inline">
-                          {job.assigned_to && profiles?.[job.assigned_to] 
-                            ? profiles[job.assigned_to] 
-                            : 'Unassigned'}
-                        </span>
+                        {job.assigned_to && profiles?.[job.assigned_to] ? (
+                          <span
+                            title={profiles[job.assigned_to]}
+                            aria-label={`Assigned to ${profiles[job.assigned_to]}`}
+                            className="hidden sm:flex h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-semibold items-center justify-center shrink-0"
+                          >
+                            {getInitials(profiles[job.assigned_to])}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground hidden sm:inline">Unassigned</span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -599,7 +649,20 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-        
+
+        {/* Recent activity + completed-jobs trend. The trend card collapses
+            (activity goes full width) when the workspace lacks enough history
+            for an honest chart. */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className={showTrend ? 'lg:col-span-2' : 'lg:col-span-3'}>
+            <ActivityFeed />
+          </div>
+          {showTrend && trendWeeks && <JobsTrendChart weeks={trendWeeks} jobsLabel={t('jobs')} />}
+        </div>
+
+        {/* Workspace usage pulse: informative, not urgent, so it sits last */}
+        <UsageInsightsWidget />
+
         {/* What's New Dialog */}
         <WhatsNewDialog />
         </div>
