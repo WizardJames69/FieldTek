@@ -207,19 +207,31 @@ export default function Dashboard() {
     queryFn: async () => {
       if (!tenant?.id) return {};
       
-      // Join through tenant_users to only get profiles for this tenant
-      const { data, error } = await supabase
+      // Two-step lookup (same pattern as Team.tsx): tenant_users has no FK to
+      // profiles, so an embedded `profiles!inner(...)` join errors at the API
+      // layer ("could not find a relationship") and every assignee rendered as
+      // Unassigned. Resolve member ids first, then their profiles.
+      const { data: tenantUsers, error } = await supabase
         .from('tenant_users')
-        .select('user_id, profiles!inner(user_id, full_name)')
+        .select('user_id')
         .eq('tenant_id', tenant.id)
         .eq('is_active', true);
 
       if (error) throw error;
-      
+
+      const userIds = (tenantUsers ?? []).map((tu) => tu.user_id);
+      if (userIds.length === 0) return {};
+
+      const { data: profileRows, error: pError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds);
+
+      if (pError) throw pError;
+
       const profileMap: Record<string, string> = {};
-      data?.forEach((tu: any) => {
-        const profile = tu.profiles;
-        if (profile?.user_id && profile?.full_name) {
+      (profileRows ?? []).forEach((profile) => {
+        if (profile.user_id && profile.full_name) {
           profileMap[profile.user_id] = profile.full_name;
         }
       });
