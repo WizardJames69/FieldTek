@@ -758,7 +758,7 @@ export default function Assistant() {
             <div className="border-b bg-muted/30">
               <div className="flex items-center gap-2.5 px-3 md:px-4 py-2">
                 <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                  <SentinelMark className="h-[18px] w-[18px] text-primary" />
+                  <SentinelMark accent className="h-[18px] w-[18px] text-primary" />
                 </div>
                 <div className="min-w-0 mr-auto">
                   <p className="font-display text-sm font-bold leading-tight text-foreground">Sentinel</p>
@@ -795,7 +795,7 @@ export default function Assistant() {
                   <div className="w-full max-w-md">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="h-10 w-10 rounded-xl bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                        <SentinelMark className="h-5 w-5 text-primary" />
+                        <SentinelMark accent className="h-5 w-5 text-primary" />
                       </div>
                       <h3 className="font-display text-lg md:text-xl font-bold tracking-tight">
                         How can I help you today?
@@ -885,7 +885,7 @@ export default function Assistant() {
                         >
                           {msg.role === "assistant" && (
                             <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                              <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.4} />
+                              <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.3} />
                             </div>
                           )}
                           {msg.role === "assistant" ? (
@@ -982,15 +982,16 @@ export default function Assistant() {
                   {isLoading && messages[messages.length - 1]?.role === "user" && (
                     <div data-testid="assistant-loading" className="flex gap-3 message-in">
                       <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center">
-                        <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.4} />
+                        <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.3} />
                       </div>
-                      {/* Grounding indicator: the mark's ground bars, settling top to
-                          bottom while Sentinel retrieves evidence. */}
-                      <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-3 flex flex-col items-start justify-center gap-[3px]">
+                      {/* Handoff indicator: the mark's two runs alternate while
+                          Sentinel retrieves evidence. Monochrome on purpose; the
+                          accent stays reserved for identity moments. */}
+                      <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-2.5 flex items-center">
                         <span className="sr-only">Sentinel is checking your documentation</span>
-                        <span className="typing-dot h-[2.5px] w-3.5 rounded-full bg-muted-foreground/70" />
-                        <span className="typing-dot h-[2.5px] w-2.5 rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
-                        <span className="typing-dot h-[2.5px] w-1.5 rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
+                        <span className="sentinel-handoff" aria-hidden="true">
+                          <SentinelMark className="h-5 w-5 text-muted-foreground" />
+                        </span>
                       </div>
                     </div>
                   )}

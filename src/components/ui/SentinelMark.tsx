@@ -2,27 +2,32 @@ import { cn } from "@/lib/utils";
 
 interface SentinelMarkProps {
   className?: string;
-  /** Bump slightly (e.g. 2.4) for renderings at 16px and below. */
+  /** Bump slightly (e.g. 2.3) for renderings at 16px and below. */
   strokeWidth?: number;
+  /**
+   * Branded treatment: colors the grounded (lower) run with the FieldTek
+   * accent. Reserve it for identity moments (identity bar, empty state);
+   * everywhere else the mark stays monochrome currentColor.
+   */
+  accent?: boolean;
 }
 
 /**
- * The Sentinel product mark: a signal node connected to ground.
+ * The Sentinel product mark: the handoff.
  *
- * The form is the earth-ground symbol from electrical schematics — the
- * trades' own notation for reference truth, printed on the wiring diagram
- * inside every panel door — with one addition: the node above it, the
- * answer. Every answer Sentinel gives is connected to ground: retrieved
- * from the tenant's documentation, cited as evidence, and withheld when
- * no ground exists. The mark is that promise drawn literally.
+ * Two opposing signal runs interlock mid-frame — the question coming down
+ * from the field, the grounded evidence coming up to meet it. Sentinel is
+ * the handoff between them. The S is discovered in the offset between the
+ * runs, never announced as a letterform.
  *
- * Construction: filled node, stem, three tapering bars. Five strokes,
- * bottom-weighted so it sits planted and calm. Single currentColor so it
- * inherits tenant-branded tokens anywhere in FieldTek. Deliberately not a
- * shield, sparkle, star, robot, brain, chat bubble, or anything an icon
+ * Two strokes, no micro-detail: the silhouette survives 16px to 64px
+ * unchanged, works monochrome by construction, and stays level and calm
+ * beside text. In the branded treatment only the lower run — the answer
+ * that reached ground — carries the accent. Deliberately not a shield,
+ * sparkle, star, robot, brain, chat bubble, monogram, or anything an icon
  * pack ships.
  */
-export function SentinelMark({ className, strokeWidth = 2.1 }: SentinelMarkProps) {
+export function SentinelMark({ className, strokeWidth = 2, accent = false }: SentinelMarkProps) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -35,14 +40,10 @@ export function SentinelMark({ className, strokeWidth = 2.1 }: SentinelMarkProps
       data-sentinel-mark=""
       className={cn("shrink-0", className)}
     >
-      {/* Signal node: the answer */}
-      <circle cx="12" cy="4.4" r="1.9" fill="currentColor" stroke="none" />
-      {/* Stem: the connection */}
-      <path d="M12 6.9V12.4" />
-      {/* Ground: the evidence it stands on */}
-      <path d="M4.75 12.4h14.5" />
-      <path d="M7.5 16.2h9" />
-      <path d="M10.25 20h3.5" />
+      {/* The question run */}
+      <path d="M17.4 7.4H9.8Q7.2 7.4 7.2 10v3.1" />
+      {/* The grounded run */}
+      <path className={accent ? "text-accent" : undefined} d="M6.6 16.6h7.6q2.6 0 2.6-2.6v-3.1" />
     </svg>
   );
 }

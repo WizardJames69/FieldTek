@@ -912,28 +912,31 @@ html.landing-html-bg body,
   animation: message-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Grounding pulse: the Sentinel mark's ground bars brighten in sequence
-   while retrieval runs. Opacity only — bars settle, they don't bounce. */
-@keyframes typing-dot {
+/* Sentinel handoff: while retrieval runs, the mark's two runs alternate —
+   the question run and the grounded run trading emphasis. Opacity only. */
+@keyframes sentinel-handoff {
   0%,
-  60%,
   100% {
-    opacity: 0.3;
-  }
-  30% {
     opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
   }
 }
 
-.typing-dot {
-  animation: typing-dot 1.2s ease-in-out infinite;
+.sentinel-handoff path {
+  animation: sentinel-handoff 1.5s ease-in-out infinite;
+}
+
+.sentinel-handoff path:nth-of-type(2) {
+  animation-delay: -0.75s;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .message-in {
     animation: none;
   }
-  .typing-dot {
+  .sentinel-handoff path {
     animation: none;
     opacity: 0.6;
   }
