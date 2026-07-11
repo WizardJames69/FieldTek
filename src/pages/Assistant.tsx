@@ -756,13 +756,11 @@ export default function Assistant() {
           <Card className="flex-1 flex flex-col min-w-0 overflow-hidden">
             {/* Sentinel identity bar */}
             <div className="border-b bg-muted/30">
-              <div className="flex items-center gap-2.5 px-3 md:px-4 py-2">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                  <SentinelMark accent className="h-[18px] w-[18px] text-primary" />
-                </div>
+              <div className="flex items-center gap-3 px-3 md:px-4 py-3">
+                <SentinelMark accent className="h-7 w-7 text-primary" />
                 <div className="min-w-0 mr-auto">
-                  <p className="font-display text-sm font-bold leading-tight text-foreground">Sentinel</p>
-                  <p className="text-[11px] text-muted-foreground leading-tight truncate">
+                  <p className="font-display text-base font-bold leading-tight text-foreground">Sentinel</p>
+                  <p className="text-xs text-muted-foreground leading-tight truncate">
                     Grounded field intelligence
                   </p>
                 </div>
@@ -793,14 +791,10 @@ export default function Assistant() {
               {messages.length === 0 ? (
                 <div data-testid="assistant-empty-state" className="h-full flex flex-col items-center justify-center px-4 py-8">
                   <div className="w-full max-w-md">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="h-10 w-10 rounded-xl bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                        <SentinelMark accent className="h-5 w-5 text-primary" />
-                      </div>
-                      <h3 className="font-display text-lg md:text-xl font-bold tracking-tight">
-                        How can I help you today?
-                      </h3>
-                    </div>
+                    <SentinelMark accent className="h-14 w-14 text-primary mb-5" />
+                    <h3 className="font-display text-lg md:text-xl font-bold tracking-tight mb-2">
+                      How can I help you today?
+                    </h3>
 
                     <p className="text-sm text-muted-foreground mb-3">
                       {codeReferenceEnabled
@@ -884,8 +878,8 @@ export default function Assistant() {
                           )}
                         >
                           {msg.role === "assistant" && (
-                            <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
-                              <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.3} />
+                            <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center shrink-0">
+                              <SentinelMark className="h-5 w-5 text-primary" strokeWidth={2.2} />
                             </div>
                           )}
                           {msg.role === "assistant" ? (
@@ -960,7 +954,7 @@ export default function Assistant() {
                             </div>
                           )}
                           {msg.role === "user" && (
-                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                            <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center shrink-0">
                               <User className="h-4 w-4 text-primary-foreground" />
                             </div>
                           )}
@@ -968,7 +962,7 @@ export default function Assistant() {
                         
                         {/* Suggested questions after assistant messages */}
                         {isLastAssistantMessage && msg.suggestions && msg.suggestions.length > 0 && !isLoading && (
-                          <div className="ml-11 mt-3">
+                          <div className="ml-12 mt-3">
                             <SuggestedQuestions
                               suggestions={msg.suggestions}
                               onSelect={handleSuggestionClick}
@@ -981,8 +975,8 @@ export default function Assistant() {
                   })}
                   {isLoading && messages[messages.length - 1]?.role === "user" && (
                     <div data-testid="assistant-loading" className="flex gap-3 message-in">
-                      <div className="h-8 w-8 rounded-lg bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center">
-                        <SentinelMark className="h-4 w-4 text-primary" strokeWidth={2.3} />
+                      <div className="h-9 w-9 rounded-xl bg-primary/10 ring-1 ring-primary/15 flex items-center justify-center">
+                        <SentinelMark className="h-5 w-5 text-primary" strokeWidth={2.2} />
                       </div>
                       {/* Handoff indicator: the mark's two runs alternate while
                           Sentinel retrieves evidence. Monochrome on purpose; the
@@ -990,7 +984,7 @@ export default function Assistant() {
                       <div className="chat-bubble-assistant rounded-2xl rounded-tl-md px-4 py-2.5 flex items-center">
                         <span className="sr-only">Sentinel is checking your documentation</span>
                         <span className="sentinel-handoff" aria-hidden="true">
-                          <SentinelMark className="h-5 w-5 text-muted-foreground" />
+                          <SentinelMark className="h-6 w-6 text-muted-foreground" />
                         </span>
                       </div>
                     </div>
