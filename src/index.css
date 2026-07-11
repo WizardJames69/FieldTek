@@ -878,21 +878,68 @@ html.landing-html-bg body,
 
 /* B.5 Floating orb styling - keyframes defined in Phase 6 section */
 
-/* B.6 Chat bubble depth styling */
+/* B.6 Chat bubbles — solid surfaces on the quiet elevation system */
 .chat-bubble-user {
-  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.9));
-  box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.3);
+  background: hsl(var(--primary));
+  box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.35);
 }
 
 .chat-bubble-assistant {
-  background: linear-gradient(135deg, hsl(var(--muted) / 0.9), hsl(var(--muted) / 0.7));
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px -2px hsl(0 0% 0% / 0.05);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-card);
 }
 
 .dark .chat-bubble-assistant {
-  background: linear-gradient(135deg, hsl(var(--muted) / 0.8), hsl(var(--muted) / 0.6));
-  box-shadow: 0 4px 12px -2px hsl(0 0% 0% / 0.15);
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: var(--shadow-card);
+}
+
+/* Chat message entrance + typing indicator */
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-in {
+  animation: message-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Sentinel handoff: while retrieval runs, the mark's two runs alternate —
+   the question run and the grounded run trading emphasis. Opacity only. */
+@keyframes sentinel-handoff {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.sentinel-handoff path {
+  animation: sentinel-handoff 1.5s ease-in-out infinite;
+}
+
+.sentinel-handoff path:nth-of-type(2) {
+  animation-delay: -0.75s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-in {
+    animation: none;
+  }
+  .sentinel-handoff path {
+    animation: none;
+    opacity: 0.6;
+  }
 }
 
 .dark .header-glow {

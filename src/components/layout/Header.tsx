@@ -17,13 +17,15 @@ import { GlobalSearch } from '@/components/search/GlobalSearch';
 import { OfflineIndicator } from '@/components/offline/OfflineIndicator';
 
 interface HeaderProps {
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
+  /** Optional brand mark rendered to the left of the title, turning it into a product lockup. */
+  titleMark?: React.ReactNode;
   actions?: React.ReactNode;
   onMenuToggle?: () => void;
 }
 
-export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) {
+export function Header({ title, subtitle, titleMark, actions, onMenuToggle }: HeaderProps) {
   const branding = useBranding();
   const { isAdmin } = useUserRole();
   const { t } = useTerminology();
@@ -63,11 +65,14 @@ export function Header({ title, subtitle, actions, onMenuToggle }: HeaderProps) 
           </Button>
 
           {/* Title Section */}
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display font-bold text-xl md:text-2xl tracking-tight text-foreground truncate">{title}</h1>
-            {subtitle && (
-              <p className="text-xs md:text-sm text-muted-foreground truncate hidden sm:block">{subtitle}</p>
-            )}
+          <div className="min-w-0 flex-1 flex items-center gap-2.5 md:gap-3">
+            {titleMark}
+            <div className="min-w-0">
+              <h1 className="font-display font-bold text-xl md:text-2xl tracking-tight text-foreground truncate">{title}</h1>
+              {subtitle && (
+                <p className="text-xs md:text-sm text-muted-foreground truncate hidden sm:block">{subtitle}</p>
+              )}
+            </div>
           </div>
 
           {/* Actions */}

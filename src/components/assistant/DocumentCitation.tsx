@@ -26,12 +26,12 @@ interface DocumentCitationProps {
 }
 
 const BADGE_CLASS =
-  "text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 flex items-center gap-1 cursor-pointer hover:bg-emerald-500/20 transition-colors";
+  "text-xs bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 flex items-center gap-1 cursor-pointer hover:bg-emerald-500/25 transition-colors";
 
 // Lesson-sourced citations get a distinct, non-clickable style — they have no
 // uploaded file (file_url is null) so there is no PDF to open.
 const LESSON_BADGE_CLASS =
-  "text-xs bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/30 flex items-center gap-1";
+  "text-xs bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 flex items-center gap-1";
 
 export function DocumentCitation({
   sources,
@@ -155,8 +155,8 @@ export function ContextIndicator({
     >
       <span className="font-medium">Context:</span>
       {jobTitle && (
-        <Badge variant="secondary" className="text-xs h-5">
-          {jobTitle}
+        <Badge variant="secondary" className="text-xs h-5 max-w-32 md:max-w-48">
+          <span className="truncate">{jobTitle}</span>
         </Badge>
       )}
       {equipmentType && (

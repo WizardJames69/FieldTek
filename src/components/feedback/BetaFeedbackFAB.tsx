@@ -15,16 +15,19 @@ export function BetaFeedbackFAB() {
   const { role } = useUserRole();
   const location = useLocation();
 
+  // Sentinel (/assistant) is the flagship surface and owns the bottom of the
+  // screen with its composer; keep it free of floating chrome. Feedback stays
+  // one tap away on every other page.
+  const isAssistant = location.pathname === '/assistant';
+
   // Only show for authenticated users within a tenant
-  if (!user || !tenant) {
+  if (!user || !tenant || isAssistant) {
     return null;
   }
 
-  // Move FAB higher on pages with bottom input bars (e.g. /assistant)
-  const hasBottomInput = location.pathname === '/assistant';
-  // Technicians have a fixed mobile bottom nav everywhere except /assistant;
-  // lift the FAB above it on mobile so the two don't overlap.
-  const hasTechBottomNav = role === 'technician' && !hasBottomInput;
+  // Technicians have a fixed mobile bottom nav; lift the FAB above it on
+  // mobile so the two don't overlap.
+  const hasTechBottomNav = role === 'technician';
 
   return (
     <>
@@ -36,16 +39,16 @@ export function BetaFeedbackFAB() {
           transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 1 }}
           className={cn(
             "fixed right-6 z-50",
-            hasBottomInput
-              ? "bottom-[calc(8rem+env(safe-area-inset-bottom))]"
-              : hasTechBottomNav
-                ? "bottom-[calc(1.5rem+env(safe-area-inset-bottom))] max-md:bottom-[calc(5.25rem+env(safe-area-inset-bottom))]"
-                : "bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
+            hasTechBottomNav
+              ? "bottom-[calc(1.5rem+env(safe-area-inset-bottom))] max-md:bottom-[calc(5.25rem+env(safe-area-inset-bottom))]"
+              : "bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
           )}
         >
           <Button
             onClick={() => setOpen(true)}
             size="lg"
+            aria-label="Send beta feedback"
+            title="Beta Feedback"
             className="h-14 gap-2 rounded-full shadow-lg hover:shadow-xl transition-shadow"
           >
             <MessageSquarePlus className="h-5 w-5" />
