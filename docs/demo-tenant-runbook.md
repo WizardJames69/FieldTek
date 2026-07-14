@@ -16,7 +16,7 @@ is represented. Anywhere these screens appear publicly, use the caption
 | Auth users | 6 | `demo-owner@fieldtek-demo.dev` + `demo-tech-1..5@fieldtek-demo.dev` |
 | Tenant | 1 | "North Shore HVAC", hvac, **professional/active** (no trial banner) |
 | Memberships | 6 | 1 owner + 5 technicians |
-| Settings/branding/AI policy | 3 rows | CAD, 5% tax, America/Vancouver; AI enabled with `max_monthly_requests=1000` (pilot guardrail parity) |
+| Settings/branding/AI policy | 3 rows | CAD, 5% tax, America/Vancouver; AI enabled with `max_monthly_requests=1000` (pilot guardrail parity). Branding colors are deliberately null so the tenant renders the stock FieldTek theme (orange) — landing screenshots must match the brand |
 | Onboarding progress | 1 row | fully complete — hides the dashboard checklist |
 | Clients | 12 | fictional North Vancouver businesses |
 | Equipment | 8 | warranty spread; one unit is Carrier 24ACC636 (matches the document corpus) |

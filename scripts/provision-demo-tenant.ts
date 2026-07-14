@@ -211,8 +211,13 @@ async function provisionTenantSingletons(
       row: {
         tenant_id: tenantId,
         company_name: DEMO_TENANT_NAME,
-        primary_color: "#0e7490",
-        secondary_color: "#f59e0b",
+        // Null colors on purpose: useBrandingColors skips its CSS-variable
+        // override when a color is null, so the demo tenant renders the stock
+        // FieldTek theme (orange primary + warm dark sidebar). Screenshots of
+        // this tenant then match the landing-page brand without any app-level
+        // theme change. (r2 of PR-LAND-SHOT-1; previously #0e7490/#f59e0b.)
+        primary_color: null,
+        secondary_color: null,
       },
     },
     {
