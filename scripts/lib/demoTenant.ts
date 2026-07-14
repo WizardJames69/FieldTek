@@ -89,14 +89,25 @@ export const DEMO_USERS: DemoUserSpec[] = [
 export interface DemoProvisionArgs {
   dryRun: boolean;
   confirmProject: string | null;
+  /** Opt-in to the destructive domain refresh (delete + reseed the date-anchored rows). */
+  refreshDomain: boolean;
+  /** Hard confirmation of the demo tenant id the refresh may touch. */
+  confirmTenantId: string | null;
 }
 
 export function parseDemoArgs(argv: string[]): DemoProvisionArgs {
-  const args: DemoProvisionArgs = { dryRun: false, confirmProject: null };
+  const args: DemoProvisionArgs = {
+    dryRun: false,
+    confirmProject: null,
+    refreshDomain: false,
+    confirmTenantId: null,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--dry-run") args.dryRun = true;
     else if (a === "--confirm-project") args.confirmProject = argv[++i] ?? null;
+    else if (a === "--refresh-domain") args.refreshDomain = true;
+    else if (a === "--confirm-tenant-id") args.confirmTenantId = argv[++i] ?? null;
   }
   return args;
 }
@@ -258,6 +269,105 @@ export function assertDemoPlanWithinAllowlist(plan: DemoPlannedWrite[]): void {
       throw new Error(`demo plan contains non-allowlisted entity "${w.entity}"`);
     }
   }
+}
+
+// ── Domain refresh (explicit, opt-in, tenant-scoped delete + reseed) ─
+// The base provisioner is create-only, and an UPDATE-based date refresh is
+// impossible: scheduled_jobs / invoices / service_requests all carry a BEFORE
+// UPDATE trigger that stamps updated_at = now(), which destroys the historical
+// timestamps the dashboard trend chart and activity feed depend on (learned
+// the hard way on 2026-07-13). The ONLY trigger-safe way to re-center the
+// demo clock is to delete exactly the date-anchored domain rows and reseed
+// them via the normal INSERT path (BEFORE INSERT has no such trigger).
+// Modeled on the eval provisioner's --refresh-corpus gates: it requires a
+// real write gate PLUS an explicit --confirm-tenant-id, and it may touch
+// NOTHING beyond these four tables.
+
+/** The ONLY tables the domain refresh may DELETE from, in FK-safe order. */
+export const REFRESH_DOMAIN_TABLES = [
+  "invoice_line_items", // children of invoices (deleted via parent invoice ids)
+  "invoices", // reference scheduled_jobs.job_id
+  "scheduled_jobs",
+  "service_requests",
+] as const;
+export type RefreshDomainTable = (typeof REFRESH_DOMAIN_TABLES)[number];
+
+export interface DomainRefreshDelete {
+  table: RefreshDomainTable;
+  /** Mandatory tenant scope — a refresh delete is never allowed unfiltered.
+   * invoice_line_items has no tenant_id column; it is scoped through its
+   * parent invoices, which are themselves tenant-scoped. */
+  scope: { tenant_id: string } | { parent: "invoices"; tenant_id: string };
+  description: string;
+}
+
+/** Ordered tenant-scoped delete plan for the demo domain rows. */
+export function buildDomainRefreshDeletePlan(tenantId: string): DomainRefreshDelete[] {
+  return [
+    {
+      table: "invoice_line_items",
+      scope: { parent: "invoices", tenant_id: tenantId },
+      description: "delete demo line items (via demo tenant invoice ids)",
+    },
+    { table: "invoices", scope: { tenant_id: tenantId }, description: "delete demo invoices (tenant-scoped)" },
+    { table: "scheduled_jobs", scope: { tenant_id: tenantId }, description: "delete demo jobs (tenant-scoped)" },
+    { table: "service_requests", scope: { tenant_id: tenantId }, description: "delete demo requests (tenant-scoped)" },
+  ];
+}
+
+/**
+ * Runtime guard: every refresh delete must target one of the four domain
+ * tables and be scoped to the exact demo tenant id. Tenant/users/clients/
+ * equipment/settings/branding/documents/chunks may never appear here.
+ */
+export function assertDomainRefreshScoped(plan: DomainRefreshDelete[], tenantId: string): void {
+  if (!tenantId || tenantId.trim() === "") {
+    throw new Error("domain refresh requires a non-empty demo tenant id");
+  }
+  const allowed = new Set<string>(REFRESH_DOMAIN_TABLES);
+  for (const d of plan) {
+    if (!allowed.has(d.table)) {
+      throw new Error(`domain refresh targets non-domain table "${d.table}" — refusing`);
+    }
+    if (!d.scope || d.scope.tenant_id !== tenantId) {
+      throw new Error(
+        `domain refresh delete on "${d.table}" is not scoped to demo tenant "${tenantId}" — refusing broad delete`,
+      );
+    }
+  }
+}
+
+export type DomainRefreshGateDecision =
+  | { ok: true; projectRef: string; tenantId: string }
+  | { ok: false; reason: string };
+
+/**
+ * Domain refresh gate: builds on decideDemoGate (write confirmation +
+ * passwords), then additionally requires a real write (never dry-run) and an
+ * explicit --confirm-tenant-id. The id is matched against the resolved tenant
+ * in the IO layer before any delete.
+ */
+export function decideDomainRefreshGate(
+  args: DemoProvisionArgs,
+  envUrl: string | undefined | null,
+  passwords: DemoPasswordEnv,
+): DomainRefreshGateDecision {
+  const base = decideDemoGate(args, envUrl, passwords);
+  if (!base.ok) return { ok: false, reason: base.reason };
+  if (base.mode !== "write") {
+    return {
+      ok: false,
+      reason:
+        "--refresh-domain requires a real write (--confirm-project matching VITE_SUPABASE_URL); dry-run cannot refresh.",
+    };
+  }
+  if (!args.confirmTenantId || args.confirmTenantId.trim() === "") {
+    return {
+      ok: false,
+      reason: "refusing to refresh without --confirm-tenant-id <id> (hard confirmation of the demo tenant id).",
+    };
+  }
+  return { ok: true, projectRef: base.projectRef, tenantId: args.confirmTenantId };
 }
 
 // ── Seed data builders (pure, deterministic relative to `now`) ──

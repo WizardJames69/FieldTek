@@ -1,7 +1,7 @@
 import { BookOpen, Network, GitBranch, Brain, MessageSquare, FileSearch, BadgeCheck, UserCheck } from "lucide-react";
 import { ScrollReveal } from "./ScrollReveal";
-import { SentinelCommandPanel } from "./SentinelCommandPanel";
 import { IsometricLights } from "./IsometricLights";
+import { SentinelDemoPlayer } from "./SentinelDemoPlayer";
 
 /**
  * The single Sentinel story section. Consolidates the three former,
@@ -72,10 +72,19 @@ export function SentinelSection() {
           </ScrollReveal>
         </div>
 
-        {/* The demo IS the argument. Full-width moment. */}
+        {/* The demo IS the argument: a real grounded conversation, not a
+            mockup. max-w-4xl (vs 3xl elsewhere) keeps the chat text readable
+            at the animation's native frame width. */}
         <ScrollReveal delay={0.1}>
-          <div className="max-w-3xl mx-auto">
-            <SentinelCommandPanel />
+          <div className="max-w-4xl mx-auto">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#111214] p-3 shadow-lg shadow-black/30">
+              <div className="rounded-xl overflow-hidden bg-[#111113]">
+                <SentinelDemoPlayer />
+              </div>
+            </div>
+            <p className="text-xs text-zinc-500 text-center mt-3">
+              Product shown with sample data.
+            </p>
           </div>
         </ScrollReveal>
 

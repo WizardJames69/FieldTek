@@ -16,7 +16,7 @@ is represented. Anywhere these screens appear publicly, use the caption
 | Auth users | 6 | `demo-owner@fieldtek-demo.dev` + `demo-tech-1..5@fieldtek-demo.dev` |
 | Tenant | 1 | "North Shore HVAC", hvac, **professional/active** (no trial banner) |
 | Memberships | 6 | 1 owner + 5 technicians |
-| Settings/branding/AI policy | 3 rows | CAD, 5% tax, America/Vancouver; AI enabled with `max_monthly_requests=1000` (pilot guardrail parity) |
+| Settings/branding/AI policy | 3 rows | CAD, 5% tax, America/Vancouver; AI enabled with `max_monthly_requests=1000` (pilot guardrail parity). Branding colors are deliberately null so the tenant renders the stock FieldTek theme (orange) — landing screenshots must match the brand |
 | Onboarding progress | 1 row | fully complete — hides the dashboard checklist |
 | Clients | 12 | fictional North Vancouver businesses |
 | Equipment | 8 | warranty spread; one unit is Carrier 24ACC636 (matches the document corpus) |
@@ -83,6 +83,28 @@ rate limits).
 Re-running is safe: existing rows are found, not duplicated, and user
 passwords are re-aligned to the environment values on every run (so a password
 rotation is just "update the manager, re-run").
+
+### Re-centering the demo clock (`--refresh-domain`)
+
+Seeded dates are relative to run time, so the showcase dashboard ("today's
+jobs", activity ages, the 8-week trend) goes stale within a day of the last
+run. A plain re-run does NOT fix this (found rows are skipped), and an
+UPDATE-based refresh cannot work: these tables carry a `BEFORE UPDATE`
+trigger that stamps `updated_at = now()`, which destroys the historical
+timestamps the trend chart and activity feed render.
+
+The supported refresh is a harder-gated **delete + reseed of exactly the
+date-anchored rows** (invoice line items, invoices, jobs, service requests —
+demo-tenant-scoped; users/clients/equipment/documents are never touched):
+
+```bash
+ DEMO_OWNER_PASSWORD='…' DEMO_TECH_PASSWORD='…' \
+ npm run demo:provision -- --confirm-project fgemfxhwushaiiguqxfe \
+   --refresh-domain --confirm-tenant-id <demo tenant id>
+```
+
+Run it right before any demo or screenshot session (founder-approved, quiet
+window). Row ids change; nothing outside the demo tenant references them.
 
 ### 3. Verify
 

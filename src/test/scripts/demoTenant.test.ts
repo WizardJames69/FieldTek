@@ -26,6 +26,13 @@ import {
   type DemoPlannedWrite,
 } from "../../../scripts/lib/demoTenant";
 import {
+  REFRESH_DOMAIN_TABLES,
+  buildDomainRefreshDeletePlan,
+  assertDomainRefreshScoped,
+  decideDomainRefreshGate,
+  type DomainRefreshDelete,
+} from "../../../scripts/lib/demoTenant";
+import {
   aggregateCompletedByWeek,
   hasEnoughTrendData,
 } from "@/components/dashboard/JobsTrendChart";
@@ -39,14 +46,16 @@ const GOOD_PASSWORDS = {
 const NOW = new Date("2026-06-17T15:00:00Z");
 
 describe("parseDemoArgs", () => {
+  const DEFAULTS = { dryRun: false, confirmProject: null, refreshDomain: false, confirmTenantId: null };
+
   it("defaults to no flags", () => {
-    expect(parseDemoArgs([])).toEqual({ dryRun: false, confirmProject: null });
+    expect(parseDemoArgs([])).toEqual(DEFAULTS);
   });
 
   it("parses --dry-run and --confirm-project", () => {
-    expect(parseDemoArgs(["--dry-run"])).toEqual({ dryRun: true, confirmProject: null });
+    expect(parseDemoArgs(["--dry-run"])).toEqual({ ...DEFAULTS, dryRun: true });
     expect(parseDemoArgs(["--confirm-project", "abc"])).toEqual({
-      dryRun: false,
+      ...DEFAULTS,
       confirmProject: "abc",
     });
   });
@@ -292,6 +301,73 @@ describe("seed plan integrity", () => {
     expect(carrier).toBeDefined();
     expect(carrier?.brand).toBe("Carrier");
     expect(plan.jobs.some((j) => j.equipmentSerial === carrier?.serial_number)).toBe(true);
+  });
+});
+
+describe("domain refresh gates + guards", () => {
+  const TENANT_ID = "7476ee6f-7021-4a45-8289-808e2dce48c4";
+  const WRITE_ARGS = ["--refresh-domain", "--confirm-project", "fgemfxhwushaiiguqxfe", "--confirm-tenant-id", TENANT_ID];
+
+  it("parses the refresh flags", () => {
+    expect(parseDemoArgs(WRITE_ARGS)).toEqual({
+      dryRun: false,
+      confirmProject: "fgemfxhwushaiiguqxfe",
+      refreshDomain: true,
+      confirmTenantId: TENANT_ID,
+    });
+  });
+
+  it("allows refresh only with full write gate + tenant id", () => {
+    const gate = decideDomainRefreshGate(parseDemoArgs(WRITE_ARGS), FGEM_URL, GOOD_PASSWORDS);
+    expect(gate).toEqual({ ok: true, projectRef: "fgemfxhwushaiiguqxfe", tenantId: TENANT_ID });
+  });
+
+  it.each([
+    ["without --confirm-tenant-id", ["--refresh-domain", "--confirm-project", "fgemfxhwushaiiguqxfe"]],
+    ["without --confirm-project", ["--refresh-domain", "--confirm-tenant-id", TENANT_ID]],
+    ["under --dry-run", ["--dry-run", ...WRITE_ARGS]],
+  ])("refuses refresh %s", (_label, argv) => {
+    expect(decideDomainRefreshGate(parseDemoArgs(argv), FGEM_URL, GOOD_PASSWORDS).ok).toBe(false);
+  });
+
+  it("refuses refresh without passwords (inherits the write gate)", () => {
+    const gate = decideDomainRefreshGate(parseDemoArgs(WRITE_ARGS), FGEM_URL, {
+      ...GOOD_PASSWORDS,
+      ownerPassword: undefined,
+    });
+    expect(gate.ok).toBe(false);
+  });
+
+  it("plans deletes for exactly the four domain tables, all tenant-scoped, FK-safe order", () => {
+    const plan = buildDomainRefreshDeletePlan(TENANT_ID);
+    expect(plan.map((d) => d.table)).toEqual([...REFRESH_DOMAIN_TABLES]);
+    expect(plan.map((d) => d.table)).toEqual([
+      "invoice_line_items",
+      "invoices",
+      "scheduled_jobs",
+      "service_requests",
+    ]);
+    for (const d of plan) expect(d.scope.tenant_id).toBe(TENANT_ID);
+    expect(() => assertDomainRefreshScoped(plan, TENANT_ID)).not.toThrow();
+  });
+
+  it("guard refuses non-domain tables and unscoped deletes", () => {
+    const badTable = [
+      { table: "clients", scope: { tenant_id: TENANT_ID }, description: "nope" },
+    ] as unknown as DomainRefreshDelete[];
+    expect(() => assertDomainRefreshScoped(badTable, TENANT_ID)).toThrow(/non-domain/);
+
+    const wrongScope = buildDomainRefreshDeletePlan("other-tenant");
+    expect(() => assertDomainRefreshScoped(wrongScope, TENANT_ID)).toThrow(/not scoped/);
+
+    expect(() => assertDomainRefreshScoped(buildDomainRefreshDeletePlan(""), "")).toThrow(/non-empty/);
+  });
+
+  it("never plans deletes for durable tables (users/clients/equipment/docs)", () => {
+    const tables = new Set<string>(REFRESH_DOMAIN_TABLES);
+    for (const durable of ["tenants", "tenant_users", "profiles", "clients", "equipment_registry", "documents", "document_chunks"]) {
+      expect(tables.has(durable)).toBe(false);
+    }
   });
 });
 
