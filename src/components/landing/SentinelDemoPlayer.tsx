@@ -3,35 +3,38 @@ import { useInView } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePrefersReducedMotion } from "@/hooks/useReducedAnimations";
 import frameIdle from "@/assets/landing/sentinel-demo-1-idle.webp";
-import frameQuestion from "@/assets/landing/sentinel-demo-2-question.webp";
 import frameGrounding from "@/assets/landing/sentinel-demo-3-grounding.webp";
 import frameAnswer from "@/assets/landing/sentinel-demo-4-answer.webp";
 import frameSaved from "@/assets/landing/sentinel-demo-5-saved.webp";
+import mobileAnswer from "@/assets/landing/sentinel-demo-mobile.webp";
 
 /**
- * Animated Sentinel product demo built from five real screenshots of one live
+ * Animated Sentinel product demo built from four real screenshots of one live
  * grounded conversation on the North Shore HVAC sample tenant: idle workspace,
- * question in the composer, grounded-retrieval handoff, cited answer with the
+ * question sent with the grounded-retrieval handoff, cited answer with the
  * real confidence label, and the answer saved to the job. A crossfaded frame
  * sequence was chosen over video deliberately: chat-sized text stays
- * pixel-sharp at a fraction of the weight (~340 KB for all five frames), and
- * pacing, looping, and accessibility remain fully controllable.
+ * pixel-sharp at a fraction of the weight (~250 KB for the loop), and pacing,
+ * looping, and accessibility remain fully controllable.
  *
- * Motion policy: the loop only advances while the player is in view, and users
- * with prefers-reduced-motion (as well as mobile, where the frames would be
- * too small to follow) get the strongest completed-answer frame as a static
- * image instead.
+ * Story pacing rule: the cited answer (the differentiator) must be on screen
+ * within ~4 seconds of the loop starting and holds the longest dwell.
+ *
+ * Motion policy: the loop only advances while the player is in view. Users
+ * with prefers-reduced-motion get the completed-answer frame as a static
+ * image; mobile gets a tighter crop of the same completed exchange (question,
+ * checks, citations, confidence) because the full workspace frame is
+ * unreadable at phone width.
  */
 
 const FRAME_WIDTH = 1968;
-const FRAME_HEIGHT = 1800;
+const FRAME_HEIGHT = 1510;
 
 const FRAMES = [
-  { src: frameIdle, dwellMs: 1500 },
-  { src: frameQuestion, dwellMs: 1700 },
-  { src: frameGrounding, dwellMs: 1300 },
-  { src: frameAnswer, dwellMs: 3400 },
-  { src: frameSaved, dwellMs: 2100 },
+  { src: frameIdle, dwellMs: 1200 },
+  { src: frameGrounding, dwellMs: 1500 },
+  { src: frameAnswer, dwellMs: 4500 },
+  { src: frameSaved, dwellMs: 2200 },
 ];
 
 const NARRATIVE =
@@ -48,18 +51,32 @@ export function SentinelDemoPlayer() {
   const isMobile = useIsMobile();
   const [frame, setFrame] = useState(0);
 
-  const staticOnly = prefersReducedMotion || isMobile;
-
   useEffect(() => {
-    if (staticOnly || !inView) return;
+    if (prefersReducedMotion || isMobile || !inView) return;
     const timer = setTimeout(
       () => setFrame((current) => (current + 1) % FRAMES.length),
       FRAMES[frame].dwellMs,
     );
     return () => clearTimeout(timer);
-  }, [frame, inView, staticOnly]);
+  }, [frame, inView, prefersReducedMotion, isMobile]);
 
-  if (staticOnly) {
+  // Phone width: the payoff crop (question, answer, citations, confidence)
+  // instead of the full workspace, whether motion is allowed or not.
+  if (isMobile) {
+    return (
+      <img
+        src={mobileAnswer}
+        alt={NARRATIVE}
+        width={1358}
+        height={770}
+        loading="lazy"
+        decoding="async"
+        className="w-full h-auto"
+      />
+    );
+  }
+
+  if (prefersReducedMotion) {
     return (
       <img
         src={frameAnswer}
