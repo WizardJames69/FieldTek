@@ -17,8 +17,8 @@ import mobileAnswer from "@/assets/landing/sentinel-demo-mobile.webp";
  * pixel-sharp at a fraction of the weight (~250 KB for the loop), and pacing,
  * looping, and accessibility remain fully controllable.
  *
- * Story pacing: unhurried beats (founder-tuned) with the cited answer (the
- * differentiator) holding the longest dwell of the ~12.5s loop.
+ * Story pacing: slow, take-it-in beats (founder-tuned twice) with the cited
+ * answer (the differentiator) holding the longest dwell of the ~20.5s loop.
  *
  * Motion policy: the loop only advances while the player is in view. Users
  * with prefers-reduced-motion get the completed-answer frame as a static
@@ -31,10 +31,10 @@ const FRAME_WIDTH = 1968;
 const FRAME_HEIGHT = 1510;
 
 const FRAMES = [
-  { src: frameIdle, dwellMs: 2200 },
-  { src: frameGrounding, dwellMs: 2000 },
-  { src: frameAnswer, dwellMs: 4800 },
-  { src: frameSaved, dwellMs: 2400 },
+  { src: frameIdle, dwellMs: 3500 },
+  { src: frameGrounding, dwellMs: 3000 },
+  { src: frameAnswer, dwellMs: 7000 },
+  { src: frameSaved, dwellMs: 3500 },
 ];
 
 const NARRATIVE =
@@ -108,7 +108,7 @@ export function SentinelDemoPlayer() {
           height={FRAME_HEIGHT}
           loading="lazy"
           decoding="async"
-          className={`absolute inset-0 h-full w-full transition-opacity duration-700 ease-out ${
+          className={`absolute inset-0 h-full w-full transition-opacity duration-[900ms] ease-out ${
             i === frame ? "opacity-100" : "opacity-0"
           }`}
         />
