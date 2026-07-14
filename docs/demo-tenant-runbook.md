@@ -84,6 +84,28 @@ Re-running is safe: existing rows are found, not duplicated, and user
 passwords are re-aligned to the environment values on every run (so a password
 rotation is just "update the manager, re-run").
 
+### Re-centering the demo clock (`--refresh-domain`)
+
+Seeded dates are relative to run time, so the showcase dashboard ("today's
+jobs", activity ages, the 8-week trend) goes stale within a day of the last
+run. A plain re-run does NOT fix this (found rows are skipped), and an
+UPDATE-based refresh cannot work: these tables carry a `BEFORE UPDATE`
+trigger that stamps `updated_at = now()`, which destroys the historical
+timestamps the trend chart and activity feed render.
+
+The supported refresh is a harder-gated **delete + reseed of exactly the
+date-anchored rows** (invoice line items, invoices, jobs, service requests —
+demo-tenant-scoped; users/clients/equipment/documents are never touched):
+
+```bash
+ DEMO_OWNER_PASSWORD='…' DEMO_TECH_PASSWORD='…' \
+ npm run demo:provision -- --confirm-project fgemfxhwushaiiguqxfe \
+   --refresh-domain --confirm-tenant-id <demo tenant id>
+```
+
+Run it right before any demo or screenshot session (founder-approved, quiet
+window). Row ids change; nothing outside the demo tenant references them.
+
 ### 3. Verify
 
 - Log in at the app as `demo-owner@fieldtek-demo.dev`.

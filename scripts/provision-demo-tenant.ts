@@ -46,6 +46,9 @@ import {
   lineItemTotal,
   materializeInvoiceDates,
   materializeRequestDates,
+  buildDomainRefreshDeletePlan,
+  assertDomainRefreshScoped,
+  decideDomainRefreshGate,
   type DemoSeedPlan,
   type DemoUserKey,
 } from "./lib/demoTenant";
@@ -598,7 +601,8 @@ async function provisionCorpus(admin: SupabaseClient, tenantId: string, t: Tally
 function printBanner(targetRef: string | null, plan: DemoSeedPlan): void {
   console.log("=== NORTH SHORE HVAC DEMO TENANT PROVISIONER ===");
   console.log("Fully synthetic Product Showcase data. This is NOT the E2E global-setup");
-  console.log("and NOT the eval provisioner. It never deletes anything.");
+  console.log("and NOT the eval provisioner. The base pass never deletes anything;");
+  console.log("the ONLY delete path is the harder-gated --refresh-domain re-centering.");
   console.log(`target project (VITE_SUPABASE_URL): ${targetRef ?? "(not set)"}`);
   console.log(`demo tenant: "${DEMO_TENANT_NAME}"`);
   console.log("\nplanned writes (only):");
@@ -646,16 +650,116 @@ function printResult(t: Tally, chunkTotal: number): void {
   console.log("  ✓ passwords came from the environment and were not printed");
 }
 
+// ── Domain refresh (trigger-safe re-centering of the demo clock) ─
+
+/**
+ * Delete exactly the date-anchored domain rows (line items → invoices → jobs
+ * → requests, tenant-scoped) so the normal INSERT path can reseed them with
+ * fresh timestamps. UPDATEs cannot do this: BEFORE UPDATE triggers stamp
+ * updated_at = now() on these tables, destroying the historical timestamps
+ * the trend chart and activity feed render.
+ */
+async function refreshDomainRows(
+  admin: SupabaseClient,
+  confirmTenantId: string,
+): Promise<{ tenantId: string; deleted: Record<string, number> }> {
+  // Resolve by the demo tenant name and hard-verify identity BEFORE any delete.
+  const { data: tenants, error } = await admin
+    .from("tenants")
+    .select("id,name,slug")
+    .eq("name", DEMO_TENANT_NAME);
+  if (error) throw new Error(`refresh: resolve tenant failed: ${error.message}`);
+  if (!tenants || tenants.length !== 1) {
+    throw new Error(`refresh: expected exactly one "${DEMO_TENANT_NAME}" tenant, found ${tenants?.length ?? 0}`);
+  }
+  const tenant = tenants[0] as { id: string; name: string; slug: string | null };
+  assertIsDemoTenantName(tenant.name);
+  if (!tenant.slug || !tenant.slug.startsWith(DEMO_TENANT_SLUG_PREFIX)) {
+    throw new Error(`refresh: tenant slug "${tenant.slug}" does not start with "${DEMO_TENANT_SLUG_PREFIX}"`);
+  }
+  if (tenant.id !== confirmTenantId) {
+    throw new Error(
+      `refresh: resolved tenant id "${tenant.id}" does not match --confirm-tenant-id "${confirmTenantId}"`,
+    );
+  }
+
+  const plan = buildDomainRefreshDeletePlan(tenant.id);
+  assertDomainRefreshScoped(plan, tenant.id);
+  console.log("\n[refresh-domain] tenant-scoped delete plan:");
+  for (const d of plan) console.log(`  • DELETE ${d.table.padEnd(20)} ${d.description}`);
+
+  const deleted: Record<string, number> = {};
+
+  // Line items first (scoped through parent invoice ids — no tenant_id column).
+  const { data: invRows, error: invErr } = await admin
+    .from("invoices")
+    .select("id")
+    .eq("tenant_id", tenant.id);
+  if (invErr) throw new Error(`refresh: resolve invoice ids failed: ${invErr.message}`);
+  const invoiceIds = (invRows ?? []).map((r) => r.id as string);
+  if (invoiceIds.length > 0) {
+    const { data: delLi, error: liErr } = await admin
+      .from("invoice_line_items")
+      .delete()
+      .in("invoice_id", invoiceIds)
+      .select("id");
+    if (liErr) throw new Error(`refresh: delete invoice_line_items failed: ${liErr.message}`);
+    deleted.invoice_line_items = delLi?.length ?? 0;
+  } else {
+    deleted.invoice_line_items = 0;
+  }
+
+  for (const table of ["invoices", "scheduled_jobs", "service_requests"] as const) {
+    const { data: del, error: delErr } = await admin
+      .from(table)
+      .delete()
+      .eq("tenant_id", tenant.id)
+      .select("id");
+    if (delErr) throw new Error(`refresh: delete ${table} failed: ${delErr.message}`);
+    deleted[table] = del?.length ?? 0;
+  }
+
+  return { tenantId: tenant.id, deleted };
+}
+
 // ── Main ────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const args = parseDemoArgs(process.argv.slice(2));
   const now = new Date();
   const plan = buildDemoSeedPlan(now);
-  const gate = decideDemoGate(args, process.env.VITE_SUPABASE_URL, {
+  const passwords = {
     ownerPassword: process.env.DEMO_OWNER_PASSWORD,
     techPassword: process.env.DEMO_TECH_PASSWORD,
-  });
+  };
+
+  // The destructive domain refresh is a distinct, harder-gated path.
+  if (args.refreshDomain) {
+    const rgate = decideDomainRefreshGate(args, process.env.VITE_SUPABASE_URL, passwords);
+    if (!rgate.ok) {
+      console.error("=== DEMO DOMAIN REFRESH ===");
+      console.error(`\n[refresh-domain] REFUSED: ${rgate.reason}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log("=== DEMO DOMAIN REFRESH (delete + reseed date-anchored rows, demo tenant only) ===");
+    console.log(`target project (VITE_SUPABASE_URL): ${rgate.projectRef}`);
+    console.log(`demo tenant: "${DEMO_TENANT_NAME}"  confirm-tenant-id: ${rgate.tenantId}`);
+    console.log(
+      "\nwill NOT touch: auth users, profiles, tenant row, memberships, settings, branding, " +
+        "AI policy, onboarding, clients, equipment, documents, chunks, or any other tenant.",
+    );
+    const admin = getAdminClient();
+    const refresh = await refreshDomainRows(admin, rgate.tenantId);
+    console.log("\n--- refresh deletes ---");
+    for (const [table, n] of Object.entries(refresh.deleted)) {
+      console.log(`  ${table.padEnd(20)} deleted=${n}`);
+    }
+    // Fall through to the normal idempotent provisioning pass, which reseeds
+    // the deleted domain rows with fresh, run-relative timestamps.
+  }
+
+  const gate = decideDemoGate(args, process.env.VITE_SUPABASE_URL, passwords);
 
   if (!gate.ok) {
     printBanner(null, plan);

@@ -1,7 +1,7 @@
 import { BookOpen, Network, GitBranch, Brain, MessageSquare, FileSearch, BadgeCheck, UserCheck } from "lucide-react";
 import { ScrollReveal } from "./ScrollReveal";
-import { SentinelCommandPanel } from "./SentinelCommandPanel";
 import { IsometricLights } from "./IsometricLights";
+import sentinelShot from "@/assets/landing/sentinel-conversation.webp";
 
 /**
  * The single Sentinel story section. Consolidates the three former,
@@ -72,10 +72,25 @@ export function SentinelSection() {
           </ScrollReveal>
         </div>
 
-        {/* The demo IS the argument. Full-width moment. */}
+        {/* The demo IS the argument: a real grounded conversation, not a mockup. */}
         <ScrollReveal delay={0.1}>
           <div className="max-w-3xl mx-auto">
-            <SentinelCommandPanel />
+            <div className="rounded-2xl border border-white/[0.06] bg-[#111214] p-3 shadow-lg shadow-black/30">
+              <div className="rounded-xl overflow-hidden bg-[#111113]">
+                <img
+                  src={sentinelShot}
+                  alt="Sentinel AI answering a technician's question about weak cooling on a Carrier air handler, with four page-level citations to the installation manual and a high-confidence indicator"
+                  width={2200}
+                  height={1560}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-auto"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-zinc-500 text-center mt-3">
+              Product shown with sample data.
+            </p>
           </div>
         </ScrollReveal>
 
