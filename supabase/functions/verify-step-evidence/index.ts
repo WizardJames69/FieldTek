@@ -12,6 +12,7 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isValidJobId, verifyJobTenantOwnership } from "../field-assistant/jobOwnership.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -185,6 +186,20 @@ Deno.serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "Missing required fields: job_id, checklist_item_id, stage_name, evidence" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SECURITY (PR-SEC-5): prove the caller's tenant owns this job before any
+    // service-role read/write keyed on the caller-supplied job_id. Without it,
+    // any authenticated user could submit evidence against another tenant's job
+    // and read its workflow template config — workflow_step_executions /
+    // workflow_template_steps carry no tenant scoping of their own, so this is
+    // the single gate for them. Unknown job and foreign-tenant job both return
+    // the same 404 (non-enumerating).
+    if (!isValidJobId(job_id) || !(await verifyJobTenantOwnership(serviceClient, job_id, tenantId))) {
+      return new Response(
+        JSON.stringify({ error: "Job not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

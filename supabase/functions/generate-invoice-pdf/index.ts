@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isAuthorizedForInvoice } from "./authorize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,6 +69,21 @@ serve(async (req) => {
       .single();
 
     if (invoiceError || !invoice) {
+      return new Response(
+        JSON.stringify({ error: "Invoice not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SECURITY (PR-SEC-5): authorize the caller for THIS invoice before rendering
+    // any of its PII/financials. `getUser` above only proves the caller is *some*
+    // logged-in user; without this check any authenticated user (any tenant's
+    // staff, any portal customer, a demo user) could fetch another tenant's
+    // invoice by UUID. Authorized = active staff of the invoice's tenant
+    // (owner/admin/dispatcher) OR the owning portal client. Anything else returns
+    // the same 404 as a missing invoice (non-enumerating).
+    if (!(await isAuthorizedForInvoice(supabase, user.id, invoice))) {
+      console.warn("[generate-invoice-pdf] Unauthorized invoice access blocked", { userId: user.id });
       return new Response(
         JSON.stringify({ error: "Invoice not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }

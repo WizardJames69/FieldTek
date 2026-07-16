@@ -17,6 +17,7 @@ import {
   detectSymptomsInText,
   formatLabel,
 } from "../_shared/symptomVocabulary.ts";
+import { isServiceRoleBearer } from "../_shared/serviceAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +64,22 @@ function classifyStepOutcome(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // SECURITY (PR-SEC-5): this function performs privileged service-role work
+  // driven by a caller-supplied job_id and runs with verify_jwt=false. Its ONLY
+  // intended caller is the trg_collect_workflow_intelligence DB trigger, which
+  // posts Authorization: Bearer <vault service_role_key> (20260513000000); it is
+  // never browser-invoked. Require a valid service-role bearer — the feature
+  // flag checked below is NOT an authorization boundary. isServiceRoleBearer
+  // accepts the Vault legacy-format service_role key that an exact-string
+  // compare would wrongly 401.
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!(await isServiceRoleBearer(bearer))) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 
   const start = Date.now();
