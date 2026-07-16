@@ -1,0 +1,108 @@
+name: DB Migration Replay
+
+# Deterministic clean-schema reconstruction gate (PR-DB-1).
+#
+# Nothing else in CI ever builds a database from migration zero: ci.yml has no
+# database, and e2e.yml runs against the live remote (an already-migrated DB).
+# So a migration that references an object never created by the repo — e.g. the
+# is_tenant_admin(uuid, uuid) overload that 20260510000000 requires — passed
+# undetected because production carried the object out-of-band. This job applies
+# EVERY migration to an empty database, in order, and fails on the first error,
+# making the repository the source of truth for disaster-recovery reconstruction.
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/db-replay.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/db-replay.yml'
+
+# One replay per ref; cancel superseded runs.
+concurrency:
+  group: db-replay-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: the job only reads the repo (checkout). No write scopes, and
+# no token that could reach any remote Supabase project.
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    name: Clean-schema replay from zero
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.90.0
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Clean replay of every migration from zero
+        # `supabase start` applies supabase/migrations/*.sql in version order against
+        # an empty database and exits non-zero on the FIRST migration error (which is
+        # exactly how the is_tenant_admin(uuid, uuid) gap would surface without the
+        # 20260509000000 compatibility migration).
+        #
+        # storage + realtime stay ENABLED on purpose: migrations INSERT INTO
+        # storage.buckets and touch the supabase_realtime publication, so a stripped
+        # stack fails for harness reasons rather than real drift. Only schema-irrelevant
+        # services are excluded, for speed.
+        run: supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+
+      - name: Assert reconstruction invariants
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        # Cheap smoke: both is_tenant_admin overloads must exist (0-arg + the
+        # tenant-scoped 2-arg the pattern-discovery policy resolves against). If the
+        # backdated compat migration were ever dropped, the replay above would already
+        # fail at 20260510000000 — this makes the intent explicit and self-documenting.
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "DO \$\$
+          DECLARE n int;
+          BEGIN
+            SELECT count(*) INTO n FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
+              WHERE ns.nspname = 'public' AND p.proname = 'is_tenant_admin';
+            IF n <> 2 THEN
+              RAISE EXCEPTION 'expected 2 is_tenant_admin overloads (0-arg + (uuid,uuid)), found %', n;
+            END IF;
+            RAISE NOTICE 'PASS: both is_tenant_admin overloads present';
+          END \$\$;"
+
+      - name: Stable SQL regressions (from-zero schema)
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        # Runs every supabase/tests/*.sql EXCEPT the two known-broken RAG fixtures
+        # (lexical_rescue / hybrid_similarity omit required document_chunks.chunk_index
+        # seeds — a pre-existing test-data defect tracked in a separate maintenance PR;
+        # NOT drift). ON_ERROR_STOP fails the job on any assertion failure.
+        run: |
+          shopt -s nullglob
+          fail=0
+          for f in supabase/tests/*.sql; do
+            case "$(basename "$f")" in
+              lexical_rescue_regression.sql|hybrid_similarity_blend_regression.sql)
+                echo "::notice::skipping known-broken RAG fixture $(basename "$f")"; continue;;
+            esac
+            echo "== running $f =="
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f" || fail=1
+          done
+          exit $fail
+
+      - name: Teardown
+        if: always()
+        run: supabase stop --no-backup
