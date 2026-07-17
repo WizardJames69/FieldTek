@@ -78,8 +78,9 @@ verify_jwt = false
 [functions.generate-embeddings]
 verify_jwt = false
 
-[functions.send-beta-approval]
-verify_jwt = false
+# send-beta-approval intentionally has NO verify_jwt override (PR-SEC-6): it inherits
+# the default verify_jwt=true so the gateway rejects unauthenticated calls, on top of
+# the in-function platform-admin gate. Do NOT re-add verify_jwt=false here.
 
 [functions.monitor-health]
 verify_jwt = false
