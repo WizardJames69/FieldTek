@@ -28,6 +28,7 @@
 --   9. the LAST active owner CANNOT be deactivated                     [row 11]
 --  10. onboarding self-insert of an owner row (caller owns the tenant) [row 12]
 --  11. service_role bypasses the guard entirely                        [row 15]
+--  12. an OWNER cannot promote a technician straight to owner          [PR-TEST-3]
 -- ============================================================
 
 -- Part A — structural assertion (SAFE READ-ONLY; may run anywhere).
@@ -64,6 +65,7 @@ DECLARE
   v_dispatch  uuid := gen_random_uuid();  -- tenant A dispatcher
   v_fresh     uuid := gen_random_uuid();  -- unaffiliated user (grant target)
   v_newowner  uuid := gen_random_uuid();  -- owns tenant C, self-inserts owner
+  v_tech      uuid := gen_random_uuid();  -- tenant A technician (owner-promotes-to-owner target, case 12)
 BEGIN
   -- ── Seed. auth.uid() is NULL here (no JWT), so the guard's trusted-SQL
   --    bypass applies — exactly how migrations/superuser seeding behaves. ──
@@ -73,7 +75,8 @@ BEGIN
     (v_admin,    'reg5-admin@example.test'),
     (v_dispatch, 'reg5-dispatch@example.test'),
     (v_fresh,    'reg5-fresh@example.test'),
-    (v_newowner, 'reg5-newowner@example.test');
+    (v_newowner, 'reg5-newowner@example.test'),
+    (v_tech,     'reg5-tech@example.test');
 
   INSERT INTO public.tenants (id, name, slug, owner_id) VALUES
     (v_tenant_a, 'REG SEC5 A', 'reg-sec5-a-' || v_tenant_a, v_owner),
@@ -83,7 +86,8 @@ BEGIN
     (v_tenant_a, v_owner,    'owner',      true),
     (v_tenant_a, v_owner2,   'owner',      true),
     (v_tenant_a, v_admin,    'admin',      true),
-    (v_tenant_a, v_dispatch, 'dispatcher', true);
+    (v_tenant_a, v_dispatch, 'dispatcher', true),
+    (v_tenant_a, v_tech,     'technician', true);
 
   -- Helper macro pattern: set the acting authenticated user, then run a case.
 
@@ -184,6 +188,24 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     RESET ROLE;
     RAISE NOTICE 'PASS(7): admin modifying an owner row denied';
+  END;
+
+  -- ── 12. OWNER promotes a technician directly to owner -> DENIED [PR-TEST-3] ──
+  --    The escalation guard blocks ANY member->owner UPDATE regardless of caller.
+  --    Every prior promote-to-owner case (1-3) used an ADMIN actor; this closes the
+  --    previously untested OWNER-actor path. v_tech is an untouched technician; v_owner
+  --    is still the active owner, so this isolates the promotion rule itself.
+  PERFORM set_config('request.jwt.claims',
+    json_build_object('sub', v_owner, 'role', 'authenticated')::text, true);
+  SET LOCAL ROLE authenticated;
+  BEGIN
+    UPDATE public.tenant_users SET role = 'owner'
+      WHERE tenant_id = v_tenant_a AND user_id = v_tech;
+    RESET ROLE;
+    RAISE EXCEPTION 'FAIL(12): owner promoted a technician straight to owner';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RESET ROLE;
+    RAISE NOTICE 'PASS(12): owner promoting a technician to owner denied';
   END;
 
   -- ── 8. LAST active owner demote -> DENIED [row 11] ──

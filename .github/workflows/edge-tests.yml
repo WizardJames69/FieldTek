@@ -1,0 +1,54 @@
+name: Edge Function Tests
+
+# Runs the Deno unit + authorization test suite for supabase/functions/ (PR-TEST-3).
+#
+# Until now these ~340 tests ran in NO CI — the authorization guardrails they cover
+# (jobOwnership, conversationOwnership, evidenceRow, tenantAuth, serviceAuth, the
+# send-beta-approval platform-admin gate, etc.) could regress silently. ci.yml runs
+# only Vitest (frontend); this job is the missing gate for the edge-function layer.
+#
+# The suite is pure/stubbed: no network at runtime, no production credentials, no
+# Supabase project access. Remote std imports are pinned by the committed deno.lock
+# and cached by setup-deno.
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/functions/**'
+      - 'deno.lock'
+      - 'package.json'
+      - '.github/workflows/edge-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - 'deno.lock'
+      - 'package.json'
+      - '.github/workflows/edge-tests.yml'
+
+# One run per ref; cancel superseded runs (pure tests, safe to cancel — no shared
+# mutable backend, unlike e2e.yml).
+concurrency:
+  group: edge-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: checkout only. No write scopes, no secrets, no remote project token.
+permissions:
+  contents: read
+
+jobs:
+  deno-tests:
+    name: Deno edge-function tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.7.9
+
+      - name: Run edge-function Deno tests
+        run: npm run test:edge-authz

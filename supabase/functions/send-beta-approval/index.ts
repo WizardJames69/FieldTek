@@ -17,6 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   BetaApprovalDeps,
   BetaApprovalRequest,
+  emailSinkActive,
   handleBetaApproval,
   lookupPlatformAdmin,
 } from "./authz.ts";
@@ -172,6 +173,17 @@ function makeDeps(): BetaApprovalDeps {
     },
     isPlatformAdmin: (userId) => lookupPlatformAdmin(admin, userId),
     async sendApprovalEmail({ email, companyName, promoCode }: BetaApprovalRequest) {
+      // PR-TEST-3 deterministic email seam. When BETA_APPROVAL_EMAIL_SINK=1 is set
+      // ONLY in the isolated E2E environment, the branded email is NOT delivered to
+      // Resend; the caller still reaches this operation and recordEmailResult still
+      // stamps the (disposable) beta_applications row, so the authorized allow-path
+      // is provable without sending real mail. FAIL-SAFE: the variable is unset in
+      // production, so real delivery is the default; authentication and authorization
+      // are enforced identically and are not touched by this seam.
+      if (emailSinkActive(Deno.env)) {
+        console.log("Email sink active (E2E only): skipping Resend delivery");
+        return { ok: true, status: 200, messageId: "e2e-sink" };
+      }
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
       if (!RESEND_API_KEY) {
         console.error("RESEND_API_KEY is not configured");

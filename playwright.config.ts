@@ -150,6 +150,7 @@ export default defineConfig({
         'e2e/specs/ai-diagnostic-learning.spec.ts',
         'e2e/specs/ai-ingestion.spec.ts',
         'e2e/specs/workflow-verification.spec.ts',
+        'e2e/specs/authorization.spec.ts',
       ],
     },
 

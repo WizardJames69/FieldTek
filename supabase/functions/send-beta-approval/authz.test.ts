@@ -11,6 +11,7 @@ import { assertEquals } from "https://deno.land/std@0.168.0/testing/asserts.ts";
 import {
   BetaApprovalDeps,
   decideBetaApprovalAccess,
+  emailSinkActive,
   handleBetaApproval,
   lookupPlatformAdmin,
 } from "./authz.ts";
@@ -235,4 +236,25 @@ Deno.test("handler: platform admin but missing required fields → 400, email NO
   assertEquals(res.status, 400);
   assertEquals(calls.email, 0);
   assertEquals(calls.record.length, 0);
+});
+
+// ── emailSinkActive (PR-TEST-3 deterministic E2E email seam; fail-safe OFF) ──
+// The seam controls email DELIVERY only, gated on an env var set solely in the
+// isolated E2E environment. Production never sets it → real Resend delivery. It
+// must never turn on for any value other than exactly "1".
+
+const fakeEnv = (vars: Record<string, string>) => ({ get: (k: string) => vars[k] });
+
+Deno.test("emailSinkActive: BETA_APPROVAL_EMAIL_SINK='1' → true (E2E sink on)", () => {
+  assertEquals(emailSinkActive(fakeEnv({ BETA_APPROVAL_EMAIL_SINK: "1" })), true);
+});
+
+Deno.test("emailSinkActive: unset → false (production default, real delivery)", () => {
+  assertEquals(emailSinkActive(fakeEnv({})), false);
+});
+
+Deno.test("emailSinkActive: any value other than '1' → false (fail-safe)", () => {
+  assertEquals(emailSinkActive(fakeEnv({ BETA_APPROVAL_EMAIL_SINK: "true" })), false);
+  assertEquals(emailSinkActive(fakeEnv({ BETA_APPROVAL_EMAIL_SINK: "0" })), false);
+  assertEquals(emailSinkActive(fakeEnv({ BETA_APPROVAL_EMAIL_SINK: "" })), false);
 });
