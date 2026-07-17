@@ -2,11 +2,30 @@
 
 This document describes how to test the full workflow intelligence pipeline locally, including pattern discovery, context fusion, and Sentinel AI prompt construction.
 
+> ⚠️ **The workflow-template / pattern-discovery stream is deferred and lives in
+> `supabase/migrations-deferred/`, so `supabase db reset` does NOT build its tables
+> by default** (PR-DB-4). To test the full pipeline locally you must temporarily
+> reactivate the stream:
+>
+> ```bash
+> cp supabase/migrations-deferred/*.sql supabase/migrations/   # local only
+> supabase db reset
+> # ... run the tests below ...
+> # Then REMOVE them again before any db push and before committing:
+> for f in supabase/migrations-deferred/*.sql; do rm -f "supabase/migrations/$(basename "$f")"; done
+> ```
+>
+> Never `git add` the copied files back into `supabase/migrations/`, and never
+> `supabase db push`/`--include-all` while they are present. See
+> [supabase/migrations-deferred/README.md](../supabase/migrations-deferred/README.md).
+
 ## Prerequisites
 
 - Supabase CLI installed (`supabase --version`)
 - Node.js 18+ with `npx` available
 - `tsx` installed globally or via `npx`
+- The deferred workflow stream reactivated locally (see the warning above) — the
+  schema checks below expect its tables
 
 ## 1. Reset Database
 

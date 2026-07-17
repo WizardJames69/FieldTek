@@ -1,14 +1,20 @@
 name: DB Migration Replay
 
-# Deterministic clean-schema reconstruction gate (PR-DB-1).
+# Deterministic clean-schema reconstruction gate (PR-DB-1, updated by PR-DB-4).
 #
 # Nothing else in CI ever builds a database from migration zero: ci.yml has no
 # database, and e2e.yml runs against the live remote (an already-migrated DB).
-# So a migration that references an object never created by the repo — e.g. the
-# is_tenant_admin(uuid, uuid) overload that 20260510000000 requires — passed
-# undetected because production carried the object out-of-band. This job applies
-# EVERY migration to an empty database, in order, and fails on the first error,
-# making the repository the source of truth for disaster-recovery reconstruction.
+# This job applies EVERY ACTIVE migration to an empty database, in order, and
+# fails on the first error, making the repository the source of truth for
+# disaster-recovery reconstruction.
+#
+# "Active" = supabase/migrations/ only. The dormant workflow-template stream lives
+# in supabase/migrations-deferred/ (see that directory's README) and is NOT part of
+# reconstruction: it was never applied to production, must never be, and the
+# Supabase CLI does not read that directory. Because 20260509000000 (the
+# is_tenant_admin(uuid, uuid) overload) and its sole consumer 20260510000000 both
+# live in the deferred stream, a clean active replay has ONLY the 0-arg
+# is_tenant_admin — hence the invariant below asserts exactly ONE overload.
 
 on:
   pull_request:
@@ -67,20 +73,21 @@ jobs:
       - name: Assert reconstruction invariants
         env:
           DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
-        # Cheap smoke: both is_tenant_admin overloads must exist (0-arg + the
-        # tenant-scoped 2-arg the pattern-discovery policy resolves against). If the
-        # backdated compat migration were ever dropped, the replay above would already
-        # fail at 20260510000000 — this makes the intent explicit and self-documenting.
+        # Cheap smoke: a clean ACTIVE replay must have exactly ONE is_tenant_admin
+        # overload — the 0-arg helper. The tenant-scoped 2-arg overload and its only
+        # consumer both live in supabase/migrations-deferred/ (PR-DB-4), so they are
+        # not part of active reconstruction. If this count is ever 2, a deferred file
+        # has leaked back into supabase/migrations/; if 0, the base helper regressed.
         run: |
           psql "$DB_URL" -v ON_ERROR_STOP=1 -c "DO \$\$
           DECLARE n int;
           BEGIN
             SELECT count(*) INTO n FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
               WHERE ns.nspname = 'public' AND p.proname = 'is_tenant_admin';
-            IF n <> 2 THEN
-              RAISE EXCEPTION 'expected 2 is_tenant_admin overloads (0-arg + (uuid,uuid)), found %', n;
+            IF n <> 1 THEN
+              RAISE EXCEPTION 'expected exactly 1 is_tenant_admin overload (0-arg) in an active replay, found % (a deferred migration may have leaked into supabase/migrations/)', n;
             END IF;
-            RAISE NOTICE 'PASS: both is_tenant_admin overloads present';
+            RAISE NOTICE 'PASS: exactly one (0-arg) is_tenant_admin overload present';
           END \$\$;"
 
       - name: Stable SQL regressions (from-zero schema)

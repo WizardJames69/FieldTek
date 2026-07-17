@@ -110,8 +110,8 @@ Run this gate **before** inviting the pilot company. Tick every box.
 **Backend / env (verify only — do not change)**
 - [ ] Primary backend is **`fgemfxhwushaiiguqxfe`** (`VITE_SUPABASE_URL` →
       `https://fgemfxhwushaiiguqxfe.supabase.co`). See [RUNBOOK.md §1](RUNBOOK.md).
-- [ ] The **7 deferred workflow-template migrations remain intentionally pending** — they are a
-      separate work stream and must **not** be applied for the pilot (see [RUNBOOK.md §4](RUNBOOK.md)).
+- [ ] The **8 deferred workflow-template migrations live in `supabase/migrations-deferred/`** — they are a
+      separate, dormant work stream and must **not** be applied for the pilot (see [RUNBOOK.md §4](RUNBOOK.md)).
 - [ ] Admin → **System Health** is green; invite + checklist-verify edge functions reachable.
 
 **User / account setup**
