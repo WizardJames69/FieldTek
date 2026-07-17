@@ -311,8 +311,10 @@ OUTPUT FORMAT:
 
 // ── Prompt injection detection ──────────────────────────────
 const DOCUMENT_INJECTION_PATTERNS = [
-  /ignore\s+(previous|all|any|above|prior)\s+(instructions?|prompts?|rules?|guidelines?)/gi,
-  /disregard\s+(previous|all|any|above|prior)\s+(instructions?|prompts?|rules?|guidelines?)/gi,
+  // Stacked-modifier phrasing ("ignore all previous instructions") evaded the single-modifier
+  // group; allow one or more modifiers between the verb and the noun (PR-SEC-7).
+  /ignore\s+((?:previous|all|any|above|prior)\s+)+(instructions?|prompts?|rules?|guidelines?)/gi,
+  /disregard\s+((?:previous|all|any|above|prior)\s+)+(instructions?|prompts?|rules?|guidelines?)/gi,
   /forget\s+(everything|all|what)\s+(you\s+)?(know|learned|were\s+told)/gi,
   /you\s+are\s+now\s+(a|an)\s+(different|new|unrestricted)/gi,
   /pretend\s+(you\s+)?(are|to\s+be)\s+(a|an|unrestricted|jailbroken)/gi,
