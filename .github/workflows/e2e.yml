@@ -8,6 +8,21 @@ on:
     branches:
       - main
 
+# The whole suite runs against ONE shared live backend (fgem) with fixed-name
+# fixtures ("E2E Test Company", Tenant B, e2e-*@fieldtek-test.dev). Two runs in
+# parallel delete each other's tenant/users mid-flight. Serialize ALL e2e runs
+# into one queue and DO NOT cancel in progress — a run killed mid-teardown would
+# strand fixture residue. (The new authorization spec additionally namespaces its
+# own disposable fixtures per run, so it is safe even under this queue.)
+concurrency:
+  group: e2e-shared-backend
+  cancel-in-progress: false
+
+# Least privilege: the suite only reads the repo (checkout). Backend access is via
+# the explicit secrets below, not the workflow token.
+permissions:
+  contents: read
+
 jobs:
   e2e:
     runs-on: ubuntu-latest

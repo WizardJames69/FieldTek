@@ -70,9 +70,16 @@ It is not reachable on the current production schema, so there is no active expo
 
 ## Follow-up
 
-PR-TEST-3 (the broader authorization regression suite) resumes after PR-SEC-6 review, and must add
-**permanent HTTP-level e2e and CI regression coverage** for both fixes above (and wire the existing
-edge-function Deno authz tests into CI, where they currently do not run). The `future-hardening`
-observations from the audit (e.g. `analyze-service-request` 404/403 enumeration split,
+**PR-TEST-3 delivered the permanent regression gates** for both fixes above:
+- The ~340-test edge-function Deno suite (including `conversationOwnership.test.ts` for Gap 1 and
+  `send-beta-approval/authz.test.ts` for Gap 2) now runs in CI via `.github/workflows/edge-tests.yml`
+  (`npm run test:edge-authz`), where it previously ran nowhere.
+- An HTTP-level authorization spec (`e2e/specs/authorization.spec.ts`) exercises Gap 1 conversation
+  ownership and the Gap 2 platform-admin gate end-to-end against the deployed functions, alongside
+  B1–B4. See `docs/testing/edge-authorization-tests.md`.
+
+Gap 3 remains deferred (workflow-template stream inactive; see above). The `future-hardening`
+observations from the audit (`analyze-service-request` 404/403 enumeration split,
 `create-invoice-payment` public pay-link, `generate-recurring-jobs` in-code gate,
-`verify-turnstile-portal` clientId ownership) remain tracked there, not in PR-SEC-6.
+`verify-turnstile-portal` clientId ownership, and the reveal-pattern injection observation now tracked
+in PR-SEC-7) remain tracked, not fixed in PR-SEC-6.

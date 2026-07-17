@@ -75,6 +75,17 @@ export async function lookupPlatformAdmin(
   }
 }
 
+/**
+ * Deterministic E2E email seam gate (PR-TEST-3). Returns true ONLY when
+ * BETA_APPROVAL_EMAIL_SINK is exactly "1" — a variable set solely in the isolated
+ * E2E environment. Production never sets it, so real Resend delivery is the default
+ * (FAIL-SAFE). This gate governs email DELIVERY only; it never affects the
+ * authentication or platform-admin authorization above.
+ */
+export function emailSinkActive(env: { get(key: string): string | undefined }): boolean {
+  return env.get("BETA_APPROVAL_EMAIL_SINK") === "1";
+}
+
 export interface BetaApprovalDeps {
   /** Resolve a bearer token to a verified user id via GoTrue; null on any failure (fail closed). */
   getUserId: (token: string) => Promise<string | null>;
