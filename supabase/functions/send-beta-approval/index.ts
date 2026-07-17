@@ -1,40 +1,28 @@
+// ============================================================
+// send-beta-approval — platform-admin-only beta approval email (PR-SEC-6 / Gap 2)
+// ============================================================
+// Thin wiring only. ALL request handling, authentication, and platform-admin
+// authorization live in ./authz.ts (side-effect-free, unit-tested). This file
+// just constructs the real service-role-backed dependencies and serves the
+// handler, so importing authz.ts in tests never starts a server.
+//
+// Authorization is enforced in handleBetaApproval: OPTIONS → verify JWT →
+// platform_admins lookup → only then any Resend send or beta_applications write.
+// The function inherits verify_jwt=true (see supabase/config.toml — the
+// verify_jwt=false override was removed in PR-SEC-6), so the gateway also rejects
+// unauthenticated calls.
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  BetaApprovalDeps,
+  BetaApprovalRequest,
+  handleBetaApproval,
+  lookupPlatformAdmin,
+} from "./authz.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
-
-interface BetaApprovalRequest {
-  email: string;
-  companyName: string;
-  promoCode: string;
-  applicationId: string;
-}
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  try {
-    const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-    
-    if (!RESEND_API_KEY) {
-      console.error('RESEND_API_KEY is not configured');
-      throw new Error('Email service not configured');
-    }
-
-    const { email, companyName, promoCode, applicationId }: BetaApprovalRequest = await req.json();
-
-    if (!email || !companyName || !promoCode) {
-      throw new Error('Missing required fields: email, companyName, promoCode');
-    }
-
-    console.log(`Sending beta approval email to ${email} for ${companyName}`);
-
-    const emailHtml = `
+function buildApprovalEmailHtml(companyName: string, promoCode: string): string {
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -162,79 +150,68 @@ serve(async (req) => {
 </body>
 </html>
     `;
+}
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: 'FieldTek <info@fieldtek.ai>',
-        to: [email],
-        subject: 'Welcome to FieldTek Beta — You\'re In',
-        html: emailHtml,
-      }),
-    });
+function makeDeps(): BetaApprovalDeps {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  // Service-role client: used to VERIFY the caller's token (getUser) and to look
+  // up platform_admins. auth.getUser(token) authenticates the passed token; the
+  // service key never authorizes the caller by itself.
+  const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-    const responseBody = await response.text();
-    console.log(`Resend API response status: ${response.status}, body: ${responseBody}`);
-
-    if (!response.ok) {
-      console.error('Resend API error:', responseBody);
-      
-      if (applicationId) {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        
-        await supabase
-          .from('beta_applications')
-          .update({ 
-            email_error: `Failed to send email: ${response.status} - ${responseBody}`
-          })
-          .eq('id', applicationId);
+  return {
+    async getUserId(token) {
+      try {
+        const { data, error } = await admin.auth.getUser(token);
+        if (error || !data?.user) return null;
+        return data.user.id;
+      } catch {
+        return null;
       }
-      
-      throw new Error(`Failed to send email: ${response.status}`);
-    }
-
-    const result = JSON.parse(responseBody);
-    console.log('Email sent successfully:', result);
-
-    if (applicationId) {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      
-      await supabase
-        .from('beta_applications')
-        .update({ 
-          email_sent_at: new Date().toISOString(),
-          email_error: null
-        })
-        .eq('id', applicationId);
-    }
-
-    return new Response(
-      JSON.stringify({ success: true, messageId: result.id }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+    },
+    isPlatformAdmin: (userId) => lookupPlatformAdmin(admin, userId),
+    async sendApprovalEmail({ email, companyName, promoCode }: BetaApprovalRequest) {
+      const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+      if (!RESEND_API_KEY) {
+        console.error("RESEND_API_KEY is not configured");
+        return { ok: false, status: 500, error: "Email service not configured" };
       }
-    );
-
-  } catch (error) {
-    console.error('Error in send-beta-approval:', error);
-    
-    return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: "FieldTek <info@fieldtek.ai>",
+          to: [email],
+          subject: "Welcome to FieldTek Beta — You're In",
+          html: buildApprovalEmailHtml(companyName, promoCode),
+        }),
+      });
+      const text = await res.text();
+      // Log the provider status only — never request-controlled recipient/code.
+      console.log(`Resend API response status: ${res.status}`);
+      if (!res.ok) {
+        console.error("Resend API error status:", res.status);
+        return { ok: false, status: res.status, error: text };
       }
-    );
-  }
-});
+      let messageId: string | undefined;
+      try {
+        messageId = JSON.parse(text)?.id;
+      } catch {
+        // non-JSON success body — ignore, messageId stays undefined
+      }
+      return { ok: true, status: res.status, messageId };
+    },
+    async recordEmailResult(applicationId, result) {
+      const update: Record<string, unknown> = {};
+      if (result.sentAt !== undefined) update.email_sent_at = result.sentAt;
+      if (result.error !== undefined) update.email_error = result.error;
+      await admin.from("beta_applications").update(update).eq("id", applicationId);
+    },
+  };
+}
+
+serve((req) => handleBetaApproval(req, makeDeps()));

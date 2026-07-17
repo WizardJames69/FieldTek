@@ -4,6 +4,7 @@
 
 import { CITATION_PATTERN } from "./constants.ts";
 import { deriveAuditAbstainFlag } from "./degradation.ts";
+import { verifyConversationOwnership } from "./conversationOwnership.ts";
 
 // deno-lint-ignore no-explicit-any
 type SupabaseClient = any;
@@ -219,6 +220,26 @@ export async function trackConversation(
 ): Promise<void> {
   try {
     let conversationId = params.requestConversationId;
+
+    // PR-SEC-6 (Gap 1): a supplied conversationId is caller-controlled. Reuse it
+    // only after proving it belongs to BOTH the authenticated tenant AND user —
+    // params.tenantId/params.userId are the server-derived values (the caller's
+    // tenant_users row + getUser), never request-body fields. On ANY failure
+    // (malformed, missing, foreign tenant, foreign user, or lookup error) the
+    // guard fails closed: discard the id and fall through to create a fresh
+    // caller-owned conversation. Message content is never written into an
+    // unverified conversation, and nothing is copied from the rejected id.
+    if (
+      conversationId &&
+      !(await verifyConversationOwnership(
+        serviceRoleClient,
+        conversationId,
+        params.tenantId,
+        params.userId,
+      ))
+    ) {
+      conversationId = null;
+    }
 
     if (!conversationId) {
       const { data: newConv } = await serviceRoleClient
