@@ -13,6 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isValidJobId, verifyJobTenantOwnership } from "../field-assistant/jobOwnership.ts";
+import { buildEvidenceRow } from "./evidenceRow.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -285,45 +286,57 @@ Deno.serve(async (req: Request) => {
       verificationStatus = "failed"; // blocking mode
     }
 
+    // Build workflow_step_evidence rows via buildEvidenceRow, which NEVER emits
+    // step_execution_id: that column belongs to the intentionally-deferred
+    // workflow-template stream (20260425100000) and does not exist in production,
+    // so referencing it fails the whole insert (PR-SEC-5B). step_execution_id is
+    // still accepted on the request for API compatibility but is not persisted
+    // while the deferred stream is inactive. See evidenceRow.ts.
+    const defaultTimestamp = device_timestamp || new Date().toISOString();
+
     // Insert one evidence row per evidence type submitted
-    const evidenceRows = evidenceTypes.map((type) => ({
-      tenant_id: tenantId,
-      job_id,
-      checklist_item_id,
-      stage_name,
-      step_execution_id: step_execution_id || null,
-      technician_id: user.id,
-      evidence_type: type,
-      photo_url: type === "photo" ? evidence.photo_url : null,
-      measurement_value: type === "measurement" ? evidence.measurement_value : null,
-      measurement_unit: type === "measurement" ? evidence.measurement_unit : null,
-      serial_number: type === "serial_scan" ? evidence.serial_number : null,
-      gps_location: type === "gps_checkin" ? evidence.gps_location : null,
-      device_timestamp: device_timestamp || new Date().toISOString(),
-      verification_status: verificationStatus,
-      verification_details: hasFailures ? { failures } : null,
-    }));
+    const evidenceRows: Record<string, unknown>[] = evidenceTypes.map((type) =>
+      buildEvidenceRow({
+        tenantId,
+        jobId: job_id,
+        checklistItemId: checklist_item_id,
+        stageName: stage_name,
+        technicianId: user.id,
+        evidenceType: type,
+        photoUrl: type === "photo" ? evidence.photo_url : null,
+        measurementValue: type === "measurement" ? evidence.measurement_value : null,
+        measurementUnit: type === "measurement" ? evidence.measurement_unit : null,
+        serialNumber: type === "serial_scan" ? evidence.serial_number : null,
+        gpsLocation: type === "gps_checkin" ? evidence.gps_location : null,
+        deviceTimestamp: defaultTimestamp,
+        verificationStatus,
+        verificationDetails: hasFailures ? { failures } : null,
+        stepExecutionId: step_execution_id, // accepted, not persisted (deferred schema)
+      })
+    );
 
     // If no specific evidence types were submitted but requirements exist,
     // still insert a row to record the attempt
     if (evidenceRows.length === 0 && itemRequirement) {
-      evidenceRows.push({
-        tenant_id: tenantId,
-        job_id,
-        checklist_item_id,
-        stage_name,
-        step_execution_id: step_execution_id || null,
-        technician_id: user.id,
-        evidence_type: "photo", // default type for failed attempt
-        photo_url: null,
-        measurement_value: null,
-        measurement_unit: null,
-        serial_number: null,
-        gps_location: null,
-        device_timestamp: device_timestamp || new Date().toISOString(),
-        verification_status: verificationStatus,
-        verification_details: { failures },
-      });
+      evidenceRows.push(
+        buildEvidenceRow({
+          tenantId,
+          jobId: job_id,
+          checklistItemId: checklist_item_id,
+          stageName: stage_name,
+          technicianId: user.id,
+          evidenceType: "photo", // default type for failed attempt
+          photoUrl: null,
+          measurementValue: null,
+          measurementUnit: null,
+          serialNumber: null,
+          gpsLocation: null,
+          deviceTimestamp: defaultTimestamp,
+          verificationStatus,
+          verificationDetails: { failures },
+          stepExecutionId: step_execution_id, // accepted, not persisted (deferred schema)
+        })
+      );
     }
 
     const { data: inserted, error: insertError } = await serviceClient
