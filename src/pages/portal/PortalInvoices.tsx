@@ -115,11 +115,9 @@ export default function PortalInvoices() {
   };
 
   const handleViewInvoice = async (invoiceId: string, invoiceNumber: string) => {
-    // The function currently returns a print-ready HTML document, not a PDF,
-    // so present it as a view/print page (matching the tenant app) instead of
-    // downloading a file named like one. Open the window synchronously inside
-    // the tap gesture so mobile browsers don't block it.
-    const printWindow = window.open('', '_blank');
+    // generate-invoice-pdf now returns application/pdf bytes (PR-APP-6), so this
+    // downloads a real .pdf file. supabase-js hands binary responses back as a
+    // Blob; an anchor download works on mobile without the popup-window dance.
     try {
       const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
         body: { invoiceId },
@@ -127,27 +125,19 @@ export default function PortalInvoices() {
 
       if (error) throw error;
 
-      if (printWindow) {
-        printWindow.document.write(data);
-        printWindow.document.close();
-        printWindow.document.title = `Invoice ${invoiceNumber}`;
-      } else {
-        // Pop-up blocked: fall back to saving the document as a file.
-        const blob = new Blob([data], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `Invoice-${invoiceNumber}.html`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast.success('Invoice saved');
-      }
+      const blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Invoice downloaded');
     } catch (error) {
-      printWindow?.close();
       console.error('Download error:', error);
-      toast.error('Failed to open invoice');
+      toast.error('Failed to download invoice');
     }
   };
 
@@ -275,7 +265,7 @@ export default function PortalInvoices() {
                           onClick={() => handleViewInvoice(invoice.id, invoice.invoice_number)}
                         >
                           <FileText className="h-4 w-4 mr-1" />
-                          View invoice
+                          Download PDF
                         </Button>
                         {canPayInvoice(invoice.status) && (
                           <Button
@@ -341,7 +331,7 @@ export default function PortalInvoices() {
                                 onClick={() => handleViewInvoice(invoice.id, invoice.invoice_number)}
                               >
                                 <FileText className="h-4 w-4" />
-                                <span className="sr-only">View invoice</span>
+                                <span className="sr-only">Download invoice PDF</span>
                               </Button>
                               {canPayInvoice(invoice.status) && (
                                 <Button

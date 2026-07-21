@@ -224,13 +224,17 @@ export function InvoiceDetailSheet({
 
       if (error) throw error;
 
-      // Open in new window for printing/saving
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(data);
-        printWindow.document.close();
-        printWindow.document.title = `Invoice ${invoice.invoice_number}`;
-      }
+      // generate-invoice-pdf now returns application/pdf bytes (PR-APP-6);
+      // supabase-js hands binary responses back as a Blob. Download it as a file.
+      const blob = data instanceof Blob ? data : new Blob([data as BlobPart], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Invoice-${invoice.invoice_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Download error:", error);
       toast.error("Failed to download invoice");
@@ -339,7 +343,7 @@ export function InvoiceDetailSheet({
                 ) : (
                   <>
                     <Download className="h-4 w-4" />
-                    Download / Print Invoice
+                    Download PDF
                   </>
                 )}
               </Button>
