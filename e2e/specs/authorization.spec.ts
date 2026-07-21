@@ -48,13 +48,21 @@ test.afterAll(async () => {
 test.describe('B1 generate-invoice-pdf — object-level authorization', () => {
   const NOT_FOUND = { error: 'Invoice not found' };
 
-  test('owner + own invoice → 200 HTML', async () => {
+  test('owner + own invoice → 200 (authorized; PDF once PR-APP-6 is deployed)', async () => {
     const res = await invokeFunction('generate-invoice-pdf', {
       bearer: tokens.aOwner,
       body: { invoiceId: fx.tenantA.invoiceId },
     });
+    // Authorization is deploy-independent: an owner of the invoice's tenant is
+    // allowed (200, not the generic 404). The response FORMAT flips from HTML to
+    // application/pdf only after PR-APP-6 ships, so the PDF assertion is gated on
+    // INVOICE_PDF_DEPLOYED=1 (mirrors SEND_BETA_APPROVAL_SEAM_DEPLOYED) to keep CI
+    // green until the gated deploy lands.
     expect(res.status).toBe(200);
-    expect(res.headers.get('content-type') ?? '').toContain('text/html');
+    if (process.env.INVOICE_PDF_DEPLOYED === '1') {
+      expect(res.headers.get('content-type') ?? '').toContain('application/pdf');
+      expect(res.body.startsWith('%PDF-')).toBe(true);
+    }
   });
 
   test('technician + own invoice → 404 (technician is not a staff role)', async () => {
