@@ -32,6 +32,9 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       VITE_CF_TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
+      # generate-invoice-pdf ships a real PDF as of PR-APP-6 (deployed 2026-07-21).
+      # Enforce the application/pdf + %PDF format assertion in the B1 authz spec.
+      INVOICE_PDF_DEPLOYED: "1"
 
     steps:
       - name: Checkout repo
