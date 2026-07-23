@@ -56,17 +56,18 @@ activation. Repository-only change — no deploy, no migration.
 
 ## DEFERRED — NOT FIXED HERE
 
-### Gap 3 — verify-step-evidence `step_execution_id` lookup
-Caller-supplied `step_execution_id` reaches unscoped service-role reads of `workflow_step_executions` /
+### Gap 3 — verify-step-evidence `step_execution_id` lookup — ✅ RESOLVED 2026-07-21 (Week 0, by deletion)
+Caller-supplied `step_execution_id` reached unscoped service-role reads of `workflow_step_executions` /
 `workflow_template_steps` (`supabase/functions/verify-step-evidence/index.ts`), and derived thresholds
-flow back to the caller. **Deliberately not fixed in PR-SEC-6** because it is doubly-latent:
-- both target tables belong to the **deferred workflow-template stream** and are **absent from the
-  production schema** (`supabase/migrations-deferred/` — the branch no-ops on the live schema); and
-- it sits behind the `workflow_step_verification` feature flag, which is **disabled** in production.
+flowed back to the caller. **Deliberately not fixed in PR-SEC-6** because it was doubly-latent:
+- both target tables belong to the **parked workflow-template stream** and are **absent from the
+  production schema** (`supabase/migrations-parked/guided-procedures/` — the branch no-oped on the live schema); and
+- it sat behind the `workflow_step_verification` feature flag's template path, never reachable from the UI.
 
-It must be remediated — by scoping the `step_execution_id` lookup to the caller's job/tenant — as part of
-that stream's own activation migration + rollout, **before** `workflow_step_verification` is ever enabled.
-It is not reachable on the current production schema, so there is no active exposure to close now.
+**Resolution (Week 0 stream retirement):** the entire `step_execution_id` branch was deleted from
+`verify-step-evidence` — the request no longer accepts the field and the unscoped reads no longer exist.
+If the parked stream is ever revived as "guided procedures," the reintroduced lookup MUST be scoped to
+the caller's job/tenant (recorded in `supabase/migrations-parked/guided-procedures/README.md`).
 
 ## Follow-up
 

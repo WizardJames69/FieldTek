@@ -2,22 +2,22 @@
 
 This document describes how to test the full workflow intelligence pipeline locally, including pattern discovery, context fusion, and Sentinel AI prompt construction.
 
-> ⚠️ **The workflow-template / pattern-discovery stream is deferred and lives in
-> `supabase/migrations-deferred/`, so `supabase db reset` does NOT build its tables
+> ⚠️ **The workflow-template / pattern-discovery stream is parked (retired 2026-07-21) and lives in
+> `supabase/migrations-parked/guided-procedures/`, so `supabase db reset` does NOT build its tables
 > by default** (PR-DB-4). To test the full pipeline locally you must temporarily
 > reactivate the stream:
 >
 > ```bash
-> cp supabase/migrations-deferred/*.sql supabase/migrations/   # local only
+> cp supabase/migrations-parked/guided-procedures/*.sql supabase/migrations/   # local only
 > supabase db reset
 > # ... run the tests below ...
 > # Then REMOVE them again before any db push and before committing:
-> for f in supabase/migrations-deferred/*.sql; do rm -f "supabase/migrations/$(basename "$f")"; done
+> for f in supabase/migrations-parked/guided-procedures/*.sql; do rm -f "supabase/migrations/$(basename "$f")"; done
 > ```
 >
 > Never `git add` the copied files back into `supabase/migrations/`, and never
 > `supabase db push`/`--include-all` while they are present. See
-> [supabase/migrations-deferred/README.md](../supabase/migrations-deferred/README.md).
+> [supabase/migrations-parked/guided-procedures/README.md](../supabase/migrations-parked/guided-procedures/README.md).
 
 ## Prerequisites
 

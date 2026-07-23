@@ -211,13 +211,15 @@ export function useOfflineSync() {
             }
           }
 
-          // 2. Call verify-step-evidence edge function
+          // 2. Call verify-step-evidence edge function. (Queue items written
+          // before the 2026-07-21 stream retirement may still carry a
+          // step_execution_id key in their payload; it is deliberately not
+          // forwarded — the function no longer accepts it.)
           const response = await supabase.functions.invoke('verify-step-evidence', {
             body: {
               job_id: evidenceParams.job_id,
               checklist_item_id: evidenceParams.checklist_item_id,
               stage_name: evidenceParams.stage_name,
-              step_execution_id: evidenceParams.step_execution_id,
               evidence: evidenceParams.evidence,
               device_timestamp: evidenceParams.device_timestamp,
             },

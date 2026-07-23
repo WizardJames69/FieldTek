@@ -1,13 +1,18 @@
-# Deferred migrations — workflow-template / pattern-discovery stream
+# Parked stream — "guided procedures" (formerly workflow templates / pattern discovery)
+
+**Status: PARKED by founder decision, 2026-07-21 (Week 0).** This stream must not
+coexist with the form engine being built next. If it is ever revived, it comes back
+*after* the form engine ships, re-scoped as a **guided procedures** concept
+(step-by-step technician runbooks for complex procedures — startup sequences,
+commissioning walk-throughs), not as a competing document/checklist system.
 
 **These SQL files are intentionally NOT part of the active migration history.** The
 Supabase CLI only reads `supabase/migrations/`, so nothing in this directory is
 applied by `supabase db reset`, `supabase db push`, or the clean-replay CI gate.
-That is the whole point: it removes a deployment footgun without deleting the work.
 
-## What this stream is
+## What this stream was
 
-An eight-file R&D stream that builds a workflow-template + execution model and an
+An eight-file R&D stream that built a workflow-template + execution model and an
 AI pattern-discovery layer on top of the existing workflow-intelligence graph:
 
 | Version | File | Creates |
@@ -21,11 +26,24 @@ AI pattern-discovery layer on top of the existing workflow-intelligence graph:
 | `20260510000000` | workflow_pattern_discovery | `workflow_pattern_clusters`, `workflow_pattern_suggestions`, `fetch_clusterable_chains()`, `convert_suggestion_to_template()`, flag row |
 | `20260513000000` | intelligence_flywheel_and_schema | flywheel trigger + platform-admin RLS + global-schema prep (see partial-application note) |
 
-The feature is flag-gated and dormant. Runtime code degrades safely when these
-objects are absent: `JobDetailSheet` hides workflow UI when the `workflow_templates`
-flag is off, Sentinel's `fetchWorkflowExecutionContext` null-degrades, and
-`collect-workflow-intelligence` / `verify-step-evidence` guard their workflow
-branches. Nothing in production depends on this stream (established by PR-DB-3).
+## What the Week 0 retirement removed (2026-07-21)
+
+The runtime halves of this stream were deleted from the codebase, so reviving it
+means rebuilding UI against these schemas, not un-hiding anything:
+
+- The flag-gated UI and hooks are **gone**: `src/components/settings/workflows/`,
+  `src/components/jobs/workflows/`, `useWorkflowTemplates`, `useWorkflowExecution`,
+  and every `isEnabled('workflow_templates')` gate.
+- `verify-step-evidence` no longer accepts `step_execution_id` — the branch that
+  read `workflow_step_executions` / `workflow_template_steps` was deleted. **This
+  also resolved security Gap 3** (PR-SEC-6 audit): that branch looked up
+  `step_execution_id` without verifying it belonged to the caller's job/tenant.
+  Any revival MUST reintroduce that lookup WITH tenant/job scoping.
+- Two deliberate survivors still reference the stream's table names:
+  `collect-workflow-intelligence` (live production telemetry on job completion —
+  see its header comment) and Sentinel's `fetchWorkflowExecutionContext` in
+  `field-assistant/workflow.ts` (dead in production, parked for removal as the
+  first commit of the form-engine work).
 
 ## Why it was pulled out of `supabase/migrations/` (PR-DB-4)
 
@@ -33,15 +51,13 @@ Production (`fgemfxhwushaiiguqxfe`) never received this stream, but later migrat
 (`20260520000000` onward) were applied on top with newer timestamps. That left the
 eight versions **out of order** relative to the remote ledger. The Supabase CLI
 refuses a normal `supabase db push` in that state and demands `--include-all`, which
-would drag the entire dormant stream into production. The prior workaround was to
-temporarily move these files out of `supabase/migrations/` before every push and
-move them back afterward. Making the relocation permanent removes the manual step:
-`supabase db push` now proposes only genuinely-pending active migrations.
+would drag the entire dormant stream into production. Parking the files permanently
+means `supabase db push` proposes only genuinely-pending active migrations.
 
 ## Hard rules — do not break these
 
 1. **Never `supabase db push --include-all`.** It would execute this stream against
-   production, materializing a dormant feature and colliding with the parts of
+   production, materializing a parked feature and colliding with the parts of
    `20260513000000` that are already live out-of-band.
 2. **Never `supabase migration repair --status applied` for any of these eight.**
    Seven were never applied anywhere; `20260513000000` is only *partially* applied
@@ -67,14 +83,18 @@ cannot truthfully represent it. This is the second reason it must never be repai
 The live trigger posts `Authorization: Bearer <vault service_role_key>` to
 `collect-workflow-intelligence` and is a real production caller of that function.
 
-## How to reactivate the stream in the future
+## Conditions for revival
 
-If the workflow-template feature is revived:
-
-1. **Local development / testing:** copy the eight files back into
+1. **The form engine has shipped.** Forms own documents/checklists; guided
+   procedures own step-by-step execution. The boundary must be designed, not
+   discovered.
+2. **Re-scope first:** decide what survives as "guided procedures" (probably the
+   step/execution model and evidence requirements; probably not a parallel
+   template-authoring UI competing with the form builder).
+3. **Local development / testing:** copy the eight files back into
    `supabase/migrations/`, then `supabase db reset`. See
-   [docs/intelligence-system-test.md](../../docs/intelligence-system-test.md).
-2. **Before shipping to production, resolve the ordering deliberately** — do NOT just
+   [docs/intelligence-system-test.md](../../../docs/intelligence-system-test.md).
+4. **Before shipping to production, resolve the ordering deliberately** — do NOT just
    `--include-all`. Re-timestamp the stream forward (past the remote ledger maximum)
    as a fresh, ordered set so a normal `supabase db push` applies it in order, and
    reconcile `20260513000000` against what is already live (drop its already-applied
@@ -82,6 +102,6 @@ If the workflow-template feature is revived:
    `upsert_workflow_step_statistic` / `fetch_clusterable_chains` /
    `convert_suggestion_to_template`, which were deliberately excluded from
    `20260610100000`).
-3. Run the read-only production truth-check from PR-DB-3 first, and gate the rollout
-   behind the same approval the rest of the migration-safety process uses
-   ([docs/RUNBOOK.md §4](../../docs/RUNBOOK.md)).
+5. **Re-add the `step_execution_id` scoping** that Gap 3 removal took out (see
+   above), and run the read-only production truth-check from PR-DB-3 first, gated
+   behind the migration-safety approval process ([docs/RUNBOOK.md §4](../../../docs/RUNBOOK.md)).

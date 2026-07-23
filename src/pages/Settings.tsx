@@ -11,7 +11,6 @@ import {
   Palette,
   Settings2,
   SlidersHorizontal,
-  Workflow,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -26,11 +25,9 @@ import { BillingSettings } from '@/components/settings/BillingSettings';
 import { PartsCatalogSettings } from '@/components/settings/PartsCatalogSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { ChecklistTemplateSettings } from '@/components/settings/ChecklistTemplateSettings';
-import { WorkflowTemplateList } from '@/components/settings/workflows/WorkflowTemplateList';
 import { APISettings } from '@/components/settings/APISettings';
 import { CalendarSettings } from '@/components/settings/CalendarSettings';
 import { useUserRole } from '@/contexts/TenantContext';
-import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 /**
@@ -69,9 +66,7 @@ const RAIL_TRIGGER_CLASSES = [
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isOwner } = useUserRole();
-  const { isEnabled } = useFeatureFlags();
   const isMobile = useIsMobile();
-  const showWorkflows = isEnabled('workflow_templates');
 
   const groups = useMemo<SettingsGroup[]>(() => {
     const list: SettingsGroup[] = [
@@ -90,9 +85,6 @@ export default function Settings() {
           { value: 'equipment', label: 'Equipment', icon: Wrench },
           { value: 'parts', label: 'Parts', icon: Package },
           { value: 'checklists', label: 'Checklists', icon: ListChecks },
-          ...(showWorkflows
-            ? [{ value: 'workflows', label: 'Workflows', icon: Workflow }]
-            : []),
           { value: 'calendar', label: 'Calendar', icon: CalendarDays },
         ],
       },
@@ -114,12 +106,11 @@ export default function Settings() {
       },
     ];
     return list;
-  }, [isOwner, showWorkflows]);
+  }, [isOwner]);
 
   // Derive the active tab from the URL every render: deep links land directly,
-  // and a gated value (billing for a non-owner, workflows with the flag off,
-  // or any unknown string) falls back to General instead of rendering an
-  // empty content pane. The URL is deliberately NOT rewritten on fallback:
+  // and a gated value (billing for a non-owner, or any unknown string) falls
+  // back to General instead of rendering an empty content pane. The URL is deliberately NOT rewritten on fallback:
   // ?tab=billing can arrive while the role is still loading (isOwner false),
   // and rewriting would destroy the param before the role resolves. Keeping
   // the raw param means the intended tab activates itself once its gate opens.
@@ -215,12 +206,6 @@ export default function Settings() {
         <TabsContent value="checklists" className="max-w-4xl md:mt-0">
           <ChecklistTemplateSettings />
         </TabsContent>
-
-        {showWorkflows && (
-          <TabsContent value="workflows" className="max-w-4xl md:mt-0">
-            <WorkflowTemplateList />
-          </TabsContent>
-        )}
 
         <TabsContent value="calendar" className="max-w-2xl md:mt-0">
           <CalendarSettings />

@@ -6,6 +6,15 @@
 // repairs, outcomes) and upserts into the workflow intelligence graph.
 //
 // Behind the 'workflow_intelligence' feature flag.
+//
+// DELIBERATE SURVIVOR of the 2026-07-21 workflow-template stream
+// retirement (Week 0): this function is live production telemetry —
+// its caller is the trg_collect_workflow_intelligence DB trigger
+// (applied out-of-band; SQL preserved in
+// supabase/migrations-parked/guided-procedures/20260513...) and it
+// feeds /admin/workflow-discovery. Its reads of workflow_executions /
+// workflow_step_executions no-op where those parked tables don't
+// exist (production). Do not delete it as part of stream cleanup.
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

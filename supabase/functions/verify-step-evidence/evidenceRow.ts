@@ -4,22 +4,17 @@
 // Side-effect-free (no top-level I/O) so it can be imported directly by
 // evidenceRow.test.ts — same pattern as jobOwnership.ts / degradation.ts.
 //
-// ⚠️ DEFERRED SCHEMA — step_execution_id is intentionally NOT persisted.
-// `workflow_step_evidence.step_execution_id` is created ONLY by the deferred
-// workflow-template migration 20260425100000, which is deliberately NOT applied
-// in production (see supabase/migrations-deferred/README.md). Referencing that
-// column in an insert makes PostgREST reject the ENTIRE insert — "Could not find
-// the 'step_execution_id' column of 'workflow_step_evidence' in the schema
-// cache" → HTTP 500 — for every authorized evidence submission. This builder
-// therefore NEVER emits step_execution_id, even when the request supplies one.
-//
-// The request field is still accepted upstream for API compatibility; it is
-// simply ignored for persistence while the workflow-template stream is inactive.
-//
-// TODO(workflow-templates): restore step_execution_id persistence ONLY when the
-// deferred workflow-template stream is formally activated — as part of that
-// stream's own migration + production rollout, never by probing the live schema
-// at request time.
+// ⚠️ PARKED SCHEMA — step_execution_id must NEVER be emitted here.
+// `workflow_step_evidence.step_execution_id` is created ONLY by the parked
+// guided-procedures migration 20260425100000, which is NOT applied in
+// production (see supabase/migrations-parked/guided-procedures/README.md).
+// Referencing that column in an insert makes PostgREST reject the ENTIRE
+// insert — "Could not find the 'step_execution_id' column of
+// 'workflow_step_evidence' in the schema cache" → HTTP 500 — for every
+// authorized evidence submission (PR-SEC-5B). As of the 2026-07-21 stream
+// retirement the request no longer even accepts the field; the exact-column
+// regression test below is the guard against it ever creeping back in
+// without that stream's own migration + rollout.
 
 export interface EvidenceRowInput {
   tenantId: string;
@@ -36,21 +31,14 @@ export interface EvidenceRowInput {
   deviceTimestamp: string;
   verificationStatus: string;
   verificationDetails?: unknown;
-  /**
-   * Accepted for API compatibility but DELIBERATELY NOT persisted — the target
-   * column does not exist in the active production schema (see header).
-   */
-  stepExecutionId?: string | null;
 }
 
 /**
  * Build one workflow_step_evidence insert row. Returns ONLY columns that exist
- * in the active production schema; step_execution_id is never included,
- * regardless of `input.stepExecutionId`.
+ * in the active production schema; step_execution_id is never included (see
+ * the module header).
  */
 export function buildEvidenceRow(input: EvidenceRowInput): Record<string, unknown> {
-  // NOTE: do NOT add step_execution_id here without the deferred migration —
-  // see the module header. `input.stepExecutionId` is intentionally unused.
   return {
     tenant_id: input.tenantId,
     job_id: input.jobId,
