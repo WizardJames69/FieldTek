@@ -27,7 +27,6 @@ interface EvidenceRequest {
   job_id: string;
   checklist_item_id: string;
   stage_name: string;
-  step_execution_id?: string;
   evidence: {
     photo_url?: string;
     measurement_value?: number;
@@ -181,7 +180,7 @@ Deno.serve(async (req: Request) => {
 
     // Parse request
     const body: EvidenceRequest = await req.json();
-    const { job_id, checklist_item_id, stage_name, step_execution_id, evidence, device_timestamp } = body;
+    const { job_id, checklist_item_id, stage_name, evidence, device_timestamp } = body;
 
     if (!job_id || !checklist_item_id || !stage_name || !evidence) {
       return new Response(
@@ -192,11 +191,11 @@ Deno.serve(async (req: Request) => {
 
     // SECURITY (PR-SEC-5): prove the caller's tenant owns this job before any
     // service-role read/write keyed on the caller-supplied job_id. Without it,
-    // any authenticated user could submit evidence against another tenant's job
-    // and read its workflow template config — workflow_step_executions /
-    // workflow_template_steps carry no tenant scoping of their own, so this is
-    // the single gate for them. Unknown job and foreign-tenant job both return
-    // the same 404 (non-enumerating).
+    // any authenticated user could submit evidence against another tenant's job.
+    // Unknown job and foreign-tenant job both return the same 404
+    // (non-enumerating). The former workflow-template branch (unscoped
+    // step_execution_id lookups — PR-SEC-6 "Gap 3") was deleted with the
+    // stream retirement on 2026-07-21.
     if (!isValidJobId(job_id) || !(await verifyJobTenantOwnership(serviceClient, job_id, tenantId))) {
       return new Response(
         JSON.stringify({ error: "Job not found" }),
@@ -214,56 +213,16 @@ Deno.serve(async (req: Request) => {
     const flagEnabled = flag?.is_enabled ?? false;
     const mode = (flag?.metadata as Record<string, unknown>)?.mode as string ?? "logging_only";
 
-    // Resolve evidence requirements — from workflow template step or legacy stage templates
-    let itemRequirement: EvidenceRequirement | undefined;
+    // Resolve evidence requirements from the tenant's stage templates
+    const { data: template } = await serviceClient
+      .from("job_stage_templates")
+      .select("required_evidence")
+      .eq("tenant_id", tenantId)
+      .eq("stage_name", stage_name)
+      .maybeSingle();
 
-    if (step_execution_id) {
-      // Workflow step: resolve requirements from workflow_template_steps
-      const { data: stepExec } = await serviceClient
-        .from("workflow_step_executions")
-        .select("step_id")
-        .eq("id", step_execution_id)
-        .single();
-
-      if (stepExec) {
-        const { data: templateStep } = await serviceClient
-          .from("workflow_template_steps")
-          .select("evidence_requirements, validation_rules, required_inputs")
-          .eq("id", stepExec.step_id)
-          .single();
-
-        if (templateStep) {
-          const evReq = templateStep.evidence_requirements as Record<string, boolean | undefined> ?? {};
-          const valRules = templateStep.validation_rules as Record<string, number | undefined> ?? {};
-          const reqInputs = templateStep.required_inputs as Record<string, string | boolean | undefined> ?? {};
-
-          // Convert template format to EvidenceRequirement format
-          const req: EvidenceRequirement = {};
-          if (evReq.photo) req.photo = true;
-          if (evReq.gps_required) req.gps_required = true;
-          if (evReq.serial_scan) req.serial_scan = true;
-          if (evReq.measurement) {
-            req.measurement = {
-              unit: (reqInputs.measurement_unit as string) || "units",
-              min: valRules.measurement_min as number | undefined,
-              max: valRules.measurement_max as number | undefined,
-            };
-          }
-          itemRequirement = req;
-        }
-      }
-    } else {
-      // Legacy: resolve from job_stage_templates
-      const { data: template } = await serviceClient
-        .from("job_stage_templates")
-        .select("required_evidence")
-        .eq("tenant_id", tenantId)
-        .eq("stage_name", stage_name)
-        .maybeSingle();
-
-      const requiredEvidence = (template?.required_evidence as Record<string, EvidenceRequirement>) ?? {};
-      itemRequirement = requiredEvidence[checklist_item_id];
-    }
+    const requiredEvidence = (template?.required_evidence as Record<string, EvidenceRequirement>) ?? {};
+    const itemRequirement: EvidenceRequirement | undefined = requiredEvidence[checklist_item_id];
 
     // Validate evidence against requirements
     let failures: ValidationFailure[] = [];
@@ -286,12 +245,10 @@ Deno.serve(async (req: Request) => {
       verificationStatus = "failed"; // blocking mode
     }
 
-    // Build workflow_step_evidence rows via buildEvidenceRow, which NEVER emits
-    // step_execution_id: that column belongs to the intentionally-deferred
-    // workflow-template stream (20260425100000) and does not exist in production,
-    // so referencing it fails the whole insert (PR-SEC-5B). step_execution_id is
-    // still accepted on the request for API compatibility but is not persisted
-    // while the deferred stream is inactive. See evidenceRow.ts.
+    // Build workflow_step_evidence rows via buildEvidenceRow, which emits only
+    // production-schema columns (never step_execution_id — that column belongs
+    // to the parked guided-procedures stream and does not exist in production;
+    // referencing it would fail the whole insert, PR-SEC-5B). See evidenceRow.ts.
     const defaultTimestamp = device_timestamp || new Date().toISOString();
 
     // Insert one evidence row per evidence type submitted
@@ -311,7 +268,6 @@ Deno.serve(async (req: Request) => {
         deviceTimestamp: defaultTimestamp,
         verificationStatus,
         verificationDetails: hasFailures ? { failures } : null,
-        stepExecutionId: step_execution_id, // accepted, not persisted (deferred schema)
       })
     );
 
@@ -334,7 +290,6 @@ Deno.serve(async (req: Request) => {
           deviceTimestamp: defaultTimestamp,
           verificationStatus,
           verificationDetails: { failures },
-          stepExecutionId: step_execution_id, // accepted, not persisted (deferred schema)
         })
       );
     }

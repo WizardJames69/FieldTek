@@ -3,9 +3,10 @@ import { isValidJobId, verifyJobTenantOwnership } from "../field-assistant/jobOw
 
 // verify-step-evidence job-ownership gate (PR-SEC-5). The handler stamps
 // tenant_id from the caller's own membership but keys every service-role
-// read/write on the caller-supplied job_id (workflow_step_executions,
-// workflow_template_steps, and the workflow_step_evidence insert carry no
-// tenant scoping of their own). index.ts gates the handler on
+// read/write on the caller-supplied job_id (the workflow_step_evidence
+// insert carries no tenant scoping of its own; the former
+// workflow_step_executions / workflow_template_steps reads were deleted
+// with the 2026-07-21 stream retirement). index.ts gates the handler on
 //   isValidJobId(job_id) && await verifyJobTenantOwnership(client, job_id, tenantId)
 // returning a non-enumerating 404 otherwise. This file pins that composition:
 // an invalid id is rejected WITHOUT a query, a foreign-tenant job is denied,
