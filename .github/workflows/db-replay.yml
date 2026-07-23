@@ -9,7 +9,7 @@ name: DB Migration Replay
 # disaster-recovery reconstruction.
 #
 # "Active" = supabase/migrations/ only. The dormant workflow-template stream lives
-# in supabase/migrations-deferred/ (see that directory's README) and is NOT part of
+# in supabase/migrations-parked/guided-procedures/ (see that directory's README) and is NOT part of
 # reconstruction: it was never applied to production, must never be, and the
 # Supabase CLI does not read that directory. Because 20260509000000 (the
 # is_tenant_admin(uuid, uuid) overload) and its sole consumer 20260510000000 both
@@ -75,7 +75,7 @@ jobs:
           DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         # Cheap smoke: a clean ACTIVE replay must have exactly ONE is_tenant_admin
         # overload — the 0-arg helper. The tenant-scoped 2-arg overload and its only
-        # consumer both live in supabase/migrations-deferred/ (PR-DB-4), so they are
+        # consumer both live in supabase/migrations-parked/guided-procedures/ (PR-DB-4), so they are
         # not part of active reconstruction. If this count is ever 2, a deferred file
         # has leaked back into supabase/migrations/; if 0, the base helper regressed.
         run: |

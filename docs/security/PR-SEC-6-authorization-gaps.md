@@ -61,7 +61,7 @@ Caller-supplied `step_execution_id` reaches unscoped service-role reads of `work
 `workflow_template_steps` (`supabase/functions/verify-step-evidence/index.ts`), and derived thresholds
 flow back to the caller. **Deliberately not fixed in PR-SEC-6** because it is doubly-latent:
 - both target tables belong to the **deferred workflow-template stream** and are **absent from the
-  production schema** (`supabase/migrations-deferred/` — the branch no-ops on the live schema); and
+  production schema** (`supabase/migrations-parked/guided-procedures/` — the branch no-ops on the live schema); and
 - it sits behind the `workflow_step_verification` feature flag, which is **disabled** in production.
 
 It must be remediated — by scoping the `step_execution_id` lookup to the caller's job/tenant — as part of

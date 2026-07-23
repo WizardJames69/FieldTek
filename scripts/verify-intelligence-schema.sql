@@ -3,6 +3,13 @@
 -- ============================================================
 -- Verifies that all workflow intelligence tables exist.
 -- Run with: psql < scripts/verify-intelligence-schema.sql
+--
+-- NOTE (2026-07-21): the workflow_templates / workflow_executions /
+-- workflow_step_* tables listed below belong to the PARKED
+-- guided-procedures stream (supabase/migrations-parked/guided-procedures/)
+-- and are expected to be MISSING on production and on a default local
+-- reset. This script is for local testing with the stream reactivated
+-- (see docs/intelligence-system-test.md).
 -- ============================================================
 
 DO $$

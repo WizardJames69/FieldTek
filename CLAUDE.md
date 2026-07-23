@@ -103,7 +103,7 @@ Shared chunking logic in `_shared/chunking.ts`. AI gateway client with circuit b
 
 133+ SQL migrations in `supabase/migrations/`. RLS enabled on all tables.
 
-`supabase/migrations-deferred/` holds an eight-file dormant workflow-template stream that must **never** be applied to production — the Supabase CLI does not read it, so `db reset`/`db push` and the db-replay CI gate ignore it. Never `--include-all`; never `migration repair` those eight; one of them (`20260513000000`) is partially applied out-of-band. See [supabase/migrations-deferred/README.md](supabase/migrations-deferred/README.md).
+`supabase/migrations-parked/guided-procedures/` holds an eight-file **parked** workflow-template stream (retired from the codebase in Week 0, 2026-07-21; may return post-form-engine as "guided procedures") that must **never** be applied to production — the Supabase CLI does not read it, so `db reset`/`db push` and the db-replay CI gate ignore it. Never `--include-all`; never `migration repair` those eight; one of them (`20260513000000`) is partially applied out-of-band. See [supabase/migrations-parked/guided-procedures/README.md](supabase/migrations-parked/guided-procedures/README.md).
 
 Key enums: `app_role` (owner/admin/dispatcher/technician/client), `subscription_tier`, `job_status`, `job_priority`, `industry_type`.
 
