@@ -42,7 +42,7 @@ export function isValidJobId(jobId: unknown): jobId is string {
  * any guarded service-role read/write uses it. Fails CLOSED: any lookup
  * error, missing row, or foreign-tenant row returns false and the guarded
  * section is skipped. Several job-keyed tables on these paths
- * (job_checklist_completions, workflow_step_executions, …) carry no usable
+ * (job_checklist_completions, workflow_step_evidence, …) carry no usable
  * tenant scoping of their own, so this job-level check is the single gate
  * that tenant-scopes every job-keyed query behind it.
  */
