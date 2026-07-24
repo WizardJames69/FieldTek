@@ -68,6 +68,8 @@ export interface TenantSettings {
   currency: string;
   timezone: string;
   country: string;
+  /** Per-tenant opt-in for the daily automated overdue-invoice email sweep (Week 0 D2). DB default false; a missing row is treated as off. */
+  invoice_reminders_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

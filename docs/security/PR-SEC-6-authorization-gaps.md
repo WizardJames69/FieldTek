@@ -84,3 +84,9 @@ observations from the audit (`analyze-service-request` 404/403 enumeration split
 `create-invoice-payment` public pay-link, `generate-recurring-jobs` in-code gate,
 `verify-turnstile-portal` clientId ownership, and the reveal-pattern injection observation now tracked
 in PR-SEC-7) remain tracked, not fixed in PR-SEC-6.
+
+**Update (Week 0, 2026-07-24):** the `generate-recurring-jobs` in-code gate is ✅ CLOSED. When the
+daily cron was wired (feat(cron) Week 0 D1), the function gained an `isServiceRoleBearer` gate ahead
+of any work — before it, any authenticated user's JWT passed the gateway's default `verify_jwt` and
+could trigger the all-tenant template sweep. Service role only now; trust contract pinned in
+`supabase/functions/generate-recurring-jobs/authz.test.ts`.

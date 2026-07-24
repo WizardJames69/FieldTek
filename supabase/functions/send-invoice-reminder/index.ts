@@ -8,6 +8,7 @@ import {
   userHasTenantMembership,
 } from "../_shared/tenantAuth.ts";
 import { decideInvoiceReminderAccess } from "./authz.ts";
+import { shouldSendReminder } from "./sweepPolicy.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -27,6 +28,7 @@ interface OverdueInvoice {
   invoice_number: string;
   total: number;
   due_date: string;
+  tenant_id: string;
   client: {
     name: string;
     email: string;
@@ -112,6 +114,7 @@ serve(async (req: Request): Promise<Response> => {
         invoice_number,
         total,
         due_date,
+        tenant_id,
         client:clients(name, email),
         tenant:tenants(name)
       `)
@@ -144,9 +147,50 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // ── Per-tenant sweep opt-in (Week 0 D2, founder decision 3) ──────────
+    // The automated sweep (no specific invoice_id) may only email customers
+    // of tenants that explicitly opted in via
+    // tenant_settings.invoice_reminders_enabled (default false). Manual
+    // per-invoice reminders are an explicit human action and bypass the flag
+    // — the mode × flag matrix is pinned in sweepPolicy.test.ts.
+    const sweepMode = !specificInvoiceId;
+    const optInByTenant = new Map<string, boolean | null>();
+    if (sweepMode) {
+      const tenantIds = [...new Set(
+        (overdueInvoices as unknown as OverdueInvoice[]).map((i) => i.tenant_id)
+      )];
+      const { data: settingsRows, error: settingsError } = await supabaseClient
+        .from('tenant_settings')
+        .select('tenant_id, invoice_reminders_enabled')
+        .in('tenant_id', tenantIds);
+      if (settingsError) {
+        // Fail closed: without the settings we cannot prove any tenant opted
+        // in, so the sweep sends nothing rather than risk emailing customers
+        // of opted-out tenants.
+        logStep("Error fetching tenant reminder settings - failing closed", { error: settingsError.message });
+        throw new Error(`Failed to fetch tenant reminder settings: ${settingsError.message}`);
+      }
+      for (const row of settingsRows ?? []) {
+        optInByTenant.set(row.tenant_id as string, row.invoice_reminders_enabled as boolean | null);
+      }
+    }
+
     const results: { invoice_id: string; status: string; error?: string }[] = [];
 
     for (const invoice of overdueInvoices as unknown as OverdueInvoice[]) {
+      // Opt-in gate FIRST — before the client-email lookup, the Resend call,
+      // and the sent→overdue status flip, so an opted-out (or unset) tenant
+      // gets zero side effects from the sweep.
+      const decision = shouldSendReminder({
+        sweepMode,
+        tenantOptIn: optInByTenant.get(invoice.tenant_id),
+      });
+      if (!decision.send) {
+        logStep("Skipping invoice - tenant not opted in to reminders", { invoiceId: invoice.id, tenantId: invoice.tenant_id });
+        results.push({ invoice_id: invoice.id, status: "skipped", error: decision.skipReason });
+        continue;
+      }
+
       const clientEmail = invoice.client?.email;
       const clientName = invoice.client?.name || 'Valued Customer';
       const companyName = invoice.tenant?.name || 'Your Service Provider';
@@ -261,7 +305,8 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const sentCount = results.filter(r => r.status === "sent").length;
-    logStep("Completed", { total: results.length, sent: sentCount });
+    const skippedCount = results.filter(r => r.status === "skipped").length;
+    logStep("Completed", { total: results.length, sent: sentCount, skipped: skippedCount });
 
     return new Response(
       JSON.stringify({ 
