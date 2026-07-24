@@ -41,10 +41,3 @@ FieldTek has **no working drift detection**: `supabase db diff --linked` reports
 
 `workflow_step_evidence` now carries an explicit deny-all DELETE policy — deliberate immutability, not an oversight. A real lifecycle (retention windows, an appeal/correction path, who may act and with what audit trail) is a product decision deferred to the form-engine work. Adding an admin-scoped DELETE before that design exists would create an evidence-tampering capability that does not exist today.
 
----
-
-## Form-engine opener — `field-assistant` dead-path removal
-
-**Opened:** founder struck A1b from Week 0 (2026-07-22).
-
-`field-assistant` still carries the dormant execution-context path (`fetchWorkflowExecutionContext` and its consumers) for tables that do not exist in production. It was left in place to avoid a live-AI deploy during Week 0. **It must be the first commit of the form-engine work** — removal means deploying `field-assistant` and re-running the 12/12 live eval gate.
