@@ -2867,6 +2867,7 @@ export type Database = {
           equipment_types: Json | null
           features_enabled: Json | null
           id: string
+          invoice_reminders_enabled: boolean
           job_types: Json | null
           tax_rate: number | null
           tenant_id: string
@@ -2882,6 +2883,7 @@ export type Database = {
           equipment_types?: Json | null
           features_enabled?: Json | null
           id?: string
+          invoice_reminders_enabled?: boolean
           job_types?: Json | null
           tax_rate?: number | null
           tenant_id: string
@@ -2897,6 +2899,7 @@ export type Database = {
           equipment_types?: Json | null
           features_enabled?: Json | null
           id?: string
+          invoice_reminders_enabled?: boolean
           job_types?: Json | null
           tax_rate?: number | null
           tenant_id?: string
@@ -3956,7 +3959,9 @@ export type Database = {
         }
         Returns: boolean
       }
+      invoke_generate_recurring_jobs: { Args: never; Returns: undefined }
       invoke_health_monitor: { Args: never; Returns: undefined }
+      invoke_invoice_reminder_sweep: { Args: never; Returns: undefined }
       is_platform_admin: { Args: never; Returns: boolean }
       is_tenant_admin: { Args: never; Returns: boolean }
       lexical_rescue_chunks: {
