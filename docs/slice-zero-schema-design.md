@@ -420,6 +420,18 @@ BEGIN
   END IF;
   IF v_instance.status = 'void' THEN RAISE EXCEPTION 'instance is void'; END IF;
 
+  -- Contradiction guard (founder addition, implementation order 2026-07-24):
+  -- outcome 'complete' with a non-empty deficiency list is contradictory by
+  -- construction — and outcome freezes at completion, so letting it through
+  -- would make the most likely small mistake fixable only by void + refilling
+  -- the whole form + burning a document number. Distinguishable token
+  -- ('outcome_deficiency_conflict') leads the message; the client maps it to
+  -- a useful correction prompt.
+  IF p_outcome = 'complete'
+     AND jsonb_array_length(coalesce(p_deficiencies, '[]'::jsonb)) > 0 THEN
+    RAISE EXCEPTION 'outcome_deficiency_conflict: ...';
+  END IF;
+
   -- Atomic per-tenant sequence: upsert-increment under row lock serializes
   -- concurrent completions; numbers are unique and dense per tenant.
   INSERT INTO form_number_counters (tenant_id) VALUES (v_instance.tenant_id)
@@ -452,6 +464,7 @@ END $$;
 - **Uniqueness under concurrency:** the counter row `FOR UPDATE`-serializes (via the upsert's row lock); the partial unique index below is the belt-and-braces backstop.
 - **Immutability once issued (tightened per review item 2):** a `BEFORE UPDATE` trigger freezes `answers`, `definition_snapshot`, `document_number`, `completed_at`, `template_id`, `template_version`, `serial_numbers`, `labor_hours`, **`outcome`**, `created_by`, `created_at`, `tenant_id` once `status = 'completed'`. `outcome` joins the frozen set because it prints on the customer PDF — the delivered document and the record must never silently disagree; it stays on the PDF, and a wrong outcome is corrected by void + reissue, consistent with the amendments posture. The editable-triage argument survives only for the columns that **don't** print: `fault_category`, `responsible_party`, `blocker`, and the bindings remain editable post-completion — by **staff only** (review item 2c, enforced by the status-branching UPDATE policy in Step 2, so a technician cannot re-categorize their own completed work) — and every such edit writes a `form_instance_revisions` row via the companion `AFTER UPDATE` audit trigger (§1.4b; review item 2b). Status transitions: `completed → void` requires `is_tenant_admin()` (trigger-enforced); a creator may void their own `in_progress` instance (review ruling 2). This trigger pair is the direct answer to the checklist system's corruption mode — `job_checklist_completions` has no such guarantee and `JobStageWorkflow.tsx:246-271` happily rewrites history when a template changes.
 - **Offline:** an instance created offline has `document_number = NULL` and completes *locally* into a "completed — pending sync" state; the number is issued when the queued `complete_form_instance` call replays (Step 5). The device shows a provisional reference (instance short-id) until then; the PDF — which is server-rendered anyway — always carries the real number. The number is **never** minted client-side. Accepted gap: a tech cannot quote the final number to a customer while still offline (Step 9 has the mitigation ladder).
+- **Renderer obligation (lands with the renderer, not the migration):** because `outcome` is irreversible at completion, the completion flow **must** show a review screen — outcome + deficiency count side by side — before the irreversible step. The RPC's contradiction guard is the server backstop; the review screen is the primary defense against the mis-tap. Tracked here so the renderer slice inherits it as a requirement, not a nicety.
 
 ### 1.9 Indexes (built for Step 4's queries)
 
@@ -816,7 +829,14 @@ New edge function `generate-form-pdf`, cloning `generate-invoice-pdf`'s architec
 
 Document chrome: header carries the tenant branding (name + primary color, invoice pattern), the **document number** in the masthead slot where "INVOICE" sits, status/outcome badge, completion date. (`outcome` printing here is safe precisely because review item 2 froze it — the paper and the record cannot diverge.) A closing auto-section lists open deficiencies raised by this instance (clause + description) — the customer-visible deficiency summary. Fonts stay WinAnsi Helvetica; `sanitizeWinAnsi` already handles the emoji/CJK realities. Photos are guaranteed embeddable because capture normalized to JPEG (Step 5).
 
-**Photo embedding cap (review item 4) — pick: a per-document embedded-byte budget of 10 MB, walker-enforced in document order.** pdf-lib embeds original bytes — page-scaling to 240 pt shrinks nothing — so an uncapped 20-photo commissioning form means megabytes downloaded and embedded inside an edge function with time and memory limits. Why this option over the other two: server-side downscale needs a wasm image codec inside Deno edge — a heavy dependency whose decode buffers are the exact memory risk being guarded; thumbnails-inline-with-photo-appendix still embeds the same original bytes unless downscaled first, so it rearranges the cost without reducing it. The **primary** control is upstream and already designed: capture compresses to ≤1600 px JPEG at ~200–400 KB (Step 5), so a typical 20-photo form embeds ~4–8 MB and fits entirely. The budget is the backstop for pathological forms: once cumulative embedded bytes would exceed 10 MB, each remaining photo renders as a labeled "photo on file" line, and the final page states "N additional photos not embedded — available in FieldTek." Degradation is deterministic (document order), visible on the paper itself, and never fails the render.
+**Photo embedding cap (review item 4) — pick: a per-document embedded-byte budget of 10 MB with an explicit retention priority (founder direction, implementation order 2026-07-24 — supersedes plain document order).** pdf-lib embeds original bytes — page-scaling to 240 pt shrinks nothing — so an uncapped 20-photo commissioning form means megabytes downloaded and embedded inside an edge function with time and memory limits. Why this option over the other two: server-side downscale needs a wasm image codec inside Deno edge — a heavy dependency whose decode buffers are the exact memory risk being guarded; thumbnails-inline-with-photo-appendix still embeds the same original bytes unless downscaled first, so it rearranges the cost without reducing it. The **primary** control is upstream and already designed: capture compresses to ≤1600 px JPEG at ~200–400 KB (Step 5), so a typical 20-photo form embeds ~4–8 MB and fits entirely.
+
+The budget is the backstop for pathological forms, and it truncates by **retention priority, not document order** — document order drops whatever falls last, which on a commissioning form is usually the deficiency evidence and the signature, i.e. exactly the images the paper exists to carry:
+1. **The signature always embeds** (it is the legal block; a form PDF without it is not the document).
+2. **Photos attached to deficiency-raising answers** (answers whose `deficiency_on` fired, and photo cells in rows that raised a deficiency) — the evidence a dispute reaches for.
+3. **Everything else**, in document order.
+
+Within each tier the walker still lays images out at their document positions; priority governs only *which* images get bytes when the budget runs short. Each omitted photo renders as a labeled "photo on file: *(question label)*" line at its position, and the final page states **"N additional photos are not embedded in this PDF. The complete photo set is attached to record ⟨document number⟩ in FieldTek."** — where to find them, not merely that they were omitted. Degradation is deterministic, visible on the paper itself, and never fails the render.
 
 ---
 
