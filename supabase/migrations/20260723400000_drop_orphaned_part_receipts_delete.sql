@@ -1,0 +1,21 @@
+-- ============================================================
+-- Week 0 security batch C4 (founder-approved 2026-07-22)
+-- part-receipts: drop the orphaned permissive DELETE policy
+-- ============================================================
+-- 20260130060619 intended to replace the original part-receipts
+-- policies with tenant-folder-scoped ones, but its DROP targeted
+-- "Users can delete their uploaded receipts" — a name that never
+-- existed. The real 20260108002814 policy is named "Users can delete
+-- their OWN receipts"; the IF EXISTS drop silently no-oped and the
+-- unscoped DELETE survived. Because permissive policies OR together,
+-- any authenticated user of any tenant could delete any object in the
+-- entire part-receipts bucket.
+--
+-- The correctly scoped replacement ("Admins can delete part receipts",
+-- tenant folder + is_tenant_admin, 20260130060619) already exists, so
+-- this migration only removes the orphan. (Reproduced in the CI shadow
+-- replay too, which is why the drift diff showed no discrepancy — both
+-- environments carried the same orphan.)
+-- ============================================================
+
+DROP POLICY IF EXISTS "Users can delete their own receipts" ON storage.objects;
