@@ -21,6 +21,7 @@
     "demo:provision": "npx tsx scripts/provision-demo-tenant.ts",
     "generate:og": "npx tsx scripts/generate-og.ts",
     "generate:e2e-embeddings": "npx tsx scripts/generate-e2e-embeddings.ts",
+    "gen:types": "supabase gen types typescript --linked > src/integrations/supabase/types.ts",
     "security:zap:baseline": "bash scripts/security-zap-baseline.sh"
   },
   "dependencies": {

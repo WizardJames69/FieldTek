@@ -79,8 +79,11 @@ export interface Profile {
   avatar_url: string | null;
   phone: string | null;
   email: string | null;
+  /** DEPRECATED (Week 0, 2026-07-22): unused DB column, replaced by a real certifications feature in weeks 9-12. Do not build on it. */
   certifications: string[];
+  /** DEPRECATED (Week 0, 2026-07-22): unused DB column. Do not build on it. */
   skills: string[];
+  /** DEPRECATED (Week 0, 2026-07-22): unused DB column; portal prefs currently live as JSON in clients.notes. Do not build on it. */
   notification_preferences: {
     email: boolean;
     push: boolean;

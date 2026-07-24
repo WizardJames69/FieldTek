@@ -67,7 +67,7 @@ All pages except Landing are lazy-loaded via `React.lazy`.
 
 Two toast systems coexist: shadcn/ui Radix (`useToast()` from `@/hooks/use-toast`) AND Sonner (`toast` from `sonner`). Both `<Toaster />` and `<Sonner />` are mounted in App.tsx.
 
-## Supabase Edge Functions (47 total)
+## Supabase Edge Functions (54 total)
 
 All functions are Deno-based in `supabase/functions/`. Shared utilities in `_shared/`.
 
