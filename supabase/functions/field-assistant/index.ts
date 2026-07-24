@@ -82,8 +82,7 @@ import {
   JUDGE_FULL_BLOCK_FALLBACK,
   JUDGE_WARNING_NOTICE,
 } from "./judgeVerdict.ts";
-import { fetchWorkflowState, fetchWorkflowExecutionContext } from "./workflow.ts";
-import type { WorkflowExecutionContext } from "./types.ts";
+import { fetchWorkflowState } from "./workflow.ts";
 import { evaluateCompliance, persistVerdicts } from "./compliance.ts";
 import type { ComplianceContext, ComplianceVerdict, OverrideEntry, StepEvidenceRecord } from "./compliance.ts";
 import { expandQueryWithGraph } from "./graph.ts";
@@ -504,36 +503,11 @@ serve(async (req) => {
       }
     }
 
-    // ── 7c. Workflow Execution Context (Phase 4) ────────────
-    let workflowExecutionContext: WorkflowExecutionContext | null = null;
-    if (context?.job?.workflow_execution_id) {
-      // Tenant ownership guard (PR-SEC-4). This path runs on the service-role
-      // client (RLS bypassed) keyed off caller-supplied context.job.id, so the
-      // job must be proven to belong to the caller's tenant before any
-      // workflow execution/template/step data is read. Reuses 7b's verified
-      // result when the compliance block already checked this job; otherwise
-      // checks here. Missing and foreign jobs are indistinguishable (same
-      // silent skip, same null context, same response). Fails closed.
-      const workflowJobOwned = complianceJobOwned ||
-        (isValidJobId(context?.job?.id) &&
-          (await verifyJobTenantOwnership(serviceRoleClient, context.job.id, tenantUser.tenant_id)));
-      if (!workflowJobOwned) {
-        console.warn(
-          `[workflow] Skipping execution context — context.job.id (${String(context?.job?.id).slice(0, 8)}…) is not a job in tenant ${tenantUser.tenant_id}`,
-        );
-      } else {
-        try {
-          workflowExecutionContext = await fetchWorkflowExecutionContext(
-            serviceRoleClient,
-            context.job.id,
-            context.equipment?.equipment_type || null,
-            tenantUser.tenant_id,
-          );
-        } catch (wfErr) {
-          console.error("[workflow] Execution context fetch error (non-fatal):", wfErr);
-        }
-      }
-    }
+    // (7c workflow execution context removed 2026-07-24 — the guided-procedures
+    // stream is retired and its tables do not exist in production. See
+    // supabase/migrations-parked/guided-procedures/README.md. contextFusion's
+    // optional stepStatistics input remains for a future revival; nothing
+    // feeds it.)
 
     // ── 8. Document Retrieval ────────────────────────────────
     const { data: tenantDocs } = await supabaseClient
@@ -771,16 +745,14 @@ serve(async (req) => {
     let diagnosticHypotheses: DiagnosticHypothesis[] = [];
     try {
       const diagnosticSignalCount = diagnosticContext?.patterns?.length ?? 0;
-      const workflowStatCount = workflowExecutionContext?.stepStatistics?.length ?? 0;
       const patternAdvisoryCount = patternAdvisoryContext?.patterns?.length ?? 0;
 
       console.log(
-        `[context-fusion] input signals: diagnostic=${diagnosticSignalCount} workflow=${workflowStatCount} patterns=${patternAdvisoryCount}`
+        `[context-fusion] input signals: diagnostic=${diagnosticSignalCount} patterns=${patternAdvisoryCount}`
       );
 
       diagnosticHypotheses = fuseContextSignals({
         diagnosticSignals: diagnosticContext?.patterns,
-        stepStatistics: workflowExecutionContext?.stepStatistics,
         patternAdvisory: patternAdvisoryContext?.patterns,
       });
 
@@ -1248,7 +1220,6 @@ serve(async (req) => {
       complianceContext: promptComplianceContext,
       stepEvidenceContext: promptStepEvidenceContext,
       diagnosticContext,
-      workflowExecutionContext,
       patternAdvisoryContext,
       diagnosticHypotheses,
     });
