@@ -21,7 +21,20 @@ The parked-stream README (`supabase/migrations-parked/guided-procedures/README.m
 
 Because those three objects exist only out-of-band, **every rebuild from migrations produces a schema that silently diverges from production**: the db-replay CI shadow, a `supabase db reset`, and any disaster-recovery rebuild all come up with **no flywheel trigger, no trigger function, and a NOT NULL `tenant_id`**. Nothing asserted their existence, so CI stayed green. Practical impact of a rebuild: `collect-workflow-intelligence` loses its only caller and **workflow-discovery telemetry dies silently** — no error, no alert, just an admin console that stops accumulating data.
 
-**Remediation (founder-directed, 2026-07-23):** a reconciliation migration promotes the live section-A/C1 objects into the applied ledger — additive and idempotent (`CREATE OR REPLACE FUNCTION`, `DROP TRIGGER IF EXISTS` + `CREATE`, `ALTER COLUMN … DROP NOT NULL`, policy drop/recreate), verbatim from the parked file, a no-op in effect against production. Shipped as the follow-up PR immediately after Workstream B, together with a **db-replay CI assertion** that the trigger and function exist in the replayed schema — converting "nothing tests for them" into a permanent contract. After it lands, only parked sections B/C2 (policies and an ALTER on tables that don't exist in prod) remain unledgered, which is correct — their target tables are parked too.
+**Remediation (founder-directed, 2026-07-23):** a reconciliation migration promotes the live section-A/C1 objects into the applied ledger — additive and idempotent (`CREATE OR REPLACE FUNCTION`, `DROP TRIGGER IF EXISTS` + `CREATE`, `ALTER COLUMN … DROP NOT NULL`, policy drop/recreate) — shipped as the follow-up PR immediately after Workstream B, together with a **db-replay CI assertion** that the trigger, function, and nullable `tenant_id` exist in the replayed schema. The migration contains **only** what the catalog queries proved live (section A + C1); sections B/C2 stay parked. Push precondition (founder safety check): the live `pg_get_functiondef` / trigger / policy definitions are diffed against the parked text **before** pushing — a match proves the `CREATE OR REPLACE` is a genuine no-op; a mismatch means a second out-of-band change exists, and the push stops so the reconciliation can promote what is *actually* live rather than what the parked file claims.
+
+Scope honesty: that CI assertion pins three named objects. It is a canary for this specific divergence, **not** general drift detection — see the standing-state section below.
+
+## Standing state: FieldTek currently has NO working schema drift detection
+
+Not a one-run anomaly — the standing state of the tooling as of 2026-07-23:
+
+- **v2.90.0** (the pinned CLI, also used by db-replay CI) returns **false-clean**: it missed at least three entity classes (trigger, function, column nullability/policy body) in a single run, for unexplained reasons.
+- **v2.109.1** (current) **cannot complete a diff at all** in this environment (`LegacyDeclarativeShadowDbError` while provisioning the shadow database).
+
+Until one of these is fixed, no automated answer to "does live match the migrations?" exists for this project. The db-replay assertion added by the reconciliation PR is **not** a replacement: it pins the three specific objects named in this report and nothing else. **Whatever else may have drifted while v2.90 was returning clean verdicts remains unknown and undetected.** Direct catalog queries are the only currently-trustworthy instrument, and they only answer questions someone thinks to ask.
+
+**PR-DB-2 therefore stays OPEN** with a tracked, timeboxed follow-up: restore working drift detection (fix or replace the diff engine — candidate approaches: newer CLI once the shadow-provisioning bug clears, raw `pg_dump --schema-only` textual comparison, or a scheduled catalog-inventory script) and re-run a full audit with it. Deliberately **not** Week 0 scope.
 
 ## Why did the diff miss them? (investigated, not fully determined)
 
