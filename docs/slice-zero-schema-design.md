@@ -1,9 +1,31 @@
 # FieldTek Form Engine — Design Document
 
-**Date:** 2026-07-24 · **Base:** main @ `c641959` · **Status:** design for founder approval — no code, no migrations exist yet.
+**Date:** 2026-07-24 · **Base:** main @ `c641959` · **Status:** **APPROVED by founder 2026-07-24 with directed changes — all incorporated below.** No code, no migrations exist yet.
 **Prerequisite (standing, founder-decided):** the first commit of form-engine work is the `field-assistant` dead-path removal (`docs/backlog.md`, "Form-engine opener"), which means one field-assistant deploy + the 12/12 live eval rerun *before* any schema lands.
 
 All file references are to real code at `c641959` and are cited as evidence, not as things this design changes.
+
+---
+
+## Founder review — 2026-07-24 (incorporated)
+
+Design approved with directed changes; every item below is folded into the steps that follow. Recorded here so the review-baseline diff is explicit.
+
+**Schema-changing (all land in Migration 1):**
+1. **Labour hours promoted** — the `role` tag union gains `'labor_hours'` (questions) and `'part'` / `'quantity'` (table columns); `form_instances.labor_hours numeric` is promoted and extracted at completion exactly like `serial_numbers`; the completion RPC gains `p_labor_hours` (§1.3, §1.5, §1.8). Reason: the weeks-4–6 invoice importer must find hours generically across templates it did not author.
+2. **`outcome` freezes at completion** — it prints on the customer PDF, so the delivered document and the record can never silently diverge; it **stays on the PDF**. A wrong outcome is corrected by void + reissue, consistent with the amendments posture (§1.8).
+3. **`form_instance_revisions`** — a fifth table: trigger-written audit rows for every post-completion edit to the still-editable columns (`fault_category`, `responsible_party`, `blocker`, bindings): who, when, old → new (§1.4b, Step 2).
+4. **Post-completion edits are staff-only** — the instance UPDATE policy branches on status: creator + staff while `in_progress`; admin/dispatcher only once `completed` (Step 2).
+5. **Counter prefix derives from tenant name at seed time**, `FT` fallback (§1.4 — open question 1 answered: `NSH-00042` beats every tenant sharing a prefix).
+
+**Plan/behavior-changing (no schema impact):**
+6. **Autosave is delta after first sync** — full-row INSERT once, then `answers`-only patches; the 40–80 KB definition snapshot never retransmits over a mechanical-room connection (Step 5).
+7. **PDF photo embedding gets a byte budget** — 10 MB embedded, document order, explicit overflow note in the PDF. Chosen over server-side downscale (a wasm image codec inside an edge function is the exact memory risk being guarded) and over thumbnails-with-appendix (same bytes unless downscaled first). Client capture compression remains the primary control (Step 6).
+8. **`responsible_party` input is suggestion-first** from the recency index, free entry as the secondary affordance; Q1 is stated fuzzy by construction (§1.1, Steps 3–4).
+9. **Unanswered `neq` nailed down** — an unanswered referenced node makes `eq` / `neq` / `in` **all** evaluate false; only `answered` tests answeredness. Children never reveal before their parent is answered (§1.5, Step 3).
+
+**Approved as proposed (unchanged):** readings grid as a `table` mode; admin template preview route in Slice Zero; deficiency rows over flags; snapshot Option A; hidden-subtree retained-but-excluded; optional unit binding; one jsonb tree; untouched checklist system.
+**Open questions answered:** (1) prefix derived-with-fallback, above; (2) void = creator may void own `in_progress`, admin-only once `completed` — as designed; (3) portal arm ships designed-in with no UI, C2 posture — as designed.
 
 ---
 
@@ -11,12 +33,13 @@ All file references are to real code at `c641959` and are cited as evidence, not
 
 ### 1.0 Table inventory and the argument for each
 
-Four tables, two enums, one storage bucket, one RPC, one trigger. Every table beyond the required two is argued, not assumed:
+Five tables, two enums, one storage bucket, one RPC, two triggers. Every table beyond the required two is argued, not assumed:
 
 | Table | Verdict | Why |
 |---|---|---|
 | `form_templates` | required | The authored artifact. One row per template; the definition is **one jsonb tree** (constraint 2). |
 | `form_instances` | required | One row per filled form. Carries its own definition snapshot (constraint 4). |
+| `form_instance_revisions` | **added — founder-directed (review item 3)** | Who re-categorized a fault and when is exactly the accountability question this engine exists to answer. Append-only audit rows, written by trigger on every post-completion edit to the still-editable columns; cannot be bypassed from the client. |
 | `form_deficiencies` | **added — argued for** | Query 4.5 ("deficiencies raised >30 days ago still open") is unanswerable from jsonb answers alone: a deficiency has a *lifecycle* (raised → resolved, possibly by a later visit or a manual office action) that outlives the instance that raised it. Cross-instance identity inside `answers` jsonb would mean scanning every instance's json on every query. Promoted rows are the only sane shape. |
 | `form_number_counters` | **added — argued for** | Document numbers must be unique under concurrency and gap-tolerant. `max(document_number)+1` races; client generation is exactly the anti-pattern the invoice system has today (`src/components/invoices/InvoiceFormDialog.tsx:173-178` — `INV-${Date.now}-${random}`, fine for invoices, unacceptable for numbers quoted in warranty disputes). A per-tenant counter row updated under row lock inside a SECURITY DEFINER RPC is the standard correct mechanism. |
 | `form_template_versions` | **rejected** | Snapshot-on-instance makes the instance the version record. In Slice Zero, templates are versioned JSON seeds in git — the repo *is* the version history. A versions table would add a second RLS surface, a portal-reachable join, and a mutable-row risk for zero Slice-Zero value. Clean retrofit exists if the builder UI ever needs it (backfill by checksum from instance snapshots). |
@@ -42,7 +65,7 @@ CREATE TYPE public.form_blocker AS ENUM (
 );
 ```
 
-`fault_category` is deliberately **not** an enum: it is a tenant-configurable list following the `tenant_settings.job_types` pattern (`src/integrations/supabase/types.ts:2871` — Json column on `tenant_settings`). First migration adds `tenant_settings.fault_categories jsonb` alongside it. `responsible_party` is free text with recency suggestions (founder constraint: it names third-party companies; a config list goes stale weekly).
+`fault_category` is deliberately **not** an enum: it is a tenant-configurable list following the `tenant_settings.job_types` pattern (`src/integrations/supabase/types.ts:2871` — Json column on `tenant_settings`). First migration adds `tenant_settings.fault_categories jsonb` alongside it. `responsible_party` is free text (founder constraint: it names third-party companies; a config list goes stale weekly) — but the input is **suggestion-first** (review item 8): a combobox fed from the tenant's recent values via the `form_instances_resp_party` index, with free entry as the secondary "add new company" affordance. Answer quality still rides on entry discipline, which is why Q1 is stated fuzzy by construction (Step 4).
 
 ### 1.2 `form_templates`
 
@@ -85,9 +108,11 @@ CREATE TABLE public.form_instances (
 
   -- The four-way status split (founder constraint: the incumbent crams these
   -- into one flat multi-select). All promoted; none touch job_status.
-  outcome             public.form_outcome,   -- null until completed
+  -- outcome FREEZES at completion (review item 2) — it prints on the customer
+  -- PDF; the other three stay staff-editable post-completion, revision-logged.
+  outcome             public.form_outcome,   -- null until completed; immutable after
   fault_category      text,
-  responsible_party   text,
+  responsible_party   text,                  -- suggestion-first input (review item 8)
   blocker             public.form_blocker NOT NULL DEFAULT 'none',
 
   -- Bindings — ALL optional (constraint 5). SET NULL, never CASCADE: a
@@ -99,6 +124,8 @@ CREATE TABLE public.form_instances (
   -- Identity & audit
   document_number     text,                  -- server-issued at completion; null before
   serial_numbers      text[] NOT NULL DEFAULT '{}',  -- promoted from role-tagged answers (§1.7)
+  labor_hours         numeric,               -- review item 1: sum of visible role:'labor_hours'
+                                             -- answers at completion, serial_numbers pattern
   superseded_by       uuid REFERENCES public.form_instances(id),   -- void/amend breadcrumb; no UI in Slice Zero
   created_by          uuid NOT NULL REFERENCES auth.users(id),
   created_at          timestamptz NOT NULL DEFAULT now(),
@@ -123,9 +150,10 @@ CREATE TABLE public.form_instances (
 | `blocker` | Q1; "everything currently blocked" dashboard |
 | `document_number` | lookup by the number a customer quotes on the phone |
 | `serial_numbers` | Q4 — serial lookup 18 months later must not scan jsonb (§1.7) |
+| `labor_hours` | review item 1 — the weeks-4–6 invoice importer asks "hours for this job" **generically**, across templates it did not author; without promotion the hours sit in `answers` under per-template node ids. Extracted at completion as the sum of visible `role:'labor_hours'` numeric answers (repeat rows included), same pattern as `serial_numbers` |
 | `created_by`, `created_at`, `completed_at` | tech workload, date-range filters, Q2 quarter window |
 
-**Deliberately not promoted:** a deficiency count (join `form_deficiencies` — one source of truth), site (lives on the job), model numbers (schema reserves the `role: 'model_number'` tag but Slice Zero extracts serials only — see Step 9).
+**Deliberately not promoted:** a deficiency count (join `form_deficiencies` — one source of truth), site (lives on the job), model numbers / parts / quantities — the `role: 'model_number'` / `'part'` / `'quantity'` tags parse and seed, so a future importer can locate parts tables generically by walking `answers` with the snapshot's role map, but no query yet forces column promotion (same bar as everything else; see Step 9).
 
 ### 1.4 `form_deficiencies` and `form_number_counters`
 
@@ -149,7 +177,11 @@ CREATE TABLE public.form_deficiencies (
 
 CREATE TABLE public.form_number_counters (
   tenant_id  uuid PRIMARY KEY REFERENCES public.tenants(id) ON DELETE CASCADE,
-  prefix     text  NOT NULL DEFAULT 'FT',    -- per-tenant prefix (founder: sufficient for Slice Zero)
+  prefix     text  NOT NULL DEFAULT 'FT',    -- 'FT' is the FALLBACK only (review ruling):
+                                             -- forms:seed upserts this row with a prefix
+                                             -- derived from the tenant name (North Shore
+                                             -- HVAC → 'NSH'); the RPC's lazy insert keeps
+                                             -- FT for tenants never seeded.
   next_value bigint NOT NULL DEFAULT 1
 );
 -- RLS enabled with ZERO policies: default-deny for every client role.
@@ -158,7 +190,20 @@ CREATE TABLE public.form_number_counters (
 
 Deficiency rows are born **server-side, inside the completion RPC** (§1.8), from the client-computed list of visible failing answers. Resolution in Slice Zero is a manual staff action (UPDATE policy, §2); auto-resolution by a later passing instance is deliberately deferred (Step 9).
 
-### 1.5 The template definition — actual TypeScript
+### 1.4b `form_instance_revisions` (review item 3)
+
+```sql
+CREATE TABLE public.form_instance_revisions (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    uuid NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  instance_id  uuid NOT NULL REFERENCES public.form_instances(id) ON DELETE CASCADE,
+  changed_by   uuid NOT NULL,               -- auth.uid(), captured by the trigger
+  changed_at   timestamptz NOT NULL DEFAULT now(),
+  changes      jsonb NOT NULL               -- { column: { "old": …, "new": … } } per changed column
+);
+```
+
+Written **only by trigger**: an `AFTER UPDATE` trigger on `form_instances` (SECURITY DEFINER function, same privilege model as the completion RPC) fires whenever a `completed` instance's still-editable columns (`fault_category`, `responsible_party`, `blocker`, `job_id`, `equipment_id`, `client_id`) change, and records the per-column old → new diff plus `auth.uid()`. Because the writer is a trigger, no client — including staff — can edit analytics without leaving a row; "who re-categorized this fault and when" becomes a query, not a shrug. The `completed → void` transition is also recorded. In-progress edits (autosave) are deliberately **not** revision-logged — that would log every keystroke sync; accountability attaches to the issued record, not the draft. RLS in Step 2: staff SELECT only, zero write policies (trigger-only, C5-style deny posture by absence).
 
 One file is the single source of truth for renderer, validator, PDF walker, and the seed validator: `src/lib/forms/schema.ts`.
 
@@ -199,7 +244,10 @@ export interface QuestionNode extends BaseNode {
   required?: boolean;          // enforced only while visible (§3)
   flags?: {
     deficiency_on?: string[];  // answers that raise a deficiency row: ['no'], ['fail'], option ids
-    role?: 'serial_number' | 'model_number';   // semantic promotion (§1.7)
+    role?: 'serial_number' | 'model_number' | 'labor_hours';
+                               // semantic promotion (§1.7); 'labor_hours' (review item 1) lets the
+                               // invoice importer find hours on templates it did not author —
+                               // number inputs only (validator-enforced)
   };
   children?: FormNode[];       // the conditional TREE: revealed sub-nodes, each with its own
                                // visible_when; a child can itself be a parent (ERV chain)
@@ -241,7 +289,9 @@ export interface TableColumn {
   type: 'text' | 'number' | 'photo';
   unit?: string;
   required?: boolean;
-  role?: 'serial_number' | 'model_number';
+  role?: 'serial_number' | 'model_number' | 'part' | 'quantity';
+                               // 'part'/'quantity' (review item 1): importer-facing tags so a
+                               // parts table is findable generically; no column promotion yet
 }
 
 export type Condition =
@@ -250,6 +300,10 @@ export type Condition =
   | { node: NodeId; op: 'answered' }
   | { all: Condition[] }
   | { any: Condition[] };
+// Unanswered semantics (review item 6, the visibility.ts contract): when the
+// referenced node is UNANSWERED, eq / neq / in ALL evaluate false — neq is not
+// "not yet answered". Only op:'answered' tests answeredness. Children therefore
+// never reveal before their parent is answered, under every operator.
 ```
 
 **Field-type coverage** (every observed type → schema construct):
@@ -269,7 +323,7 @@ export type Condition =
 | section header / instruction / page break | `section` / `instruction` / `page_break` |
 | repeatable clause group (three spray pumps) | `repeat_group` |
 
-One deliberate simplification: the readings grid is a `table` configuration, not a separate kind — same value shape, same validation, one renderer with a fixed-rows mode. Flagged in Step 9 in case the founder wants the distinct authoring concept anyway.
+One deliberate simplification: the readings grid is a `table` configuration, not a separate kind — same value shape, same validation, one renderer with a fixed-rows mode. **Approved as proposed in the founder review.**
 
 **Condition scope rules** (validator-enforced, §1.5.4):
 1. `visible_when.node` must reference a node **earlier in document order**. This kills cycles by construction and makes visibility a single forward pass.
@@ -277,7 +331,7 @@ One deliberate simplification: the readings grid is a `table` configuration, not
 
 #### 1.5.4 Seed validation
 
-`scripts/validate-form-seed.ts` (pure, vitest-covered): node-id uniqueness, forward-only condition references, repeat-scope rule, option-id integrity for `eq/in` values, `deficiency_on` values that exist in the input's answer domain, `pass_value` validity, clause format `^\d+\.\d+([a-z]\))?$` when present. `forms:seed` refuses invalid seeds. This script is the reason no template builder UI is needed for correctness in Slice Zero.
+`scripts/validate-form-seed.ts` (pure, vitest-covered): node-id uniqueness, forward-only condition references, repeat-scope rule, option-id integrity for `eq/in` values, `deficiency_on` values that exist in the input's answer domain, `pass_value` validity, clause format `^\d+\.\d+([a-z]\))?$` when present, and **role/type agreement** (review item 1): `labor_hours` and `quantity` only on `number` inputs/columns, `part` only on `text` columns, serial/model roles on text-shaped inputs. The unanswered-condition rule (eq/neq/in false when the referenced node is unanswered — review item 6) is asserted by shared fixture tests against `visibility.ts` so validator and runtime can never disagree. `forms:seed` refuses invalid seeds. This script is the reason no template builder UI is needed for correctness in Slice Zero.
 
 ### 1.6 Answers shape, node addressing, and repeat-count changes
 
@@ -340,6 +394,7 @@ CREATE OR REPLACE FUNCTION public.complete_form_instance(
   p_responsible_party text,
   p_blocker         public.form_blocker,
   p_serial_numbers  text[],
+  p_labor_hours     numeric,   -- review item 1: client-extracted like serials
   p_deficiencies    jsonb      -- [{id, node_id, row_id, clause, description}]
 ) RETURNS TABLE (document_number text, completed_at timestamptz)
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
@@ -376,6 +431,7 @@ BEGIN
     answers = p_answers, status = 'completed', outcome = p_outcome,
     fault_category = p_fault_category, responsible_party = p_responsible_party,
     blocker = p_blocker, serial_numbers = coalesce(p_serial_numbers, '{}'),
+    labor_hours = p_labor_hours,
     document_number = v_doc, completed_at = now(), updated_at = now()
   WHERE id = p_instance_id;
 
@@ -394,7 +450,7 @@ END $$;
 ```
 
 - **Uniqueness under concurrency:** the counter row `FOR UPDATE`-serializes (via the upsert's row lock); the partial unique index below is the belt-and-braces backstop.
-- **Immutability once issued:** a `BEFORE UPDATE` trigger freezes `answers`, `definition_snapshot`, `document_number`, `completed_at`, `template_id`, `template_version`, `serial_numbers`, `created_by`, `created_at`, `tenant_id` once `status = 'completed'`; the four analytics columns (`outcome`, `fault_category`, `responsible_party`, `blocker`) and the bindings stay editable (office triage reality — a dispatcher re-categorizes a fault after a phone call); `completed → void` is the only status transition out, and the trigger requires `is_tenant_admin()` for it. This trigger is the direct answer to the checklist system's corruption mode — `job_checklist_completions` has no such guarantee and `JobStageWorkflow.tsx:246-271` happily rewrites history when a template changes.
+- **Immutability once issued (tightened per review item 2):** a `BEFORE UPDATE` trigger freezes `answers`, `definition_snapshot`, `document_number`, `completed_at`, `template_id`, `template_version`, `serial_numbers`, `labor_hours`, **`outcome`**, `created_by`, `created_at`, `tenant_id` once `status = 'completed'`. `outcome` joins the frozen set because it prints on the customer PDF — the delivered document and the record must never silently disagree; it stays on the PDF, and a wrong outcome is corrected by void + reissue, consistent with the amendments posture. The editable-triage argument survives only for the columns that **don't** print: `fault_category`, `responsible_party`, `blocker`, and the bindings remain editable post-completion — by **staff only** (review item 2c, enforced by the status-branching UPDATE policy in Step 2, so a technician cannot re-categorize their own completed work) — and every such edit writes a `form_instance_revisions` row via the companion `AFTER UPDATE` audit trigger (§1.4b; review item 2b). Status transitions: `completed → void` requires `is_tenant_admin()` (trigger-enforced); a creator may void their own `in_progress` instance (review ruling 2). This trigger pair is the direct answer to the checklist system's corruption mode — `job_checklist_completions` has no such guarantee and `JobStageWorkflow.tsx:246-271` happily rewrites history when a template changes.
 - **Offline:** an instance created offline has `document_number = NULL` and completes *locally* into a "completed — pending sync" state; the number is issued when the queued `complete_form_instance` call replays (Step 5). The device shows a provisional reference (instance short-id) until then; the PDF — which is server-rendered anyway — always carries the real number. The number is **never** minted client-side. Accepted gap: a tech cannot quote the final number to a customer while still offline (Step 9 has the mitigation ladder).
 
 ### 1.9 Indexes (built for Step 4's queries)
@@ -415,6 +471,7 @@ CREATE INDEX form_instances_resp_party      ON public.form_instances (tenant_id,
 CREATE INDEX form_deficiencies_open         ON public.form_deficiencies (tenant_id, status, raised_at);    -- Q5
 CREATE INDEX form_deficiencies_instance     ON public.form_deficiencies (instance_id);
 CREATE INDEX form_templates_tenant_status   ON public.form_templates (tenant_id, status);
+CREATE INDEX form_instance_revisions_inst   ON public.form_instance_revisions (instance_id, changed_at);   -- audit view
 ```
 
 ---
@@ -482,12 +539,20 @@ FOR INSERT WITH CHECK (
   tenant_id = get_user_tenant_id() AND created_by = auth.uid()
 );
 
--- UPDATE: creator + staff. WHAT may change per state is the trigger's job
--- (policies can't compare OLD/NEW); WHO may write is this policy's job.
+-- UPDATE: branches on status (review item 2c). WHAT may change per state is the
+-- trigger's job (policies can't compare OLD/NEW); WHO may write is this
+-- policy's job — and once completed, WHO is staff only: a technician cannot
+-- re-categorize their own completed work. In-progress rows accept creator
+-- writes (autosave, and the creator-void ruling) plus staff.
 CREATE POLICY "Creator and staff update instances" ON public.form_instances
 FOR UPDATE USING (
   tenant_id = get_user_tenant_id()
-  AND (created_by = auth.uid() OR is_tenant_admin() OR get_user_role() = 'dispatcher')
+  AND (
+    (status = 'in_progress'
+      AND (created_by = auth.uid() OR is_tenant_admin() OR get_user_role() = 'dispatcher'))
+    OR (status = 'completed'
+      AND (is_tenant_admin() OR get_user_role() = 'dispatcher'))
+  )
 );
 
 -- DELETE: explicit deny-all. COPIED from C5
@@ -502,6 +567,10 @@ Note carried forward honestly: like C2's portal arm, the instance portal arm shi
 ### `form_deficiencies`
 
 SELECT: same lattice as instances, same policy body (technicians see deficiencies they raised or on their assigned jobs; staff see all — copied shape). INSERT: **no client policy** — rows are born only through the SECURITY DEFINER RPC. UPDATE (resolution): admin/dispatcher only. DELETE: explicit deny-all (C5 shape). `form_number_counters`: RLS enabled, zero policies, definer-only — invented, trivially safe, stated here so it never looks like an oversight.
+
+### `form_instance_revisions`
+
+RLS enabled. SELECT: staff only (`tenant_id = get_user_tenant_id() AND (is_tenant_admin() OR get_user_role() = 'dispatcher')` — the audit view is an office surface, not a technician one). INSERT/UPDATE/DELETE: **zero policies** — rows are written exclusively by the SECURITY DEFINER audit trigger (§1.4b), so the table is append-only from every client's point of view, counters-style.
 
 ### Storage — bucket `form-attachments`
 
@@ -570,13 +639,13 @@ Matching answers fragment: `{ "q_erv": "yes", "q_erv_motors": "yes", "q_erv_time
 
 ### Traversal and visibility
 
-Pure function, no React: `computeVisibility(definition, answers): Set<string>` in `src/lib/forms/visibility.ts`. One depth-first forward pass; a node is visible iff its parent chain is visible AND its own `visible_when` evaluates true against `answers` (repeat children evaluate row-scoped, keyed `nodeId@rowId`). The forward-reference validator rule (§1.5) is what makes a single pass sufficient — no fixpoint, no cycles possible. ~200 nodes × a few rows is sub-millisecond; recomputed via `useMemo` on every answer change. An unanswered referenced node makes any `eq/in` condition false — children stay hidden until the parent is actually answered.
+Pure function, no React: `computeVisibility(definition, answers): Set<string>` in `src/lib/forms/visibility.ts`. One depth-first forward pass; a node is visible iff its parent chain is visible AND its own `visible_when` evaluates true against `answers` (repeat children evaluate row-scoped, keyed `nodeId@rowId`). The forward-reference validator rule (§1.5) is what makes a single pass sufficient — no fixpoint, no cycles possible. ~200 nodes × a few rows is sub-millisecond; recomputed via `useMemo` on every answer change. An unanswered referenced node makes any `eq/neq/in` condition false — **including `neq`** (review item 6: unanswered is not "not-equal"; only the `answered` op tests answeredness) — so children stay hidden until the parent is actually answered, under every operator.
 
-The same visible-set feeds **all four consumers** — renderer, required-validation, PDF walker, and extraction (serials + deficiencies) — from one function. That single-source property is the design's main defense against the ghost-data class of bugs.
+The same visible-set feeds **all four consumers** — renderer, required-validation, PDF walker, and extraction (serials, labour hours + deficiencies) — from one function. That single-source property is the design's main defense against the ghost-data class of bugs.
 
 ### Hidden subtrees: retained-but-excluded (picked, defended)
 
-Answers under a newly-hidden subtree are **retained in `answers`, excluded from validation, PDF, deficiency extraction, and serial promotion**.
+Answers under a newly-hidden subtree are **retained in `answers`, excluded from validation, PDF, deficiency extraction, and serial/labour-hours promotion**.
 
 - *Why not clear:* the mis-tap case is the field reality — a tech fat-fingers "No ERV" on a phone in a mechanical room, six answered sub-questions vanish, and offline there is no server copy to restore from. Destroying captured field data on a UI transition is the worst failure mode available here.
 - *Why not retain-and-include:* ghost data. A hidden "ERV motors running: no" must not raise a deficiency, block completion, or print on the customer PDF for a unit that has no ERV.
@@ -594,7 +663,7 @@ The incumbent transposes; that survives to about three columns and dies the mome
 
 **Reused:** shadcn primitives throughout (`Checkbox`, `Textarea`, `Input`, `Select`, `Calendar`, `Badge`, `Progress` — same set the checklist uses); the camera capture pattern (`<input type="file" accept="image/*" capture="environment">`, `StepEvidenceCapture.tsx:143-150`); `BarcodeScanner` (`src/components/mobile/BarcodeScanner.tsx`) wired to any field with `role: 'serial_number'`; the queued/failed inline feedback idiom (`JobChecklist.tsx:248-277`) and `CloudOff` badge language; the offline queue machinery (Step 5); `useFeatureFlags` gating.
 
-**New:** `src/lib/forms/{schema,visibility,validate,extract}.ts` (pure, vitest-covered — built and tested *before* any UI); `src/components/forms/FormRenderer.tsx` + ~10 node components (`TriState`, `BinaryPassFail`, `ChipGrid`, `RepeatGroup`, `TableField`, `PhotoField`, `SignaturePad`, …); `SignaturePad` is net-new — **no signature component exists in the codebase** (verified: the only "signature" hit in src is landing-page demo copy); `useFormInstance` (local-first state + autosave-to-queue); pages `Forms.tsx` (list) + `FormFill.tsx` (renderer) + a "Forms" section on the technician job sheet.
+**New:** `src/lib/forms/{schema,visibility,validate,extract}.ts` (pure, vitest-covered — built and tested *before* any UI); `src/components/forms/FormRenderer.tsx` + ~10 node components (`TriState`, `BinaryPassFail`, `ChipGrid`, `RepeatGroup`, `TableField`, `PhotoField`, `SignaturePad`, …); `SignaturePad` is net-new — **no signature component exists in the codebase** (verified: the only "signature" hit in src is landing-page demo copy); a **completion sheet** (outcome / fault category / blocker / responsible-party capture at completion time) whose `responsible_party` field is a suggestion-first combobox fed from the tenant's recent values (`form_instances_resp_party` index), free entry as the secondary affordance (review item 8); `useFormInstance` (local-first state + autosave-to-queue); pages `Forms.tsx` (list) + `FormFill.tsx` (renderer) + a "Forms" section on the technician job sheet.
 
 ---
 
@@ -621,6 +690,10 @@ WHERE latest.blocker = 'other_trade'
 -- Index: form_instances_equip_time. Honest limit: instances with no equipment
 -- binding can't be deduped per-unit — count them per-instance in a UNION arm
 -- if a tenant runs unbound. This is the price of constraint 5, not a bug.
+-- FUZZY BY CONSTRUCTION (review item 5): responsible_party is free text, so
+-- this ILIKE match is only as good as entry discipline. The suggestion-first
+-- input (Step 3) exists to keep spellings converged; it narrows the fuzz, it
+-- does not eliminate it. Stated plainly so nobody mistakes Q1 for exact.
 
 -- Q2: First-visit completion rate this quarter (per job, commissioning template).
 WITH first_visits AS (
@@ -692,7 +765,8 @@ Schema changes forced by this exercise (already folded into Step 1): `serial_num
 { id: string /* template id */, tenantId: string, data: FormTemplateRow, cachedAt: string }
 // form_instances_local — the LOCAL source of truth while filling
 { id: string /* instance uuid */, data: FormInstanceRow /* incl. answers, snapshot */,
-  dirty: boolean, conflict: boolean, updatedAt: string }
+  dirty: boolean, conflict: boolean, serverKnown: boolean /* first sync done? */,
+  updatedAt: string }
 // form_blobs — photo/file/signature bytes, referenced by AttachmentRef.local
 { localId: string, instanceId: string, blob: Blob, storedAt: string }
 ```
@@ -703,7 +777,7 @@ Templates are cached on every online app load (published only). Instance creatio
 
 Extends the `QueuedOperation.type` union (`offlineDb.ts:11`) and the `processOperation` switch (`useOfflineSync.ts:136-250`):
 
-1. **`form_instance_upsert`** — periodic autosave of an in-progress instance. Replay: `.upsert(row)` on `form_instances` guarded to in-progress (`.eq('status','in_progress')` on the update path); the client-generated uuid makes replay idempotent. Payload strips attachments to `local` refs — blobs never ride the queue payload (same discipline as `evidence_blobs`, which stores the Blob separately keyed by queue id, `offlineDb.ts:395-406`).
+1. **`form_instance_upsert`** — periodic autosave of an in-progress instance, **delta after first sync** (review item 3). The first successful replay INSERTs the full row — the only time `definition_snapshot` crosses the wire; every later replay PATCHes only `answers` + `updated_at` via `.update(...).eq('id', …).eq('status','in_progress')`, so the 40–80 KB snapshot is never retransmitted over a mechanical-room connection. `serverKnown` on the local row picks INSERT vs patch; the client-generated uuid makes both idempotent (an INSERT that raced a prior success falls through to the patch path). Payload strips attachments to `local` refs — blobs never ride the queue payload (same discipline as `evidence_blobs`, which stores the Blob separately keyed by queue id, `offlineDb.ts:395-406`).
 2. **`form_instance_complete`** — the terminal op. Replay sequence: (a) for every `AttachmentRef.local` still unresolved in the answers — including refs nested inside repeat-group and table rows — read `form_blobs`, upload to `form-attachments` at the deterministic path `{tenant}/{instance}/{localId}.{ext}` with `upsert: true` (deterministic path + upsert = retry-safe after a half-failed batch), rewrite `local` → `path` in the payload answers; (b) call `supabase.rpc('complete_form_instance', …)` — idempotent server-side (§1.8); (c) delete the uploaded blobs. Large photos inside a repeat-row are therefore handled identically to top-level photos: the ref's location in the tree is irrelevant to storage — `form_blobs` is flat, keyed by `localId`.
 
 No separate photo-upload op type: coupling upload into the completion op removes the ordering hazard entirely (a completion can never replay before its attachments — it *is* the uploader). Autosave upserts carry `local` refs harmlessly; the storage-path rewrite happens exactly once, at completion replay.
@@ -737,10 +811,12 @@ New edge function `generate-form-pdf`, cloning `generate-invoice-pdf`'s architec
 | `page_break` | forced `newPage()` |
 | `table` | the invoice line-items table pattern (header re-issued after page breaks); >4 columns falls back to stacked per-row blocks; photo cells embed thumbnails |
 | `repeat_group` | children rendered per row under `clause(letter)` subheads — `2.03(a)`, `2.03(b)` — letters assigned from row order at render |
-| `photo`/`file` | photos: service-role storage download + `embedJpg`/`embedPng`, scaled to fit width, max ~240 pt tall, own page-break check per image. Non-image files: filename line, no embed |
+| `photo`/`file` | photos: service-role storage download + `embedJpg`/`embedPng`, scaled to fit width, max ~240 pt tall, own page-break check per image, **subject to the embedded-byte budget below**. Non-image files: filename line, no embed |
 | `signature` | embedded stroke PNG above a rule, `signed_name` + `signed_at` beneath — the legal block |
 
-Document chrome: header carries the tenant branding (name + primary color, invoice pattern), the **document number** in the masthead slot where "INVOICE" sits, status/outcome badge, completion date. A closing auto-section lists open deficiencies raised by this instance (clause + description) — the customer-visible deficiency summary. Fonts stay WinAnsi Helvetica; `sanitizeWinAnsi` already handles the emoji/CJK realities. Photos are guaranteed embeddable because capture normalized to JPEG (Step 5).
+Document chrome: header carries the tenant branding (name + primary color, invoice pattern), the **document number** in the masthead slot where "INVOICE" sits, status/outcome badge, completion date. (`outcome` printing here is safe precisely because review item 2 froze it — the paper and the record cannot diverge.) A closing auto-section lists open deficiencies raised by this instance (clause + description) — the customer-visible deficiency summary. Fonts stay WinAnsi Helvetica; `sanitizeWinAnsi` already handles the emoji/CJK realities. Photos are guaranteed embeddable because capture normalized to JPEG (Step 5).
+
+**Photo embedding cap (review item 4) — pick: a per-document embedded-byte budget of 10 MB, walker-enforced in document order.** pdf-lib embeds original bytes — page-scaling to 240 pt shrinks nothing — so an uncapped 20-photo commissioning form means megabytes downloaded and embedded inside an edge function with time and memory limits. Why this option over the other two: server-side downscale needs a wasm image codec inside Deno edge — a heavy dependency whose decode buffers are the exact memory risk being guarded; thumbnails-inline-with-photo-appendix still embeds the same original bytes unless downscaled first, so it rearranges the cost without reducing it. The **primary** control is upstream and already designed: capture compresses to ≤1600 px JPEG at ~200–400 KB (Step 5), so a typical 20-photo form embeds ~4–8 MB and fits entirely. The budget is the backstop for pathological forms: once cumulative embedded bytes would exceed 10 MB, each remaining photo renders as a labeled "photo on file" line, and the final page states "N additional photos not embedded — available in FieldTek." Degradation is deterministic (document order), visible on the paper itself, and never fails the render.
 
 ---
 
@@ -771,10 +847,11 @@ A two-truck plumbing outfit's service-call form, authored against the schema exa
         "input": { "type": "photo", "max": 4 } } ] },
     { "id": "s_work", "kind": "section", "text": "Work performed", "children": [
       { "id": "t_parts", "kind": "table", "text": "Parts used", "columns": [
-          { "id": "c_part", "label": "Part", "type": "text", "required": true },
-          { "id": "c_qty",  "label": "Qty",  "type": "number" } ] },
+          { "id": "c_part", "label": "Part", "type": "text", "required": true, "role": "part" },
+          { "id": "c_qty",  "label": "Qty",  "type": "number", "role": "quantity" } ] },
       { "id": "q_hours", "kind": "question", "text": "Labor hours",
-        "input": { "type": "number", "unit": "h" }, "required": true },
+        "input": { "type": "number", "unit": "h" }, "required": true,
+        "flags": { "role": "labor_hours" } },
       { "id": "q_internal", "kind": "question", "text": "Internal notes (not on customer copy)",
         "include_in_pdf": false, "input": { "type": "text", "multiline": true } } ] },
     { "id": "q_sig", "kind": "question", "text": "Customer signature",
@@ -784,6 +861,7 @@ A two-truck plumbing outfit's service-call form, authored against the schema exa
 ```
 
 - **Zero new field types.** Confirmed: every node above uses constructs already required by the HVAC teardown. The signature, parts table, tri-states, conditional note, and internal-only field are the same machinery.
+- **The importer-facing roles are cross-trade by construction** (review item 1): `labor_hours` on the hours question and `part`/`quantity` on the parts table mean the weeks-4–6 invoice importer reads this plumbing form and the HVAC commissioning form with the same code — no per-template node-id knowledge anywhere.
 - **No clause numbers anywhere** — and nothing breaks: `clause` is optional; the renderer and PDF show numbers only when authored. A plumbing form without legalese numbering renders clean.
 - **Exists only because of HVAC commissioning?** Audit of every schema feature: `clause` (keep — optional capability, zero cost when absent); fixed-row tables/readings grids (keep — already generalized into `table.rows.fixed`; a plumber's pressure-test grid uses it identically); `repeat_group` (generic — bathrooms, fixtures, roof drains); `role: 'serial_number'` (generic — water heaters have serials); equipment binding (optional by constraint 5); `blocker.other_trade` (generic on any construction site); `outcome` wording (deliberately trade-neutral — `complete`, not `commissioned`). **Nothing needs cutting; nothing is HVAC-hard-coded.** The two-truck company's only mandatory ceremony is a document number — which they want anyway, because their customers dispute invoices too.
 
@@ -791,7 +869,7 @@ A two-truck plumbing outfit's service-call form, authored against the schema exa
 
 ## Step 8 — Migration path and coexistence
 
-**Coexistence is structural, not procedural.** The form engine adds four tables, one bucket, one flag, and new routes. It writes to none of `job_stage_templates`, `job_checklist_completions`, `job_status` (constraint 7); its only contact with the existing system is three *nullable, SET NULL* FKs pointing at `scheduled_jobs`/`equipment_registry`/`clients`. There is no FK from the old system into the new one and none from the new into the old system's tables. Both surfaces run simultaneously: the technician job sheet shows the existing checklist *and*, flag-gated, a Forms section; `JobChecklistResults` (`src/components/jobs/JobChecklistResults.tsx`) keeps rendering historical checklist rows untouched.
+**Coexistence is structural, not procedural.** The form engine adds five tables, one bucket, one flag, and new routes. It writes to none of `job_stage_templates`, `job_checklist_completions`, `job_status` (constraint 7); its only contact with the existing system is three *nullable, SET NULL* FKs pointing at `scheduled_jobs`/`equipment_registry`/`clients`. There is no FK from the old system into the new one and none from the new into the old system's tables. Both surfaces run simultaneously: the technician job sheet shows the existing checklist *and*, flag-gated, a Forms section; `JobChecklistResults` (`src/components/jobs/JobChecklistResults.tsx`) keeps rendering historical checklist rows untouched.
 
 **Rollout control:** runtime feature flag `form_engine` (row inserted `is_enabled=false, rollout 0` in the first migration — the exact pattern of `workflow_step_verification`, `20260420000000:69-79`), gating all UI entry points. Tier gating via `FeatureGate` can layer on later without schema impact.
 
@@ -815,7 +893,7 @@ Because coexistence is structural, retirement is *UI removal plus table freeze* 
 3. **Counter RPC under concurrency** — two parallel completions on one tenant. A 20-line Deno test proves serialization + idempotent replay before anything depends on it.
 
 **Known-accepted gaps (stated so nobody discovers them in week three):**
-- **Client-computed extraction trust boundary:** serials and deficiencies are computed client-side from the shared pure lib; the RPC validates ownership/status/shape but does not re-walk the tree. A hostile client corrupts only its own tenant's analytics — RLS pins the blast radius. Server-side re-derivation is a contained future hardening (the jsonpath machinery to verify node ids exists) if partner data ever warrants it.
+- **Client-computed extraction trust boundary:** serials, labour hours, and deficiencies are computed client-side from the shared pure lib; the RPC validates ownership/status/shape but does not re-walk the tree. A hostile client corrupts only its own tenant's analytics — RLS pins the blast radius. Server-side re-derivation is a contained future hardening (the jsonpath machinery to verify node ids exists) if partner data ever warrants it.
 - **No document number while offline:** the number arrives at sync. Mitigation ladder: provisional short-id on device → if partners genuinely need on-site numbers, per-device reserved ranges later. Not solving this now is deliberate — reserved ranges are complexity with a smell, and the PDF (the artifact customers actually receive) always carries the real number.
 - **Amendments are undesigned.** Completed instances are immutable; the escape hatch is `void` (admin-gated) + a fresh instance, with `superseded_by` recorded — but no amendment UI, no partial-correction flow. That is a product conversation for after partners hit it. The column exists now because schema is cheap and retrofit is not (the founder's own principle).
 - **Attachment/evidence lifecycle:** `form-attachments` has no DELETE path, matching C5's deliberate immutability and inheriting the same open product decision already tracked in `docs/backlog.md` (evidence deletion lifecycle). The form engine consciously adopts the same posture rather than inventing retention policy mid-design.
@@ -827,10 +905,10 @@ Because coexistence is structural, retirement is *UI removal plus table freeze* 
 - **Constraint 3 (promoted columns) — pushed one step further than written:** the founder's list implies deficiency *flags*; the queries force deficiency *rows* (§1.0). That is a schema-shape decision beyond the stated constraint, taken per the Step 4 mandate ("change the schema rather than the question").
 - **Everything else** — snapshot-on-instance, jsonb tree, optional unit binding, mobile-first, untouched checklist system — survives contact with the code and the queries intact. No constraint is wrong.
 
-**Open questions for the founder (none block approval of the schema):**
-1. Document-number prefix per tenant defaults to what — `FT`, or derived from tenant name at seed time (e.g. `NSH` for North Shore)? (Seed-script argument either way.)
-2. May a technician void their own *in-progress* instance, or is void admin-only in all states? (Design currently: admin-only from `completed`; creator may void own `in_progress`.)
-3. Should the portal arm ship enabled-but-unreachable (policy exists, no UI — as designed, mirroring C2), or be withheld entirely until the backlog demo-portal account exists? Designed-in is my recommendation; it is one revoke away if you disagree.
+**Open questions — ANSWERED by founder review (2026-07-24):**
+1. Document-number prefix: **derived from tenant name at seed time, `FT` fallback** (a customer quoting `NSH-00042` beats every tenant sharing a prefix). Folded into §1.4 and the seed script.
+2. Void: **creator may void their own in-progress instance; admin-only once completed** — as designed.
+3. Portal arm: **ships designed-in with no UI**, same posture as C2; one revoke away if it ever looks wrong.
 
 ---
 
@@ -839,7 +917,7 @@ Because coexistence is structural, retirement is *UI removal plus table freeze* 
 **Slice Zero** (one PR series, flag-gated, nothing user-visible until `form_engine` enables):
 
 0. **Commit 0 (standing rule):** `field-assistant` dead-path removal + deploy + 12/12 live eval (`docs/backlog.md` opener). No form-engine code before this lands.
-1. **Migration 1 (the "full schema on day one" migration):** two enums; `form_templates`, `form_instances`, `form_deficiencies`, `form_number_counters`; immutability trigger; `complete_form_instance` RPC; all §1.9 indexes; RLS per Step 2; `form-attachments` bucket + policies; `tenant_settings.fault_categories` column; `form_engine` flag row (off). Must replay clean under the db-replay CI gate.
+1. **Migration 1 (the "full schema on day one" migration):** two enums; `form_templates`, `form_instances` (incl. `labor_hours`), `form_deficiencies`, `form_number_counters`, `form_instance_revisions`; immutability trigger (outcome frozen) + audit trigger; `complete_form_instance` RPC (incl. `p_labor_hours`); all §1.9 indexes; RLS per Step 2 (status-branching UPDATE policy); `form-attachments` bucket + policies; `tenant_settings.fault_categories` column; `form_engine` flag row (off). Must replay clean under the db-replay CI gate.
 2. **Pure libs first:** `schema/visibility/validate/extract.ts` + seed validator, vitest-covered against the commissioning fixture (risk item 1).
 3. **Seeds:** `npm run forms:seed` (idempotent on `(tenant_id, source_key)`) + two real templates — HVAC commissioning (the 40-clause teardown) and the Step-7 plumbing service call (cross-trade proof lives in the repo, not in this document).
 4. **Mobile-first renderer:** all input kinds, row-as-card tables, camera + barcode + signature capture; technician job-sheet "Forms" section + `Forms`/`FormFill` pages; admin template **preview route**.
@@ -848,4 +926,4 @@ Because coexistence is structural, retirement is *UI removal plus table freeze* 
 7. **Deficiency minimum:** auto-raise at completion (RPC), staff list + resolve UI (one page), Q5 as its default view.
 8. **Tests/gates:** Deno authz matrix for the RPC + PDF function; Playwright happy path (create → conditional reveal → repeat group → complete → number issued) + flag-off assertion; demo-tenant seed for founder smoke.
 
-**Slice Zero deliberately excludes:** template builder UI (seeds + validator + preview only); any portal UI (policy ships, surface waits for the backlog demo-portal account); amendments/supersede flow (column only); auto-resolution of deficiencies by later visits; repeat-count binding to asset attributes (`count` shape reserves the slot); `model_number` promotion (role tag parses, nothing extracts it yet); analytics dashboards (the five queries exist as SQL, not UI); Sentinel integration; per-template document prefixes or numbering pattern language; server-side answer re-validation; multi-device concurrent editing; guided procedures.
+**Slice Zero deliberately excludes:** template builder UI (seeds + validator + preview only); any portal UI (policy ships, surface waits for the backlog demo-portal account); amendments/supersede flow (column only); auto-resolution of deficiencies by later visits; repeat-count binding to asset attributes (`count` shape reserves the slot); `model_number`/`part`/`quantity` column promotion (the role tags parse and seed; only serials and labour hours are extracted and promoted); analytics dashboards (the five queries exist as SQL, not UI); a revisions-history UI (the table fills from day one; reading it is a later page); Sentinel integration; per-template document prefixes or numbering pattern language; server-side answer re-validation; multi-device concurrent editing; guided procedures.
