@@ -46,9 +46,34 @@ Founder decision 4, approved in full. One policy-only migration per fix:
 | C4 | `20260723400000` | dropped the orphaned unscoped `part-receipts` DELETE policy (wrong-name `IF EXISTS` no-op had left any authenticated user able to delete any receipt) |
 | C5 | `20260723500000` | explicit deny-all DELETE on `workflow_step_evidence` — documents the deliberate immutability (founder call: no admin DELETE; that would *create* a tampering capability) |
 
-Post-push: disposable probes passed (technician line-items 0 rows, cross-tenant branding write denied, non-admin receipt delete denied, foreign-user notification insert denied) and the full e2e suite ran green against main.
+#### Verification of record — direct authorization probes
 
-**Outstanding (founder):** the manual smoke pass — create a job → complete a checklist item with photo evidence → create + send an invoice → view it in the portal.
+Founder call (2026-07-24): the direct probes are the verification of record for C, ahead of any UI smoke. Re-run against fgem on 2026-07-24 via `scripts/probes/week0-c-rls-probe.mjs` — disposable per-run fixtures (two tenants, an admin + a technician + a foreign owner, a client, an invoice with two line items, a seeded receipt object), error-checked teardown. **8/8 passed, zero residue** (`tenants=0 users=0 objects=0 cleanupErrors=0`). Every denial is paired with a positive control, so no pass can be a false negative from a broken fixture; the residue check reads back every object the run could have created — including the ones the probes were *allowed* to write — and the harness exits non-zero on any leftover or failed cleanup, so "zero residue" is asserted rather than assumed.
+
+| Probe | Result |
+|---|---|
+| C1 — technician inserts a `notifications` row for **another** user | denied · `42501 new row violates row-level security policy for table "notifications"` |
+| C1 control — same technician inserts a row for themself | allowed |
+| C2 — technician selects `invoice_line_items` for a tenant invoice | **0 rows** |
+| C2 control — tenant admin selects the same line items | 2 rows |
+| C3 — tenant admin uploads to **another** tenant's `branding/<tenant-id>/` folder | denied · `new row violates row-level security policy`; object never landed |
+| C3 control — same admin uploads to their own tenant folder | allowed |
+| C4 — technician deletes a `part-receipts` object | denied · object still present |
+| C4 control — tenant admin deletes the same object | removed |
+
+C5 is deliberately absent from the probe set. It documents an immutability that already held (no DELETE policy existed, so RLS default-denied), so a behavioural probe returns "nothing deleted" both before and after the migration and proves nothing. Its guarantee rests on the migration plus the db-replay gate, not on a runtime probe.
+
+The full e2e suite also ran green against main after the push.
+
+#### Manual UI smoke — portal step ruled not-applicable (founder, 2026-07-24)
+
+`PortalInvoices.tsx` reads the `invoices` table only; it never queries `invoice_line_items`. C2 therefore cannot have broken the customer portal. There is no portal-linked client on any tenant today, and creating a prod auth user to exercise a path the change provably did not touch would be fabricated coverage, not verification. Skipped deliberately — **nothing was provisioned for C**.
+
+The remaining UI steps stay with the founder as optional confirmation, not as the verification of record: create a job and create + send an invoice as `demo-owner@fieldtek-demo.dev`; complete a checklist item with photo evidence as `demo-tech-1@fieldtek-demo.dev` — that step doubling as proof the Workstream A surgery left the technician evidence path intact.
+
+#### ⚠ Known unverified — C2's portal SELECT arm
+
+`"Portal clients can view their own invoice items"` has **no reader in the application today**. Line items reach the portal only through `generate-invoice-pdf`, which runs as the service role and bypasses RLS entirely. The arm is forward-compatible construction — correct by inspection, unexercised at runtime, and not covered by the probe set above. Its first real exercise should come with the portal work in PR-APP-7; a permanent demo portal account (created through the app's own invitation flow, not service-role provisioning) is tracked in [backlog.md](backlog.md).
 
 ### Workstream D — `feat(cron)` (this PR)
 
@@ -112,6 +137,7 @@ order by active_templates desc;
 6. **Drift tooling standing gap:** `db diff` cannot currently be trusted (false-clean on v2.90.0; `LegacyDeclarativeShadowDbError` on v2.109.1). PR-DB-2 remains **open** with a timeboxed post-Week-0 follow-up. The db-replay canary compensates for exactly three objects, no more.
 7. **Timezone support in D1:** the prompt's "timezone-aware per tenant settings where the function supports it" — it does not support it (plain UTC math). Single daily UTC run, correct because of `advance_days` lead time.
 8. **D2 flag-ON testing at Deno level, not e2e** (founder call 3): asserting a real send in e2e would email live addresses on every CI run.
+9. **C's manual-smoke portal step dropped, probes promoted (founder call, 2026-07-24):** the prompt's smoke pass ended at "view it in the portal". `PortalInvoices.tsx` never reads `invoice_line_items`, so that step could only have been satisfied by minting a prod portal user to exercise an untouched path — fabricated coverage. The direct probes became the verification of record instead, and the unexercised portal arm was flagged rather than papered over. The demo portal account is now a tracked backlog item on its own merits, to be created through the app's invitation flow.
 
 ## Decision 5 sweep (permanent product rules)
 
@@ -130,4 +156,5 @@ Nothing destructive to prod data was executed all week. The only schema drops we
 - [x] `docs/week0-drift-report.md` (not clean — standing tooling gap recorded, PR-DB-2 open)
 - [x] `docs/week0-summary.md` (this file)
 - [x] Nothing destructive to prod data
-- [ ] Founder manual smoke for Workstream C (job → checklist photo → invoice → portal)
+- [x] Workstream C verified — 8/8 direct authorization probes against fgem, each denial with a positive control, zero residue (the portal leg of the original manual-smoke item ruled not-applicable; C2's portal SELECT arm flagged known-unverified)
+- [ ] *Optional, non-gating:* founder UI confirmation pass (job + invoice as `demo-owner`, checklist photo as `demo-tech-1`)
