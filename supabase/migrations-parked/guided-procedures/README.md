@@ -66,22 +66,29 @@ means `supabase db push` proposes only genuinely-pending active migrations.
 3. **Do not edit the SQL in these files, renumber them, or delete them.** They are a
    preserved, coherent stream. If the feature is revived, it ships forward from here.
 
-### `20260513000000` partial-application history (PR-DB-3 finding)
+### `20260513000000` partial-application history (PR-DB-3 finding; reconciled Week 0)
 
-Production contains a *partial, out-of-band* application of this migration:
+Production received a *partial, out-of-band* application of this migration:
 
-- **Live in production:** `notify_collect_workflow_intelligence()`, the
+- **Live in production — and since 2026-07-23 ALSO promoted into the applied
+  ledger** by `supabase/migrations/20260723050000_reconcile_intelligence_flywheel_ledger.sql`
+  (verbatim, idempotent copy; live definitions verified against this file by
+  catalog query before the push — the only delta was two stripped comment lines
+  in the live function body): `notify_collect_workflow_intelligence()`, the
   `trg_collect_workflow_intelligence` trigger on `scheduled_jobs`, and the
-  `workflow_diagnostic_statistics.tenant_id` nullability + replacement view policy
-  (sections A and C1).
-- **Absent in production:** the four platform-admin policies on the deferred tables
-  and the `workflow_pattern_clusters` ALTER (sections B and C2) — their target tables
-  do not exist there.
+  `workflow_diagnostic_statistics.tenant_id` nullability + replacement SELECT
+  policy (sections A and C1). A db-replay CI assertion now pins all three, so a
+  rebuild-from-migrations can no longer silently lose the telemetry flywheel.
+- **Absent in production and NOT ledgered:** the four platform-admin policies on
+  the parked tables and the `workflow_pattern_clusters` ALTER (sections B and
+  C2) — their target tables do not exist there. These remain exclusively in
+  this parked file.
 
-Because the file is neither fully applied nor fully absent, the migration ledger
-cannot truthfully represent it. This is the second reason it must never be repaired.
-The live trigger posts `Authorization: Bearer <vault service_role_key>` to
-`collect-workflow-intelligence` and is a real production caller of that function.
+The ledger now truthfully represents the applied portion; the repair prohibition
+below still stands for this FILE (marking `20260513000000` itself "applied" would
+still be false — sections B/C2 never ran). The live trigger posts
+`Authorization: Bearer <vault service_role_key>` to `collect-workflow-intelligence`
+and is a real production caller of that function.
 
 ## Conditions for revival
 

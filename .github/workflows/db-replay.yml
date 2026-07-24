@@ -90,6 +90,30 @@ jobs:
             RAISE NOTICE 'PASS: exactly one (0-arg) is_tenant_admin overload present';
           END \$\$;"
 
+      - name: Assert intelligence-flywheel reconstruction (Week 0 reconciliation)
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        # 20260723050000 promotes the formerly out-of-band flywheel objects into
+        # the ledger. A clean replay MUST now produce them; their silent absence
+        # is exactly the replay-from-prod divergence that went undetected before
+        # Week 0 (docs/week0-drift-report.md). Scope honesty: this pins three
+        # named objects — it is a canary for that specific divergence, NOT
+        # general drift detection.
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "DO \$\$
+          DECLARE t int; f int; nullable text;
+          BEGIN
+            SELECT count(*) INTO t FROM pg_trigger WHERE tgname = 'trg_collect_workflow_intelligence' AND NOT tgisinternal;
+            SELECT count(*) INTO f FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
+              WHERE ns.nspname = 'public' AND p.proname = 'notify_collect_workflow_intelligence';
+            SELECT c.is_nullable INTO nullable FROM information_schema.columns c
+              WHERE c.table_schema = 'public' AND c.table_name = 'workflow_diagnostic_statistics' AND c.column_name = 'tenant_id';
+            IF t <> 1 OR f <> 1 OR nullable IS DISTINCT FROM 'YES' THEN
+              RAISE EXCEPTION 'flywheel reconstruction failed: trigger=% function=% tenant_id_nullable=% — replay diverges from production, see docs/week0-drift-report.md', t, f, nullable;
+            END IF;
+            RAISE NOTICE 'PASS: flywheel trigger + function + nullable tenant_id reconstructed';
+          END \$\$;"
+
       - name: Stable SQL regressions (from-zero schema)
         env:
           DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
