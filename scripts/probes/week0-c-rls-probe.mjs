@@ -176,29 +176,54 @@ try {
   results.push({ id: 'harness', pass: false, detail: e.message });
 } finally {
   // ---------- teardown ----------
-  for (const u of uploads) await admin.storage.from(u.bucket).remove([u.path]);
+  // Every delete is error-checked: a silently failed cleanup would leave prod
+  // residue while the run still printed a pass.
+  const cleanupErrors = [];
+  const check = (label, error) => { if (error) cleanupErrors.push(`${label}: ${error.message}`); };
+
+  for (const u of uploads) check(`storage ${u.bucket}/${u.path}`, (await admin.storage.from(u.bucket).remove([u.path])).error);
   for (const t of tenantIds) {
-    const { data: invs } = await admin.from('invoices').select('id').eq('tenant_id', t);
-    for (const inv of invs ?? []) await admin.from('invoice_line_items').delete().eq('invoice_id', inv.id);
-    await admin.from('invoices').delete().eq('tenant_id', t);
-    await admin.from('clients').delete().eq('tenant_id', t);
-    await admin.from('notifications').delete().eq('tenant_id', t);
-    await admin.from('tenant_users').delete().eq('tenant_id', t);
-    await admin.from('tenants').delete().eq('id', t);
+    const { data: invs, error: invSelErr } = await admin.from('invoices').select('id').eq('tenant_id', t);
+    check(`select invoices ${t}`, invSelErr);
+    for (const inv of invs ?? []) check(`line items ${inv.id}`, (await admin.from('invoice_line_items').delete().eq('invoice_id', inv.id)).error);
+    check(`invoices ${t}`, (await admin.from('invoices').delete().eq('tenant_id', t)).error);
+    check(`clients ${t}`, (await admin.from('clients').delete().eq('tenant_id', t)).error);
+    check(`notifications ${t}`, (await admin.from('notifications').delete().eq('tenant_id', t)).error);
+    check(`tenant_users ${t}`, (await admin.from('tenant_users').delete().eq('tenant_id', t)).error);
+    check(`tenants ${t}`, (await admin.from('tenants').delete().eq('id', t)).error);
   }
   for (const id of userIds) {
-    await admin.from('profiles').delete().eq('user_id', id);
-    await admin.auth.admin.deleteUser(id);
+    check(`profile ${id}`, (await admin.from('profiles').delete().eq('user_id', id)).error);
+    check(`auth user ${id}`, (await admin.auth.admin.deleteUser(id)).error);
   }
 
   // ---------- residue assertion ----------
+  // Read back everything the run could have created, including the objects the
+  // probes were *allowed* to write — a cleanup that only proves the denied
+  // upload is absent proves nothing about the rest.
   const { data: tLeft } = await admin.from('tenants').select('id')
     .in('id', tenantIds.length ? tenantIds : ['00000000-0000-0000-0000-000000000000']);
   const { data: uLeft } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
   const staleUsers = (uLeft?.users ?? []).filter((u) => u.email?.startsWith(`wk0c-${runId}-`));
-  const brandLeft = tenantIds[1] ? await objectExists('branding', `${tenantIds[1]}/logo-${runId}.png`) : false;
-  console.log(`\nRESIDUE  tenants=${(tLeft ?? []).length} users=${staleUsers.length} branding=${brandLeft ? 1 : 0}`);
+
+  const storagePaths = [
+    ...uploads,
+    ...tenantIds.map((t) => ({ bucket: 'branding', path: `${t}/logo-${runId}.png` })),
+    ...tenantIds.map((t) => ({ bucket: 'part-receipts', path: `${t}/wk0c-${runId}/receipt.png` })),
+  ];
+  const seen = new Set();
+  let objectsLeft = 0;
+  for (const { bucket, path } of storagePaths) {
+    const key = `${bucket}/${path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (await objectExists(bucket, path)) { objectsLeft += 1; console.log(`RESIDUE OBJECT  ${key}`); }
+  }
+
+  for (const e of cleanupErrors) console.log(`CLEANUP ERROR  ${e}`);
+  console.log(`\nRESIDUE  tenants=${(tLeft ?? []).length} users=${staleUsers.length} objects=${objectsLeft} cleanupErrors=${cleanupErrors.length}`);
+  const residue = (tLeft ?? []).length + staleUsers.length + objectsLeft + cleanupErrors.length;
   const failed = results.filter((r) => !r.pass);
   console.log(`RESULT   ${results.length - failed.length}/${results.length} probes passed${failed.length ? ` — FAILED: ${failed.map((f) => f.id).join(', ')}` : ''}`);
-  process.exit(failed.length ? 1 : 0);
+  process.exit(failed.length || residue ? 1 : 0);
 }

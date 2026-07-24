@@ -48,7 +48,7 @@ Founder decision 4, approved in full. One policy-only migration per fix:
 
 #### Verification of record — direct authorization probes
 
-Founder call (2026-07-24): the direct probes are the verification of record for C, ahead of any UI smoke. Re-run against fgem on 2026-07-24 via `scripts/probes/week0-c-rls-probe.mjs` — disposable per-run fixtures (two tenants, an admin + a technician + a foreign owner, a client, an invoice with two line items, a seeded receipt object), full teardown. **8/8 passed, zero residue** (`tenants=0 users=0 branding=0`). Every denial is paired with a positive control, so no pass can be a false negative from a broken fixture.
+Founder call (2026-07-24): the direct probes are the verification of record for C, ahead of any UI smoke. Re-run against fgem on 2026-07-24 via `scripts/probes/week0-c-rls-probe.mjs` — disposable per-run fixtures (two tenants, an admin + a technician + a foreign owner, a client, an invoice with two line items, a seeded receipt object), error-checked teardown. **8/8 passed, zero residue** (`tenants=0 users=0 objects=0 cleanupErrors=0`). Every denial is paired with a positive control, so no pass can be a false negative from a broken fixture; the residue check reads back every object the run could have created — including the ones the probes were *allowed* to write — and the harness exits non-zero on any leftover or failed cleanup, so "zero residue" is asserted rather than assumed.
 
 | Probe | Result |
 |---|---|
