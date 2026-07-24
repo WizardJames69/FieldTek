@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isServiceRoleBearer } from '../_shared/serviceAuth.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -76,6 +77,24 @@ Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // ── Authorization (Week 0 D1) ─────────────────────────────
+  // Privileged batch writer: sweeps EVERY tenant's active
+  // recurring_job_templates with the service role and inserts into
+  // scheduled_jobs. Only intended caller is the daily pg_cron wrapper
+  // invoke_generate_recurring_jobs(), which sends the Vault service_role
+  // key as its bearer. Before this gate, any authenticated user's JWT
+  // passed the gateway's default verify_jwt and could trigger the
+  // all-tenant sweep (tracked in docs/security/PR-SEC-6-authorization-gaps.md,
+  // closed by this check). Service role only; everyone else 401s.
+  // Trust contract pinned in authz.test.ts.
+  const bearer = req.headers.get('Authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  if (!(await isServiceRoleBearer(bearer))) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
